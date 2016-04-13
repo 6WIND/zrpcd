@@ -1,0 +1,4 @@
+[submodule "lib/c-capnproto"]
+	path = lib/c-capnproto
+	url =  https://git-us.netdef.org/scm/osr/c-capnproto.git
+
