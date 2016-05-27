@@ -643,7 +643,65 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
                                              const gchar * prefix, const gchar * nexthop,
                                              const gchar * rd, const gint32 label, GError **error)
 {
-  return TRUE;
+  struct zrpc_vpnservice *ctxt = NULL;
+  struct bgp_api_route inst;
+  struct zrpc_rd_prefix rd_inst;
+  uint64_t bgpvrf_nid = 0;
+  address_family_t afi = ADDRESS_FAMILY_IP;
+  struct capn_ptr bgpvrfroute;
+  struct capn_ptr afikey;
+  struct capn rc;
+  struct capn_segment *cs;
+  int ret;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt)
+    {
+      *_return = BGP_ERR_FAILED;
+      return FALSE;
+    }
+  if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+    {
+      *_return = BGP_ERR_FAILED;
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+  /* get route distinguisher internal representation */
+  memset(&rd_inst, 0, sizeof(struct zrpc_rd_prefix));
+  zrpc_util_str2rd_prefix((char *)rd, &rd_inst);
+  /* if vrf not found, return an error */
+  bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+  if(bgpvrf_nid == 0)
+    {
+      *error = ERROR_BGP_RD_NOTFOUND;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+  /* prepare route entry for AFI=IP */
+  memset(&inst, 0, sizeof(struct bgp_api_route));
+  inst.label = label;
+  inet_aton (nexthop, &inst.nexthop);
+  zrpc_util_str2ipv4_prefix(prefix,&inst.prefix);
+  capn_init_malloc(&rc);
+  cs = capn_root(&rc).seg;
+  bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
+  qcapn_BGPVRFRoute_write(&inst, bgpvrfroute);
+  /* prepare afi context */
+  afikey = qcapn_new_AfiKey(cs);
+  capn_write8(afikey, 0, afi);
+  /* set route within afi context using QZC set request */
+  ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, \
+                           3, &bgpvrfroute, &bgp_datatype_bgpvrfroute,  \
+                           &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+  if(ret == 0)
+    *_return = BGP_ERR_FAILED;
+  else
+    {
+      if(IS_ZRPC_DEBUG)
+        zrpc_log ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) OK", prefix, nexthop, rd, label);
+    }
+  capn_free(&rc);
+  return ret;
 }
 
 /*
@@ -655,7 +713,62 @@ gboolean
 instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint32* _return,
                                                  const gchar * prefix, const gchar * rd, GError **error)
 {
-  return TRUE;
+  struct zrpc_vpnservice *ctxt = NULL;
+  struct bgp_api_route inst;
+  struct zrpc_rd_prefix rd_inst;
+  uint64_t bgpvrf_nid = 0;
+  address_family_t afi = ADDRESS_FAMILY_IP;
+  struct capn_ptr bgpvrfroute;
+  struct capn_ptr afikey;
+  struct capn rc;
+  struct capn_segment *cs;
+  int ret;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt)
+    {
+      *_return = BGP_ERR_FAILED;
+      return FALSE;
+    }
+  if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+    {
+      *_return = BGP_ERR_FAILED;
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+  /* get route distinguisher internal representation */
+  zrpc_util_str2rd_prefix((char *)rd, &rd_inst);
+  /* if vrf not found, return an error */
+  bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+  if(bgpvrf_nid == 0)
+    {
+      *error = ERROR_BGP_RD_NOTFOUND;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+  /* prepare route entry for AFI=IP */
+  memset(&inst, 0, sizeof(struct bgp_api_route));
+  zrpc_util_str2ipv4_prefix(prefix,&inst.prefix);
+  capn_init_malloc(&rc);
+  cs = capn_root(&rc).seg;
+  bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
+  qcapn_BGPVRFRoute_write(&inst, bgpvrfroute);
+  /* prepare afi context */
+  afikey = qcapn_new_AfiKey(cs);
+  capn_write8(afikey, 0, afi);
+  /* set route within afi context using QZC set request */
+  ret = qzcclient_unsetelem (ctxt->qzc_sock, &bgpvrf_nid, 3, \
+                             &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
+                             &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+  if(ret == 0)
+    *_return = BGP_ERR_FAILED;
+  else
+    {
+      if(IS_ZRPC_DEBUG)
+        zrpc_log ("withdrawRoute(prefix %s, rd %s) OK", prefix, rd);
+    }
+  capn_free(&rc);
+  return ret;
 }
 
 /* 
