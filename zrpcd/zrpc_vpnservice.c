@@ -22,6 +22,7 @@
 #include "zrpcd/qzcclient.h"
 #include "zrpcd/zrpc_bgp_capnp.h"
 #include "zrpcd/qzcclient.capnp.h"
+#include "zrpcd/zrpc_debug.h"
 
 static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *msg);
 
@@ -128,6 +129,18 @@ void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup)
 struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_vpnservice *setup)
 {
   return setup->bgp_context;
+}
+
+void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup)
+{
+  struct zrpc_vpnservice_cache_bgpvrf *entry_bgpvrf, *entry_bgpvrf_next;
+
+  setup->bgp_vrf_list = NULL;
+  for (entry_bgpvrf = setup->bgp_vrf_list; entry_bgpvrf; entry_bgpvrf = entry_bgpvrf_next)
+    {
+      entry_bgpvrf_next = entry_bgpvrf->next;
+      ZRPC_FREE (entry_bgpvrf);
+    }
 }
 
 gboolean zrpc_vpnservice_setup_thrift_bgp_updater_client (struct zrpc_vpnservice *setup)

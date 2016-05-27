@@ -9,6 +9,7 @@
 #define _ZRPC_VPNSERVICE_H
 
 #include "zrpcd/zrpc_os_wrapper.h"
+#include "zrpcd/zrpc_util.h"
 
 #define ZRPC_LISTEN_PORT	 7644
 #define ZRPC_NOTIFICATION_PORT 6644
@@ -37,6 +38,14 @@ struct zrpc_vpnservice_bgp_context
 {
   uint32_t asNumber;
   gint32 proc;
+};
+
+/* zrpc cache contexts */
+struct zrpc_vpnservice_cache_bgpvrf
+{
+  uint64_t bgpvrf_nid;
+  struct zrpc_rd_prefix outbound_rd;
+  struct zrpc_vpnservice_cache_bgpvrf *next;
 };
 
 struct zrpc_vpnservice
@@ -74,6 +83,9 @@ struct zrpc_vpnservice
   /* QZC internal contexts */
   struct qzcclient_sock *qzc_sock;
   struct qzcclient_sock *qzc_subscribe_sock;
+  
+  /* zrpc cache context for VRF */
+  struct zrpc_vpnservice_cache_bgpvrf *bgp_vrf_list;
 };
 
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup);
@@ -100,5 +112,5 @@ void zrpc_vpnservice_setup_qzc(struct zrpc_vpnservice *setup);
 struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_terminate_bgp_context(struct zrpc_vpnservice *setup);
-
+void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup);
 #endif /* _ZRPC_VPNSERVICE_H */
