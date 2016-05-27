@@ -35,6 +35,9 @@
 #define ZRPC_UTIL_IPV4_PREFIX_LEN_MAX       32
 #define ZRPC_UTIL_IPV6_LEN_MAX              51
 
+/* for handling BGP pid */
+#define ZRPC_UTIL_PIDFILE_MASK 0644
+
 /* Address family numbers from RFC1700. */
 typedef enum {
   ADDRESS_FAMILY_IP  = 1,
@@ -87,5 +90,6 @@ struct zrpc_rdrt *zrpc_util_rdrt_import (u_char *vals, int listsize);
 #if 0
 extern int zrpc_cmd_get_path_prefix_dir(char *path, unsigned int size);
 #endif
+extern uint32_t zrpc_util_get_pid_output (const char *path);
 
 #endif /* _QUAGGA_ZRPC_UTIL_H */

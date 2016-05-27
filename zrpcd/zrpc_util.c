@@ -12,6 +12,10 @@
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_util.h"
 #include "zrpcd/zrpc_debug.h"
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 struct zrpc_rdrt *zrpc_util_append_rdrt_to_list (u_char *incoming_rdrt, struct zrpc_rdrt *rdrt)
 {
@@ -300,3 +304,59 @@ int zrpc_cmd_get_path_prefix_dir(char *path, unsigned int size)
 }
 #endif
 
+#ifndef HAVE_FCNTL
+/*
+ * read pid number in file
+ * return pid id if valid, 0 otherwise
+ */
+uint32_t
+zrpc_util_get_pid_output (const char *path)
+{
+  FILE *fp;
+  uint32_t pid;
+
+  fp = fopen (path, "r");
+  if (fp != NULL)
+    {
+      fscanf (fp, "%d\n", &pid);
+      fclose (fp);
+       
+      return pid;
+    }
+  /* XXX Why do we continue instead of exiting?  This seems incompatible
+     with the behavior of the fcntl version below. */
+  zrpc_log("Can't fopen pid lock file %s (%u), continuing",
+	    path, errno);
+  return 0;
+}
+#else
+/*
+ * read pid number in file
+ * return pid id if valid, 0 otherwise
+ */
+uint32_t
+zrpc_util_get_pid_output (const char *path)
+{
+  int fd;
+  char buf[16];
+  char *ptr;
+  uint32_t pid;
+
+  fd = open (path, O_READ, 0);
+  if (fd < 0)
+    {
+      char saddr[128];
+      sprintf(saddr,"Can't create pid lock file %s (%s), exiting",
+              path, safe_strerror(errno));
+      zrpc_log(saddr);
+      exit(1);
+    }
+
+  memset(buf, '\0', sizeof(buf));
+  ptr = buf;
+  read (fd, ptr, 16);
+  pid = atoi(buf);
+  return pid;
+}
+
+#endif /* HAVE_FCNTL */
