@@ -120,7 +120,28 @@ void  zrpc_create_context (struct zrpc **zrpc_val)
   /* run bgp_configurator_server */ 
   if(zrpc_server_listen (zrpc) < 0)
     {
-      exit(1);
+      uint32_t pid;
+
+      pid = zrpc_util_get_pid_output(BGPD_PATH_BGPD_PID);
+      if(pid)
+        {
+          char saddr[64];
+          char *ptr = saddr;
+          uint32_t pid2;
+
+          ptr+=sprintf(saddr, "attempt to kill BGP instance %d",pid);
+          zrpc_log(saddr);
+          pid2 = kill((pid_t)pid, SIGKILL);
+          if(pid2 == 0)
+            {
+              unlink(BGPD_PATH_BGPD_PID);
+              sleep(5);
+            }
+          zrpc_log("attempt to kill BGP instance (%d) %s", pid, pid2 == 0?"OK":"NOK");
+        }
+      /* exit on failure */
+      if(zrpc_server_listen (zrpc) < 0)
+        exit(1);
     }
   return ;
 }
