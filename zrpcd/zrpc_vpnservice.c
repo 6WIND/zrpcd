@@ -134,6 +134,7 @@ struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_
 void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup)
 {
   struct zrpc_vpnservice_cache_bgpvrf *entry_bgpvrf, *entry_bgpvrf_next;
+  struct zrpc_vpnservice_cache_peer *entry_bgppeer, *entry_bgppeer_next;
 
   setup->bgp_vrf_list = NULL;
   for (entry_bgpvrf = setup->bgp_vrf_list; entry_bgpvrf; entry_bgpvrf = entry_bgpvrf_next)
@@ -141,6 +142,15 @@ void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup)
       entry_bgpvrf_next = entry_bgpvrf->next;
       ZRPC_FREE (entry_bgpvrf);
     }
+
+  setup->bgp_peer_list = NULL;
+  for (entry_bgppeer = setup->bgp_peer_list; entry_bgppeer; entry_bgppeer = entry_bgppeer_next)
+    {
+      entry_bgppeer_next = entry_bgppeer->next;
+      ZRPC_FREE (entry_bgppeer->peerIp);
+      ZRPC_FREE (entry_bgppeer);
+    }
+  setup->bgp_peer_list = NULL;
 }
 
 gboolean zrpc_vpnservice_setup_thrift_bgp_updater_client (struct zrpc_vpnservice *setup)

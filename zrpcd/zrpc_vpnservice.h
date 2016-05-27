@@ -48,6 +48,14 @@ struct zrpc_vpnservice_cache_bgpvrf
   struct zrpc_vpnservice_cache_bgpvrf *next;
 };
 
+struct zrpc_vpnservice_cache_peer
+{
+  uint64_t peer_nid;
+  uint32_t asNumber;
+  char *peerIp;
+  struct zrpc_vpnservice_cache_peer *next;
+};
+
 struct zrpc_vpnservice
 {
   /* configuration part */
@@ -86,6 +94,7 @@ struct zrpc_vpnservice
   
   /* zrpc cache context for VRF */
   struct zrpc_vpnservice_cache_bgpvrf *bgp_vrf_list;
+  struct zrpc_vpnservice_cache_peer *bgp_peer_list;
 };
 
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup);
