@@ -24,6 +24,8 @@
 #define BGPD_PATH_BGPD_PID "/opt/quagga/var/run/quagga/bgpd.pid"
 #define BGPD_PATH_QUAGGA   "/opt/quagga"
 
+struct thread;
+
 struct zrpc_vpnservice_client
 {
   ThriftProcessor *processor;
@@ -72,6 +74,7 @@ struct zrpc_vpnservice
 
   /* zrpc Update Contexts */
   BgpUpdaterIf *bgp_updater_client;
+  struct thread *bgp_updater_client_thread;
   ThriftSocket *bgp_updater_socket;
   ThriftFramedTransport *bgp_updater_transport;
   ThriftProtocol *bgp_updater_protocol;
@@ -99,6 +102,8 @@ struct zrpc_vpnservice
 
   /* bgp updater statistics */
   u_int32_t bgp_update_lost_msgs;
+  u_int32_t bgp_update_monitor;
+  u_int32_t bgp_update_retries;
   u_int32_t bgp_update_total;
 };
 
