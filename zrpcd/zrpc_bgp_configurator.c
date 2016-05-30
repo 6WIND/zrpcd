@@ -1240,7 +1240,15 @@ gboolean instance_bgp_configurator_handler_enable_address_family(BgpConfigurator
                                                                  const gchar * peerIp, const af_afi afi,
                                                                  const af_safi safi, GError **error)
 {
-  return TRUE;
+  struct zrpc_vpnservice *ctxt = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt)
+    {
+      *_return = BGP_ERR_FAILED;
+      return FALSE;
+    }
+  return zrpc_bgp_afi_config(ctxt, _return, peerIp, afi, safi, TRUE, error);
 }
 
 /*
@@ -1252,7 +1260,15 @@ instance_bgp_configurator_handler_disable_address_family(BgpConfiguratorIf *ifac
                                                          const gchar * peerIp, const af_afi afi,
                                                          const af_safi safi, GError **error)
 {
-  return TRUE;
+  struct zrpc_vpnservice *ctxt = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt)
+    {
+      *_return = BGP_ERR_FAILED;
+      return FALSE;
+    }
+  return zrpc_bgp_afi_config(ctxt, _return, peerIp, afi, safi, FALSE, error);
 }
 
 gboolean
