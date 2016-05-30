@@ -30,9 +30,9 @@
 static gboolean
 instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface,
                                               gint32* ret, const gchar *routerId,
-                                              const gint32 asNumber, GError **error);
+                                              const gint64 asNumber, GError **error);
 static gboolean
-instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint32 asNumber,
+instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint64 asNumber,
                                             const gchar * routerId, const gint32 port, const gint32 holdTime,
                                             const gint32 keepAliveTime, const gint32 stalepathTime,
                                             const gboolean announceFbit, GError **error);
@@ -49,7 +49,7 @@ gboolean
 instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint32* _return, const gchar * prefix,
                                                  const gchar * rd, GError **error);
 gboolean
-instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint32 asNumber, GError **error);
+instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint64 asNumber, GError **error);
 gboolean
 instance_bgp_configurator_handler_delete_peer(BgpConfiguratorIf *iface, gint32* _return, const gchar * ipAddress, GError **error);
 gboolean
@@ -539,7 +539,7 @@ zrpc_bgp_set_multihops(struct zrpc_vpnservice *ctxt,  gint32* _return, const gch
  * If BGP is already started, then an error is returned : BGP_ERR_ACTIVE
  */
 static gboolean
-instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint32 asNumber,
+instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint64 asNumber,
                                             const gchar * routerId, const gint32 port, const gint32 holdTime,
                                             const gint32 keepAliveTime, const gint32 stalepathTime,
                                             const gboolean announceFbit, GError **error)
@@ -577,6 +577,11 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
   else
     {
       zrpc_vpnservice_setup_bgp_context(ctxt);
+    }
+  if (asNumber < 0)
+    {
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
     }
   if (asNumber < 0)
     {
@@ -883,7 +888,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
  */
 gboolean
 instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return,
-                                           const gint32 asNumber, GError **error)
+                                           const gint64 asNumber, GError **error)
 {
   struct zrpc_vpnservice *ctxt = NULL;
 
@@ -931,7 +936,7 @@ instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _re
  */
 gboolean
 instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* _return,
-                                              const gchar *routerId, const gint32 asNumber, GError **error)
+                                              const gchar *routerId, const gint64 asNumber, GError **error)
 {
   struct zrpc_vpnservice *ctxt = NULL;
   struct peer inst;
@@ -961,7 +966,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
     }
   memset(&inst, 0, sizeof(struct peer));
   inst.host = ZRPC_STRDUP(routerId);
-  inst.as = asNumber;
+  inst.as = (uint32_t) asNumber;
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   bgppeer = qcapn_new_BGPPeer(cs);
@@ -978,12 +983,12 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
       return FALSE;
     }
   if(IS_ZRPC_DEBUG)
-    zrpc_log ("createPeer(%s,%u) OK", routerId, asNumber);
+    zrpc_log ("createPeer(%s,%u) OK", routerId, (uint32_t)asNumber);
   /* add peer entry in cache */
   entry = ZRPC_CALLOC(sizeof(struct zrpc_vpnservice_cache_peer));
   entry->peerIp = ZRPC_STRDUP(routerId);
   entry->peer_nid = peer_nid;
-  entry->asNumber = asNumber;
+  entry->asNumber = (uint32_t )asNumber;
   if(IS_ZRPC_DEBUG_CACHE)
     zrpc_log ("CACHE_PEER : add entry %llx", (long long unsigned int)peer_nid);
   entry->next = ctxt->bgp_peer_list;
