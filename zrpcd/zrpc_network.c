@@ -15,6 +15,7 @@
 #include "zrpcd/bgp_configurator.h"
 #include "zrpcd/bgp_updater.h"
 #include "zrpcd/zrpc_bgp_configurator.h"
+#include "zrpcd/zrpc_bgp_updater.h"
 #include "zrpcd/zrpc_vpnservice.h"
 
 /* zrpc listening socket. */
@@ -198,9 +199,19 @@ zrpc_close (void)
 
 void zrpc_server_socket(struct zrpc *zrpc)
 {
+  gboolean client_ready;
+
 #if (!GLIB_CHECK_VERSION (2, 36, 0))
   g_type_init ();
 #endif
   zrpc_vpnservice_setup_thrift_bgp_configurator_server(zrpc->zrpc_vpnservice);
+  zrpc_vpnservice_setup_thrift_bgp_updater_client(zrpc->zrpc_vpnservice);
+  /* send notification to listener */
+  client_ready = zrpc_bgp_updater_on_start_config_resync_notification ();
+  zrpc->zrpc_vpnservice->bgp_update_total++;
+  if(client_ready == FALSE)
+    {
+      zrpc->zrpc_vpnservice->bgp_update_lost_msgs++;
+    }
   return;
 }

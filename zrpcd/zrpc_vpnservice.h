@@ -96,6 +96,10 @@ struct zrpc_vpnservice
   struct zrpc_vpnservice_cache_bgpvrf *bgp_vrf_list;
   struct zrpc_vpnservice_cache_peer *bgp_peer_list;
   struct zrpc_vpnservice_cache_bgpvrf *bgp_get_routes_list;
+
+  /* bgp updater statistics */
+  u_int32_t bgp_update_lost_msgs;
+  u_int32_t bgp_update_total;
 };
 
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup);

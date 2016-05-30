@@ -45,8 +45,17 @@ zrpc_bgp_updater_on_update_withdraw_route (const gchar * rd, const gchar * prefi
 gboolean
 zrpc_bgp_updater_on_start_config_resync_notification (void)
 {
+  GError *error = NULL;
+  gboolean response;
+  struct zrpc_vpnservice *ctxt = NULL;
 
-  return TRUE;
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt || !ctxt->bgp_updater_client)
+      return FALSE;
+  response = bgp_updater_client_on_start_config_resync_notification(ctxt->bgp_updater_client, &error);
+  if(IS_ZRPC_DEBUG_NOTIFICATION)
+    zrpc_log ("onStartConfigResyncNotification()");
+  return response;
 }
 
 /*
