@@ -131,6 +131,12 @@ struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_
   return setup->bgp_context;
 }
 
+void zrpc_vpnservice_setup_bgp_cache(struct zrpc_vpnservice *ctxt)
+{
+  ctxt->bgp_vrf_list = NULL;
+  ctxt->bgp_peer_list = NULL;
+}
+
 void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup)
 {
   struct zrpc_vpnservice_cache_bgpvrf *entry_bgpvrf, *entry_bgpvrf_next;

@@ -885,6 +885,40 @@ gboolean
 instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return,
                                            const gint32 asNumber, GError **error)
 {
+  struct zrpc_vpnservice *ctxt = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt)
+    {
+      *_return = BGP_ERR_INACTIVE;
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+  if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+    {
+      *_return = BGP_ERR_INACTIVE;
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+  if(asNumber < 0)
+    {
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+  if((guint32)asNumber != zrpc_vpnservice_get_bgp_context(ctxt)->asNumber)
+    {
+      *_return = BGP_ERR_FAILED;
+      return FALSE;
+    }
+  /* kill BGP Daemon */
+  zrpc_vpnservice_terminate_qzc(ctxt);
+  zrpc_vpnservice_terminate_bgpvrf_cache(ctxt);
+  zrpc_vpnservice_terminate_bgp_context(ctxt);
+  /* creation of capnproto context */
+  zrpc_vpnservice_setup_bgp_cache(ctxt);
+  zrpc_vpnservice_setup_qzc(ctxt);
+  if(IS_ZRPC_DEBUG)
+    zrpc_log ("stopBgp(AS %u) OK", asNumber);
   return TRUE;
 }
 

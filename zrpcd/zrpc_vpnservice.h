@@ -104,6 +104,7 @@ void zrpc_vpnservice_terminate_thrift_bgp_updater_client(struct zrpc_vpnservice 
 gboolean zrpc_vpnservice_setup_thrift_bgp_updater_client (struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_setup_thrift_bgp_configurator_server(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_setup(struct zrpc_vpnservice *setup);
+void zrpc_vpnservice_setup_bgp_cache(struct zrpc_vpnservice *ctxt);
 
 void zrpc_vpnservice_get_context (struct zrpc_vpnservice **setup);
 u_int16_t zrpc_vpnservice_get_thrift_bgp_configurator_server_port (struct zrpc_vpnservice *setup);
