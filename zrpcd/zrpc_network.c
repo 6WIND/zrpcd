@@ -101,16 +101,11 @@ zrpc_read_packet (struct thread *thread)
   GError *error = NULL;
   struct zrpc_peer *peer = THREAD_ARG(thread);
   struct zrpc_peer *peer_to_parse, *peer_next, *peer_prev;
-  gboolean response;
 
-  response = thrift_dispatch_processor_process (peer->peer->server->processor,\
-                                     peer->peer->protocol,\
-                                     peer->peer->protocol,\
-                                     &error);
-  if (response == TRUE && error == NULL)
-    {
-      thrift_transport_peek (peer->peer->transport, &error);
-    }
+  thrift_dispatch_processor_process (peer->peer->server->processor,      \
+                                    peer->peer->protocol,               \
+                                    peer->peer->protocol,               \
+                                    &error);
   if (error != NULL)
     {
       if(IS_ZRPC_DEBUG_NETWORK)
