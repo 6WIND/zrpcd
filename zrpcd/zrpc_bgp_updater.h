@@ -17,7 +17,8 @@ gboolean
 zrpc_bgp_updater_on_start_config_resync_notification (void);
 
 gboolean
-zrpc_bgp_updater_on_update_withdraw_route (const gchar * rd, const gchar * prefix, const gint32 prefixlen);
+zrpc_bgp_updater_on_update_withdraw_route (const gchar * rd, const gchar * prefix, const gint32 prefixlen,
+                                              const gchar * nexthop, const gint32 label);
 
 gboolean
 zrpc_bgp_updater_on_update_push_route (const gchar * rd, const gchar * prefix, \

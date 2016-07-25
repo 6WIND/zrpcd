@@ -44,7 +44,7 @@ zrpc_bgp_updater_on_update_push_route (const gchar * rd, const gchar * prefix, \
  * sent when a vpnv4 route is withdrawn
  */
 gboolean
-zrpc_bgp_updater_on_update_withdraw_route (const gchar * rd, const gchar * prefix, const gint32 prefixlen)
+zrpc_bgp_updater_on_update_withdraw_route (const gchar * rd, const gchar * prefix, const gint32 prefixlen, const gchar * nexthop,  const gint32 label)
 {
   GError *error = NULL;
   gboolean response;
@@ -53,9 +53,12 @@ zrpc_bgp_updater_on_update_withdraw_route (const gchar * rd, const gchar * prefi
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
-  response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, rd, prefix, prefixlen, &error);
+  response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, \
+                                                         rd, prefix, prefixlen, nexthop,
+                                                         label, &error);
   if(IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_log ("onUpdateWithdrawRoute(rd %s, pfx %s/%d)", rd, prefix, prefixlen);
+    zrpc_log ("onUpdateWithdrawRoute(rd %s, pfx %s/%d, nh %s, label %d)", \
+              rd, prefix, prefixlen, nexthop, label);
   return response;
 }
 
