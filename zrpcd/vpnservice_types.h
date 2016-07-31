@@ -17,7 +17,9 @@
 /* begin types */
 
 enum _af_afi {
-  AF_AFI_AFI_IP = 1
+  AF_AFI_AFI_IP = 1,
+  AF_AFI_AFI_IPV6 = 2,
+  AF_AFI_AFI_L2VPN = 3
 };
 typedef enum _af_afi af_afi;
 
@@ -27,13 +29,49 @@ toString_af_afi(int value);
 
 enum _af_safi {
   AF_SAFI_SAFI_IPV4_LABELED_UNICAST = 4,
-  AF_SAFI_SAFI_MPLS_VPN = 5
+  AF_SAFI_SAFI_MPLS_VPN = 5,
+  AF_SAFI_SAFI_EVPN = 6
 };
 typedef enum _af_safi af_safi;
 
 /* return the name of the constant */
 const char *
 toString_af_safi(int value); 
+
+enum _encap_type {
+  ENCAP_TYPE_L2TPV3_OVER_IP = 1,
+  ENCAP_TYPE_GRE = 2,
+  ENCAP_TYPE_IP_IN_IP = 7,
+  ENCAP_TYPE_VXLAN = 8,
+  ENCAP_TYPE_MPLS = 10
+};
+typedef enum _encap_type encap_type;
+
+/* return the name of the constant */
+const char *
+toString_encap_type(int value); 
+
+enum _layer_type {
+  LAYER_TYPE_LAYER_2 = 1,
+  LAYER_TYPE_LAYER_3 = 2
+};
+typedef enum _layer_type layer_type;
+
+/* return the name of the constant */
+const char *
+toString_layer_type(int value); 
+
+enum _protocol_type {
+  PROTOCOL_TYPE_PROTOCOL_LU = 1,
+  PROTOCOL_TYPE_PROTOCOL_L3VPN = 2,
+  PROTOCOL_TYPE_PROTOCOL_EVPN = 3,
+  PROTOCOL_TYPE_PROTOCOL_ANY = 4
+};
+typedef enum _protocol_type protocol_type;
+
+/* return the name of the constant */
+const char *
+toString_protocol_type(int value); 
 
 /* struct Update */
 struct _Update
@@ -47,14 +85,24 @@ struct _Update
   gboolean __isset_reserved;
   gint32 prefixlen;
   gboolean __isset_prefixlen;
-  gint32 label;
-  gboolean __isset_label;
+  gint32 l3label;
+  gboolean __isset_l3label;
+  gint32 l2label;
+  gboolean __isset_l2label;
+  gint32 ethtag;
+  gboolean __isset_ethtag;
+  gchar * esi;
+  gboolean __isset_esi;
+  gchar * macaddress;
+  gboolean __isset_macaddress;
   gchar * rd;
   gboolean __isset_rd;
   gchar * prefix;
   gboolean __isset_prefix;
   gchar * nexthop;
   gboolean __isset_nexthop;
+  gchar * routermac;
+  gboolean __isset_routermac;
 };
 typedef struct _Update Update;
 
@@ -334,6 +382,8 @@ struct _BgpConfiguratorAddVrfArgs
   ThriftStruct parent; 
 
   /* public */
+  layer_type l_type;
+  gboolean __isset_l_type;
   gchar * rd;
   gboolean __isset_rd;
   GPtrArray * irts;
@@ -438,14 +488,28 @@ struct _BgpConfiguratorPushRouteArgs
   ThriftStruct parent; 
 
   /* public */
+  protocol_type p_type;
+  gboolean __isset_p_type;
   gchar * prefix;
   gboolean __isset_prefix;
   gchar * nexthop;
   gboolean __isset_nexthop;
   gchar * rd;
   gboolean __isset_rd;
-  gint32 label;
-  gboolean __isset_label;
+  gint32 ethtag;
+  gboolean __isset_ethtag;
+  gchar * esi;
+  gboolean __isset_esi;
+  gchar * macaddress;
+  gboolean __isset_macaddress;
+  gint32 l3label;
+  gboolean __isset_l3label;
+  gint32 l2label;
+  gboolean __isset_l2label;
+  encap_type enc_type;
+  gboolean __isset_enc_type;
+  gchar * routermac;
+  gboolean __isset_routermac;
 };
 typedef struct _BgpConfiguratorPushRouteArgs BgpConfiguratorPushRouteArgs;
 
@@ -494,10 +558,18 @@ struct _BgpConfiguratorWithdrawRouteArgs
   ThriftStruct parent; 
 
   /* public */
+  protocol_type p_type;
+  gboolean __isset_p_type;
   gchar * prefix;
   gboolean __isset_prefix;
   gchar * rd;
   gboolean __isset_rd;
+  gint32 ethtag;
+  gboolean __isset_ethtag;
+  gchar * esi;
+  gboolean __isset_esi;
+  gchar * macaddress;
+  gboolean __isset_macaddress;
 };
 typedef struct _BgpConfiguratorWithdrawRouteArgs BgpConfiguratorWithdrawRouteArgs;
 
@@ -1008,6 +1080,8 @@ struct _BgpConfiguratorGetRoutesArgs
   ThriftStruct parent; 
 
   /* public */
+  protocol_type p_type;
+  gboolean __isset_p_type;
   gint32 optype;
   gboolean __isset_optype;
   gint32 winSize;
@@ -1216,6 +1290,8 @@ struct _BgpUpdaterOnUpdatePushRouteArgs
   ThriftStruct parent; 
 
   /* public */
+  protocol_type p_type;
+  gboolean __isset_p_type;
   gchar * rd;
   gboolean __isset_rd;
   gchar * prefix;
@@ -1224,8 +1300,18 @@ struct _BgpUpdaterOnUpdatePushRouteArgs
   gboolean __isset_prefixlen;
   gchar * nexthop;
   gboolean __isset_nexthop;
-  gint32 label;
-  gboolean __isset_label;
+  gint32 ethtag;
+  gboolean __isset_ethtag;
+  gchar * esi;
+  gboolean __isset_esi;
+  gchar * macaddress;
+  gboolean __isset_macaddress;
+  gint32 l3label;
+  gboolean __isset_l3label;
+  gint32 l2label;
+  gboolean __isset_l2label;
+  gchar * routermac;
+  gboolean __isset_routermac;
 };
 typedef struct _BgpUpdaterOnUpdatePushRouteArgs BgpUpdaterOnUpdatePushRouteArgs;
 
@@ -1249,6 +1335,8 @@ struct _BgpUpdaterOnUpdateWithdrawRouteArgs
   ThriftStruct parent; 
 
   /* public */
+  protocol_type p_type;
+  gboolean __isset_p_type;
   gchar * rd;
   gboolean __isset_rd;
   gchar * prefix;
@@ -1257,8 +1345,16 @@ struct _BgpUpdaterOnUpdateWithdrawRouteArgs
   gboolean __isset_prefixlen;
   gchar * nexthop;
   gboolean __isset_nexthop;
-  gint32 label;
-  gboolean __isset_label;
+  gint32 ethtag;
+  gboolean __isset_ethtag;
+  gchar * esi;
+  gboolean __isset_esi;
+  gchar * macaddress;
+  gboolean __isset_macaddress;
+  gint32 l3label;
+  gboolean __isset_l3label;
+  gint32 l2label;
+  gboolean __isset_l2label;
 };
 typedef struct _BgpUpdaterOnUpdateWithdrawRouteArgs BgpUpdaterOnUpdateWithdrawRouteArgs;
 

@@ -17,6 +17,8 @@ toString_af_afi(int value)
   static __thread char buf[16] = {0};
   switch(value) {
   case AF_AFI_AFI_IP:return "AF_AFI_AFI_IP";
+  case AF_AFI_AFI_IPV6:return "AF_AFI_AFI_IPV6";
+  case AF_AFI_AFI_L2VPN:return "AF_AFI_AFI_L2VPN";
   default: g_snprintf(buf, 16, "%d", value); return buf;
   }
 }
@@ -29,6 +31,48 @@ toString_af_safi(int value)
   switch(value) {
   case AF_SAFI_SAFI_IPV4_LABELED_UNICAST:return "AF_SAFI_SAFI_IPV4_LABELED_UNICAST";
   case AF_SAFI_SAFI_MPLS_VPN:return "AF_SAFI_SAFI_MPLS_VPN";
+  case AF_SAFI_SAFI_EVPN:return "AF_SAFI_SAFI_EVPN";
+  default: g_snprintf(buf, 16, "%d", value); return buf;
+  }
+}
+
+/* return the name of the constant */
+const char *
+toString_encap_type(int value) 
+{
+  static __thread char buf[16] = {0};
+  switch(value) {
+  case ENCAP_TYPE_L2TPV3_OVER_IP:return "ENCAP_TYPE_L2TPV3_OVER_IP";
+  case ENCAP_TYPE_GRE:return "ENCAP_TYPE_GRE";
+  case ENCAP_TYPE_IP_IN_IP:return "ENCAP_TYPE_IP_IN_IP";
+  case ENCAP_TYPE_VXLAN:return "ENCAP_TYPE_VXLAN";
+  case ENCAP_TYPE_MPLS:return "ENCAP_TYPE_MPLS";
+  default: g_snprintf(buf, 16, "%d", value); return buf;
+  }
+}
+
+/* return the name of the constant */
+const char *
+toString_layer_type(int value) 
+{
+  static __thread char buf[16] = {0};
+  switch(value) {
+  case LAYER_TYPE_LAYER_2:return "LAYER_TYPE_LAYER_2";
+  case LAYER_TYPE_LAYER_3:return "LAYER_TYPE_LAYER_3";
+  default: g_snprintf(buf, 16, "%d", value); return buf;
+  }
+}
+
+/* return the name of the constant */
+const char *
+toString_protocol_type(int value) 
+{
+  static __thread char buf[16] = {0};
+  switch(value) {
+  case PROTOCOL_TYPE_PROTOCOL_LU:return "PROTOCOL_TYPE_PROTOCOL_LU";
+  case PROTOCOL_TYPE_PROTOCOL_L3VPN:return "PROTOCOL_TYPE_PROTOCOL_L3VPN";
+  case PROTOCOL_TYPE_PROTOCOL_EVPN:return "PROTOCOL_TYPE_PROTOCOL_EVPN";
+  case PROTOCOL_TYPE_PROTOCOL_ANY:return "PROTOCOL_TYPE_PROTOCOL_ANY";
   default: g_snprintf(buf, 16, "%d", value); return buf;
   }
 }
@@ -39,10 +83,15 @@ enum _UpdateProperties
   PROP_UPDATE_TYPE,
   PROP_UPDATE_RESERVED,
   PROP_UPDATE_PREFIXLEN,
-  PROP_UPDATE_LABEL,
+  PROP_UPDATE_L3LABEL,
+  PROP_UPDATE_L2LABEL,
+  PROP_UPDATE_ETHTAG,
+  PROP_UPDATE_ESI,
+  PROP_UPDATE_MACADDRESS,
   PROP_UPDATE_RD,
   PROP_UPDATE_PREFIX,
-  PROP_UPDATE_NEXTHOP
+  PROP_UPDATE_NEXTHOP,
+  PROP_UPDATE_ROUTERMAC
 };
 
 /* reads a update object */
@@ -136,10 +185,10 @@ update_read (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
       case 4:
         if (ftype == T_I32)
         {
-          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->label, error)) < 0)
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->l3label, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->__isset_label = TRUE;
+          this_object->__isset_l3label = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
             return -1;
@@ -147,6 +196,70 @@ update_read (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
         }
         break;
       case 5:
+        if (ftype == T_I32)
+        {
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->l2label, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_l2label = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 6:
+        if (ftype == T_I32)
+        {
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->ethtag, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_ethtag = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 7:
+        if (ftype == T_STRING)
+        {
+          if (this_object->esi != NULL)
+          {
+            g_free(this_object->esi);
+            this_object->esi = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->esi, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_esi = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 8:
+        if (ftype == T_STRING)
+        {
+          if (this_object->macaddress != NULL)
+          {
+            g_free(this_object->macaddress);
+            this_object->macaddress = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->macaddress, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_macaddress = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 9:
         if (ftype == T_STRING)
         {
           if (this_object->rd != NULL)
@@ -165,7 +278,7 @@ update_read (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
           xfer += ret;
         }
         break;
-      case 6:
+      case 10:
         if (ftype == T_STRING)
         {
           if (this_object->prefix != NULL)
@@ -184,7 +297,7 @@ update_read (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
           xfer += ret;
         }
         break;
-      case 7:
+      case 11:
         if (ftype == T_STRING)
         {
           if (this_object->nexthop != NULL)
@@ -197,6 +310,25 @@ update_read (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
             return -1;
           xfer += ret;
           this_object->__isset_nexthop = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 12:
+        if (ftype == T_STRING)
+        {
+          if (this_object->routermac != NULL)
+          {
+            g_free(this_object->routermac);
+            this_object->routermac = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->routermac, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_routermac = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
             return -1;
@@ -262,17 +394,57 @@ update_write (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "label", T_I32, 4, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "l3label", T_I32, 4, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_i32 (protocol, this_object->label, error)) < 0)
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->l3label, error)) < 0)
     return -1;
   xfer += ret;
 
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 5, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "l2label", T_I32, 5, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->l2label, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "ethtag", T_I32, 6, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->ethtag, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "esi", T_STRING, 7, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->esi, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "macaddress", T_STRING, 8, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->macaddress, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 9, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->rd, error)) < 0)
@@ -282,7 +454,7 @@ update_write (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 6, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 10, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->prefix, error)) < 0)
@@ -292,10 +464,20 @@ update_write (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "nexthop", T_STRING, 7, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "nexthop", T_STRING, 11, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->nexthop, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "routermac", T_STRING, 12, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->routermac, error)) < 0)
     return -1;
   xfer += ret;
 
@@ -337,9 +519,33 @@ update_set_property (GObject *object,
       self->__isset_prefixlen = TRUE;
       break;
 
-    case PROP_UPDATE_LABEL:
-      self->label = g_value_get_int (value);
-      self->__isset_label = TRUE;
+    case PROP_UPDATE_L3LABEL:
+      self->l3label = g_value_get_int (value);
+      self->__isset_l3label = TRUE;
+      break;
+
+    case PROP_UPDATE_L2LABEL:
+      self->l2label = g_value_get_int (value);
+      self->__isset_l2label = TRUE;
+      break;
+
+    case PROP_UPDATE_ETHTAG:
+      self->ethtag = g_value_get_int (value);
+      self->__isset_ethtag = TRUE;
+      break;
+
+    case PROP_UPDATE_ESI:
+      if (self->esi != NULL)
+        g_free (self->esi);
+      self->esi = g_value_dup_string (value);
+      self->__isset_esi = TRUE;
+      break;
+
+    case PROP_UPDATE_MACADDRESS:
+      if (self->macaddress != NULL)
+        g_free (self->macaddress);
+      self->macaddress = g_value_dup_string (value);
+      self->__isset_macaddress = TRUE;
       break;
 
     case PROP_UPDATE_RD:
@@ -361,6 +567,13 @@ update_set_property (GObject *object,
         g_free (self->nexthop);
       self->nexthop = g_value_dup_string (value);
       self->__isset_nexthop = TRUE;
+      break;
+
+    case PROP_UPDATE_ROUTERMAC:
+      if (self->routermac != NULL)
+        g_free (self->routermac);
+      self->routermac = g_value_dup_string (value);
+      self->__isset_routermac = TRUE;
       break;
 
     default:
@@ -391,8 +604,24 @@ update_get_property (GObject *object,
       g_value_set_int (value, self->prefixlen);
       break;
 
-    case PROP_UPDATE_LABEL:
-      g_value_set_int (value, self->label);
+    case PROP_UPDATE_L3LABEL:
+      g_value_set_int (value, self->l3label);
+      break;
+
+    case PROP_UPDATE_L2LABEL:
+      g_value_set_int (value, self->l2label);
+      break;
+
+    case PROP_UPDATE_ETHTAG:
+      g_value_set_int (value, self->ethtag);
+      break;
+
+    case PROP_UPDATE_ESI:
+      g_value_set_string (value, self->esi);
+      break;
+
+    case PROP_UPDATE_MACADDRESS:
+      g_value_set_string (value, self->macaddress);
       break;
 
     case PROP_UPDATE_RD:
@@ -405,6 +634,10 @@ update_get_property (GObject *object,
 
     case PROP_UPDATE_NEXTHOP:
       g_value_set_string (value, self->nexthop);
+      break;
+
+    case PROP_UPDATE_ROUTERMAC:
+      g_value_set_string (value, self->routermac);
       break;
 
     default:
@@ -424,14 +657,24 @@ update_instance_init (Update * object)
   object->__isset_reserved = FALSE;
   object->prefixlen = 0;
   object->__isset_prefixlen = FALSE;
-  object->label = 0;
-  object->__isset_label = FALSE;
+  object->l3label = 0;
+  object->__isset_l3label = FALSE;
+  object->l2label = 0;
+  object->__isset_l2label = FALSE;
+  object->ethtag = 0;
+  object->__isset_ethtag = FALSE;
+  object->esi = NULL;
+  object->__isset_esi = FALSE;
+  object->macaddress = NULL;
+  object->__isset_macaddress = FALSE;
   object->rd = NULL;
   object->__isset_rd = FALSE;
   object->prefix = NULL;
   object->__isset_prefix = FALSE;
   object->nexthop = NULL;
   object->__isset_nexthop = FALSE;
+  object->routermac = NULL;
+  object->__isset_routermac = FALSE;
 }
 
 static void 
@@ -441,6 +684,16 @@ update_finalize (GObject *object)
 
   /* satisfy -Wall in case we don't use tobject */
   THRIFT_UNUSED_VAR (tobject);
+  if (tobject->esi != NULL)
+  {
+    g_free(tobject->esi);
+    tobject->esi = NULL;
+  }
+  if (tobject->macaddress != NULL)
+  {
+    g_free(tobject->macaddress);
+    tobject->macaddress = NULL;
+  }
   if (tobject->rd != NULL)
   {
     g_free(tobject->rd);
@@ -455,6 +708,11 @@ update_finalize (GObject *object)
   {
     g_free(tobject->nexthop);
     tobject->nexthop = NULL;
+  }
+  if (tobject->routermac != NULL)
+  {
+    g_free(tobject->routermac);
+    tobject->routermac = NULL;
   }
 }
 
@@ -506,14 +764,54 @@ update_class_init (UpdateClass * cls)
 
   g_object_class_install_property
     (gobject_class,
-     PROP_UPDATE_LABEL,
-     g_param_spec_int ("label",
+     PROP_UPDATE_L3LABEL,
+     g_param_spec_int ("l3label",
                        NULL,
                        NULL,
                        G_MININT32,
                        G_MAXINT32,
                        0,
                        G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_UPDATE_L2LABEL,
+     g_param_spec_int ("l2label",
+                       NULL,
+                       NULL,
+                       G_MININT32,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_UPDATE_ETHTAG,
+     g_param_spec_int ("ethtag",
+                       NULL,
+                       NULL,
+                       G_MININT32,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_UPDATE_ESI,
+     g_param_spec_string ("esi",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_UPDATE_MACADDRESS,
+     g_param_spec_string ("macaddress",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
 
   g_object_class_install_property
     (gobject_class,
@@ -537,6 +835,15 @@ update_class_init (UpdateClass * cls)
     (gobject_class,
      PROP_UPDATE_NEXTHOP,
      g_param_spec_string ("nexthop",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_UPDATE_ROUTERMAC,
+     g_param_spec_string ("routermac",
                           NULL,
                           NULL,
                           NULL,
@@ -3149,6 +3456,7 @@ bgp_configurator_delete_peer_result_get_type (void)
 enum _BgpConfiguratorAddVrfArgsProperties
 {
   PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_0,
+  PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_L_TYPE,
   PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_RD,
   PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_IRTS,
   PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_ERTS
@@ -3204,6 +3512,21 @@ bgp_configurator_add_vrf_args_read (ThriftStruct *object, ThriftProtocol *protoc
     switch (fid)
     {
       case 1:
+        if (ftype == T_I32)
+        {
+          gint32 ecast2;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast2, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->l_type = (layer_type)ecast2;
+          this_object->__isset_l_type = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 2:
         if (ftype == T_STRING)
         {
           if (this_object->rd != NULL)
@@ -3216,44 +3539,6 @@ bgp_configurator_add_vrf_args_read (ThriftStruct *object, ThriftProtocol *protoc
             return -1;
           xfer += ret;
           this_object->__isset_rd = TRUE;
-        } else {
-          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
-            return -1;
-          xfer += ret;
-        }
-        break;
-      case 2:
-        if (ftype == T_LIST)
-        {
-          {
-            guint32 size;
-            guint32 i;
-            ThriftType element_type;
-
-            if ((ret = thrift_protocol_read_list_begin (protocol, &element_type,&size, error)) < 0)
-              return -1;
-            xfer += ret;
-
-            /* iterate through list elements */
-            for (i = 0; i < size; i++)
-            {
-              gchar * _elem2 = NULL;
-              if (_elem2 != NULL)
-              {
-                g_free(_elem2);
-                _elem2 = NULL;
-              }
-
-              if ((ret = thrift_protocol_read_string (protocol, &_elem2, error)) < 0)
-                return -1;
-              xfer += ret;
-              g_ptr_array_add (this_object->irts, _elem2);
-            }
-            if ((ret = thrift_protocol_read_list_end (protocol, error)) < 0)
-              return -1;
-            xfer += ret;
-          }
-          this_object->__isset_irts = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
             return -1;
@@ -3285,7 +3570,45 @@ bgp_configurator_add_vrf_args_read (ThriftStruct *object, ThriftProtocol *protoc
               if ((ret = thrift_protocol_read_string (protocol, &_elem3, error)) < 0)
                 return -1;
               xfer += ret;
-              g_ptr_array_add (this_object->erts, _elem3);
+              g_ptr_array_add (this_object->irts, _elem3);
+            }
+            if ((ret = thrift_protocol_read_list_end (protocol, error)) < 0)
+              return -1;
+            xfer += ret;
+          }
+          this_object->__isset_irts = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 4:
+        if (ftype == T_LIST)
+        {
+          {
+            guint32 size;
+            guint32 i;
+            ThriftType element_type;
+
+            if ((ret = thrift_protocol_read_list_begin (protocol, &element_type,&size, error)) < 0)
+              return -1;
+            xfer += ret;
+
+            /* iterate through list elements */
+            for (i = 0; i < size; i++)
+            {
+              gchar * _elem4 = NULL;
+              if (_elem4 != NULL)
+              {
+                g_free(_elem4);
+                _elem4 = NULL;
+              }
+
+              if ((ret = thrift_protocol_read_string (protocol, &_elem4, error)) < 0)
+                return -1;
+              xfer += ret;
+              g_ptr_array_add (this_object->erts, _elem4);
             }
             if ((ret = thrift_protocol_read_list_end (protocol, error)) < 0)
               return -1;
@@ -3327,7 +3650,17 @@ bgp_configurator_add_vrf_args_write (ThriftStruct *object, ThriftProtocol *proto
   if ((ret = thrift_protocol_write_struct_begin (protocol, "BgpConfiguratorAddVrfArgs", error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 1, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "l_type", T_I32, 1, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, (gint32) this_object->l_type, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 2, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->rd, error)) < 0)
@@ -3337,18 +3670,18 @@ bgp_configurator_add_vrf_args_write (ThriftStruct *object, ThriftProtocol *proto
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "irts", T_LIST, 2, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "irts", T_LIST, 3, error)) < 0)
     return -1;
   xfer += ret;
   {
-    guint i4;
+    guint i5;
 
     if ((ret = thrift_protocol_write_list_begin (protocol, T_STRING, (gint32) (this_object->irts ? this_object->irts->len : 0), error)) < 0)
       return -1;
     xfer += ret;
-    for (i4 = 0; i4 < (this_object->irts ? this_object->irts->len : 0); i4++)
+    for (i5 = 0; i5 < (this_object->irts ? this_object->irts->len : 0); i5++)
     {
-      if ((ret = thrift_protocol_write_string (protocol, ((gchar*)g_ptr_array_index ((GPtrArray *) this_object->irts, i4)), error)) < 0)
+      if ((ret = thrift_protocol_write_string (protocol, ((gchar*)g_ptr_array_index ((GPtrArray *) this_object->irts, i5)), error)) < 0)
         return -1;
       xfer += ret;
 
@@ -3360,18 +3693,18 @@ bgp_configurator_add_vrf_args_write (ThriftStruct *object, ThriftProtocol *proto
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "erts", T_LIST, 3, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "erts", T_LIST, 4, error)) < 0)
     return -1;
   xfer += ret;
   {
-    guint i5;
+    guint i6;
 
     if ((ret = thrift_protocol_write_list_begin (protocol, T_STRING, (gint32) (this_object->erts ? this_object->erts->len : 0), error)) < 0)
       return -1;
     xfer += ret;
-    for (i5 = 0; i5 < (this_object->erts ? this_object->erts->len : 0); i5++)
+    for (i6 = 0; i6 < (this_object->erts ? this_object->erts->len : 0); i6++)
     {
-      if ((ret = thrift_protocol_write_string (protocol, ((gchar*)g_ptr_array_index ((GPtrArray *) this_object->erts, i5)), error)) < 0)
+      if ((ret = thrift_protocol_write_string (protocol, ((gchar*)g_ptr_array_index ((GPtrArray *) this_object->erts, i6)), error)) < 0)
         return -1;
       xfer += ret;
 
@@ -3403,6 +3736,11 @@ bgp_configurator_add_vrf_args_set_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_L_TYPE:
+      self->l_type = g_value_get_int (value);
+      self->__isset_l_type = TRUE;
+      break;
+
     case PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_RD:
       if (self->rd != NULL)
         g_free (self->rd);
@@ -3440,6 +3778,10 @@ bgp_configurator_add_vrf_args_get_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_L_TYPE:
+      g_value_set_int (value, self->l_type);
+      break;
+
     case PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_RD:
       g_value_set_string (value, self->rd);
       break;
@@ -3463,6 +3805,7 @@ bgp_configurator_add_vrf_args_instance_init (BgpConfiguratorAddVrfArgs * object)
 {
   /* satisfy -Wall */
   THRIFT_UNUSED_VAR (object);
+  object->__isset_l_type = FALSE;
   object->rd = NULL;
   object->__isset_rd = FALSE;
   object->irts = g_ptr_array_new_with_free_func (g_free);
@@ -3507,6 +3850,17 @@ bgp_configurator_add_vrf_args_class_init (BgpConfiguratorAddVrfArgsClass * cls)
   gobject_class->finalize = bgp_configurator_add_vrf_args_finalize;
   gobject_class->get_property = bgp_configurator_add_vrf_args_get_property;
   gobject_class->set_property = bgp_configurator_add_vrf_args_set_property;
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_ADD_VRF_ARGS_L_TYPE,
+     g_param_spec_int ("l_type",
+                       NULL,
+                       NULL,
+                       1,
+                       2,
+                       1,
+                       G_PARAM_READWRITE));
 
   g_object_class_install_property
     (gobject_class,
@@ -4273,10 +4627,17 @@ bgp_configurator_del_vrf_result_get_type (void)
 enum _BgpConfiguratorPushRouteArgsProperties
 {
   PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_0,
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_P_TYPE,
   PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_PREFIX,
   PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_NEXTHOP,
   PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_RD,
-  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_LABEL
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ETHTAG,
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ESI,
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_MACADDRESS,
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L3LABEL,
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L2LABEL,
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ENC_TYPE,
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ROUTERMAC
 };
 
 /* reads a bgp_configurator_push_route_args object */
@@ -4329,6 +4690,21 @@ bgp_configurator_push_route_args_read (ThriftStruct *object, ThriftProtocol *pro
     switch (fid)
     {
       case 1:
+        if (ftype == T_I32)
+        {
+          gint32 ecast7;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast7, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->p_type = (protocol_type)ecast7;
+          this_object->__isset_p_type = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 2:
         if (ftype == T_STRING)
         {
           if (this_object->prefix != NULL)
@@ -4347,7 +4723,7 @@ bgp_configurator_push_route_args_read (ThriftStruct *object, ThriftProtocol *pro
           xfer += ret;
         }
         break;
-      case 2:
+      case 3:
         if (ftype == T_STRING)
         {
           if (this_object->nexthop != NULL)
@@ -4366,7 +4742,7 @@ bgp_configurator_push_route_args_read (ThriftStruct *object, ThriftProtocol *pro
           xfer += ret;
         }
         break;
-      case 3:
+      case 4:
         if (ftype == T_STRING)
         {
           if (this_object->rd != NULL)
@@ -4385,13 +4761,111 @@ bgp_configurator_push_route_args_read (ThriftStruct *object, ThriftProtocol *pro
           xfer += ret;
         }
         break;
-      case 4:
+      case 5:
         if (ftype == T_I32)
         {
-          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->label, error)) < 0)
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->ethtag, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->__isset_label = TRUE;
+          this_object->__isset_ethtag = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 6:
+        if (ftype == T_STRING)
+        {
+          if (this_object->esi != NULL)
+          {
+            g_free(this_object->esi);
+            this_object->esi = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->esi, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_esi = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 7:
+        if (ftype == T_STRING)
+        {
+          if (this_object->macaddress != NULL)
+          {
+            g_free(this_object->macaddress);
+            this_object->macaddress = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->macaddress, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_macaddress = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 8:
+        if (ftype == T_I32)
+        {
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->l3label, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_l3label = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 9:
+        if (ftype == T_I32)
+        {
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->l2label, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_l2label = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 10:
+        if (ftype == T_I32)
+        {
+          gint32 ecast8;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast8, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->enc_type = (encap_type)ecast8;
+          this_object->__isset_enc_type = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 11:
+        if (ftype == T_STRING)
+        {
+          if (this_object->routermac != NULL)
+          {
+            g_free(this_object->routermac);
+            this_object->routermac = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->routermac, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_routermac = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
             return -1;
@@ -4427,7 +4901,17 @@ bgp_configurator_push_route_args_write (ThriftStruct *object, ThriftProtocol *pr
   if ((ret = thrift_protocol_write_struct_begin (protocol, "BgpConfiguratorPushRouteArgs", error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 1, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "p_type", T_I32, 1, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, (gint32) this_object->p_type, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 2, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->prefix, error)) < 0)
@@ -4437,7 +4921,7 @@ bgp_configurator_push_route_args_write (ThriftStruct *object, ThriftProtocol *pr
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "nexthop", T_STRING, 2, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "nexthop", T_STRING, 3, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->nexthop, error)) < 0)
@@ -4447,7 +4931,7 @@ bgp_configurator_push_route_args_write (ThriftStruct *object, ThriftProtocol *pr
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 3, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 4, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->rd, error)) < 0)
@@ -4457,10 +4941,70 @@ bgp_configurator_push_route_args_write (ThriftStruct *object, ThriftProtocol *pr
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "label", T_I32, 4, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "ethtag", T_I32, 5, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_i32 (protocol, this_object->label, error)) < 0)
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->ethtag, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "esi", T_STRING, 6, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->esi, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "macaddress", T_STRING, 7, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->macaddress, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "l3label", T_I32, 8, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->l3label, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "l2label", T_I32, 9, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->l2label, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "enc_type", T_I32, 10, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, (gint32) this_object->enc_type, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "routermac", T_STRING, 11, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->routermac, error)) < 0)
     return -1;
   xfer += ret;
 
@@ -4487,6 +5031,11 @@ bgp_configurator_push_route_args_set_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_P_TYPE:
+      self->p_type = g_value_get_int (value);
+      self->__isset_p_type = TRUE;
+      break;
+
     case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_PREFIX:
       if (self->prefix != NULL)
         g_free (self->prefix);
@@ -4508,9 +5057,45 @@ bgp_configurator_push_route_args_set_property (GObject *object,
       self->__isset_rd = TRUE;
       break;
 
-    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_LABEL:
-      self->label = g_value_get_int (value);
-      self->__isset_label = TRUE;
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ETHTAG:
+      self->ethtag = g_value_get_int (value);
+      self->__isset_ethtag = TRUE;
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ESI:
+      if (self->esi != NULL)
+        g_free (self->esi);
+      self->esi = g_value_dup_string (value);
+      self->__isset_esi = TRUE;
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_MACADDRESS:
+      if (self->macaddress != NULL)
+        g_free (self->macaddress);
+      self->macaddress = g_value_dup_string (value);
+      self->__isset_macaddress = TRUE;
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L3LABEL:
+      self->l3label = g_value_get_int (value);
+      self->__isset_l3label = TRUE;
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L2LABEL:
+      self->l2label = g_value_get_int (value);
+      self->__isset_l2label = TRUE;
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ENC_TYPE:
+      self->enc_type = g_value_get_int (value);
+      self->__isset_enc_type = TRUE;
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ROUTERMAC:
+      if (self->routermac != NULL)
+        g_free (self->routermac);
+      self->routermac = g_value_dup_string (value);
+      self->__isset_routermac = TRUE;
       break;
 
     default:
@@ -4529,6 +5114,10 @@ bgp_configurator_push_route_args_get_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_P_TYPE:
+      g_value_set_int (value, self->p_type);
+      break;
+
     case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_PREFIX:
       g_value_set_string (value, self->prefix);
       break;
@@ -4541,8 +5130,32 @@ bgp_configurator_push_route_args_get_property (GObject *object,
       g_value_set_string (value, self->rd);
       break;
 
-    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_LABEL:
-      g_value_set_int (value, self->label);
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ETHTAG:
+      g_value_set_int (value, self->ethtag);
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ESI:
+      g_value_set_string (value, self->esi);
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_MACADDRESS:
+      g_value_set_string (value, self->macaddress);
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L3LABEL:
+      g_value_set_int (value, self->l3label);
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L2LABEL:
+      g_value_set_int (value, self->l2label);
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ENC_TYPE:
+      g_value_set_int (value, self->enc_type);
+      break;
+
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ROUTERMAC:
+      g_value_set_string (value, self->routermac);
       break;
 
     default:
@@ -4556,14 +5169,26 @@ bgp_configurator_push_route_args_instance_init (BgpConfiguratorPushRouteArgs * o
 {
   /* satisfy -Wall */
   THRIFT_UNUSED_VAR (object);
+  object->__isset_p_type = FALSE;
   object->prefix = NULL;
   object->__isset_prefix = FALSE;
   object->nexthop = NULL;
   object->__isset_nexthop = FALSE;
   object->rd = NULL;
   object->__isset_rd = FALSE;
-  object->label = 0;
-  object->__isset_label = FALSE;
+  object->ethtag = 0;
+  object->__isset_ethtag = FALSE;
+  object->esi = NULL;
+  object->__isset_esi = FALSE;
+  object->macaddress = NULL;
+  object->__isset_macaddress = FALSE;
+  object->l3label = 0;
+  object->__isset_l3label = FALSE;
+  object->l2label = 0;
+  object->__isset_l2label = FALSE;
+  object->__isset_enc_type = FALSE;
+  object->routermac = NULL;
+  object->__isset_routermac = FALSE;
 }
 
 static void 
@@ -4588,6 +5213,21 @@ bgp_configurator_push_route_args_finalize (GObject *object)
     g_free(tobject->rd);
     tobject->rd = NULL;
   }
+  if (tobject->esi != NULL)
+  {
+    g_free(tobject->esi);
+    tobject->esi = NULL;
+  }
+  if (tobject->macaddress != NULL)
+  {
+    g_free(tobject->macaddress);
+    tobject->macaddress = NULL;
+  }
+  if (tobject->routermac != NULL)
+  {
+    g_free(tobject->routermac);
+    tobject->routermac = NULL;
+  }
 }
 
 static void
@@ -4602,6 +5242,17 @@ bgp_configurator_push_route_args_class_init (BgpConfiguratorPushRouteArgsClass *
   gobject_class->finalize = bgp_configurator_push_route_args_finalize;
   gobject_class->get_property = bgp_configurator_push_route_args_get_property;
   gobject_class->set_property = bgp_configurator_push_route_args_set_property;
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_P_TYPE,
+     g_param_spec_int ("p_type",
+                       NULL,
+                       NULL,
+                       1,
+                       4,
+                       1,
+                       G_PARAM_READWRITE));
 
   g_object_class_install_property
     (gobject_class,
@@ -4632,14 +5283,74 @@ bgp_configurator_push_route_args_class_init (BgpConfiguratorPushRouteArgsClass *
 
   g_object_class_install_property
     (gobject_class,
-     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_LABEL,
-     g_param_spec_int ("label",
+     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ETHTAG,
+     g_param_spec_int ("ethtag",
                        NULL,
                        NULL,
                        G_MININT32,
                        G_MAXINT32,
                        0,
                        G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ESI,
+     g_param_spec_string ("esi",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_MACADDRESS,
+     g_param_spec_string ("macaddress",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L3LABEL,
+     g_param_spec_int ("l3label",
+                       NULL,
+                       NULL,
+                       G_MININT32,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L2LABEL,
+     g_param_spec_int ("l2label",
+                       NULL,
+                       NULL,
+                       G_MININT32,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ENC_TYPE,
+     g_param_spec_int ("enc_type",
+                       NULL,
+                       NULL,
+                       1,
+                       10,
+                       1,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ROUTERMAC,
+     g_param_spec_string ("routermac",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
 }
 
 GType
@@ -4906,8 +5617,12 @@ bgp_configurator_push_route_result_get_type (void)
 enum _BgpConfiguratorWithdrawRouteArgsProperties
 {
   PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_0,
+  PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_P_TYPE,
   PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_PREFIX,
-  PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_RD
+  PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_RD,
+  PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_ETHTAG,
+  PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_ESI,
+  PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_MACADDRESS
 };
 
 /* reads a bgp_configurator_withdraw_route_args object */
@@ -4960,6 +5675,21 @@ bgp_configurator_withdraw_route_args_read (ThriftStruct *object, ThriftProtocol 
     switch (fid)
     {
       case 1:
+        if (ftype == T_I32)
+        {
+          gint32 ecast9;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast9, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->p_type = (protocol_type)ecast9;
+          this_object->__isset_p_type = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 2:
         if (ftype == T_STRING)
         {
           if (this_object->prefix != NULL)
@@ -4978,7 +5708,7 @@ bgp_configurator_withdraw_route_args_read (ThriftStruct *object, ThriftProtocol 
           xfer += ret;
         }
         break;
-      case 2:
+      case 3:
         if (ftype == T_STRING)
         {
           if (this_object->rd != NULL)
@@ -4991,6 +5721,57 @@ bgp_configurator_withdraw_route_args_read (ThriftStruct *object, ThriftProtocol 
             return -1;
           xfer += ret;
           this_object->__isset_rd = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 4:
+        if (ftype == T_I32)
+        {
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->ethtag, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_ethtag = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 5:
+        if (ftype == T_STRING)
+        {
+          if (this_object->esi != NULL)
+          {
+            g_free(this_object->esi);
+            this_object->esi = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->esi, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_esi = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 6:
+        if (ftype == T_STRING)
+        {
+          if (this_object->macaddress != NULL)
+          {
+            g_free(this_object->macaddress);
+            this_object->macaddress = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->macaddress, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_macaddress = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
             return -1;
@@ -5026,7 +5807,17 @@ bgp_configurator_withdraw_route_args_write (ThriftStruct *object, ThriftProtocol
   if ((ret = thrift_protocol_write_struct_begin (protocol, "BgpConfiguratorWithdrawRouteArgs", error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 1, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "p_type", T_I32, 1, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, (gint32) this_object->p_type, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 2, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->prefix, error)) < 0)
@@ -5036,10 +5827,40 @@ bgp_configurator_withdraw_route_args_write (ThriftStruct *object, ThriftProtocol
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 2, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 3, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->rd, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "ethtag", T_I32, 4, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->ethtag, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "esi", T_STRING, 5, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->esi, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "macaddress", T_STRING, 6, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->macaddress, error)) < 0)
     return -1;
   xfer += ret;
 
@@ -5066,6 +5887,11 @@ bgp_configurator_withdraw_route_args_set_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_P_TYPE:
+      self->p_type = g_value_get_int (value);
+      self->__isset_p_type = TRUE;
+      break;
+
     case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_PREFIX:
       if (self->prefix != NULL)
         g_free (self->prefix);
@@ -5078,6 +5904,25 @@ bgp_configurator_withdraw_route_args_set_property (GObject *object,
         g_free (self->rd);
       self->rd = g_value_dup_string (value);
       self->__isset_rd = TRUE;
+      break;
+
+    case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_ETHTAG:
+      self->ethtag = g_value_get_int (value);
+      self->__isset_ethtag = TRUE;
+      break;
+
+    case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_ESI:
+      if (self->esi != NULL)
+        g_free (self->esi);
+      self->esi = g_value_dup_string (value);
+      self->__isset_esi = TRUE;
+      break;
+
+    case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_MACADDRESS:
+      if (self->macaddress != NULL)
+        g_free (self->macaddress);
+      self->macaddress = g_value_dup_string (value);
+      self->__isset_macaddress = TRUE;
       break;
 
     default:
@@ -5096,12 +5941,28 @@ bgp_configurator_withdraw_route_args_get_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_P_TYPE:
+      g_value_set_int (value, self->p_type);
+      break;
+
     case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_PREFIX:
       g_value_set_string (value, self->prefix);
       break;
 
     case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_RD:
       g_value_set_string (value, self->rd);
+      break;
+
+    case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_ETHTAG:
+      g_value_set_int (value, self->ethtag);
+      break;
+
+    case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_ESI:
+      g_value_set_string (value, self->esi);
+      break;
+
+    case PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_MACADDRESS:
+      g_value_set_string (value, self->macaddress);
       break;
 
     default:
@@ -5115,10 +5976,17 @@ bgp_configurator_withdraw_route_args_instance_init (BgpConfiguratorWithdrawRoute
 {
   /* satisfy -Wall */
   THRIFT_UNUSED_VAR (object);
+  object->__isset_p_type = FALSE;
   object->prefix = NULL;
   object->__isset_prefix = FALSE;
   object->rd = NULL;
   object->__isset_rd = FALSE;
+  object->ethtag = 0;
+  object->__isset_ethtag = FALSE;
+  object->esi = NULL;
+  object->__isset_esi = FALSE;
+  object->macaddress = NULL;
+  object->__isset_macaddress = FALSE;
 }
 
 static void 
@@ -5138,6 +6006,16 @@ bgp_configurator_withdraw_route_args_finalize (GObject *object)
     g_free(tobject->rd);
     tobject->rd = NULL;
   }
+  if (tobject->esi != NULL)
+  {
+    g_free(tobject->esi);
+    tobject->esi = NULL;
+  }
+  if (tobject->macaddress != NULL)
+  {
+    g_free(tobject->macaddress);
+    tobject->macaddress = NULL;
+  }
 }
 
 static void
@@ -5155,6 +6033,17 @@ bgp_configurator_withdraw_route_args_class_init (BgpConfiguratorWithdrawRouteArg
 
   g_object_class_install_property
     (gobject_class,
+     PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_P_TYPE,
+     g_param_spec_int ("p_type",
+                       NULL,
+                       NULL,
+                       1,
+                       4,
+                       1,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
      PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_PREFIX,
      g_param_spec_string ("prefix",
                           NULL,
@@ -5166,6 +6055,35 @@ bgp_configurator_withdraw_route_args_class_init (BgpConfiguratorWithdrawRouteArg
     (gobject_class,
      PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_RD,
      g_param_spec_string ("rd",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_ETHTAG,
+     g_param_spec_int ("ethtag",
+                       NULL,
+                       NULL,
+                       G_MININT32,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_ESI,
+     g_param_spec_string ("esi",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_WITHDRAW_ROUTE_ARGS_MACADDRESS,
+     g_param_spec_string ("macaddress",
                           NULL,
                           NULL,
                           NULL,
@@ -7507,11 +8425,11 @@ bgp_configurator_enable_address_family_args_read (ThriftStruct *object, ThriftPr
       case 2:
         if (ftype == T_I32)
         {
-          gint32 ecast6;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast6, error)) < 0)
+          gint32 ecast10;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast10, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->afi = (af_afi)ecast6;
+          this_object->afi = (af_afi)ecast10;
           this_object->__isset_afi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -7522,11 +8440,11 @@ bgp_configurator_enable_address_family_args_read (ThriftStruct *object, ThriftPr
       case 3:
         if (ftype == T_I32)
         {
-          gint32 ecast7;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast7, error)) < 0)
+          gint32 ecast11;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast11, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->safi = (af_safi)ecast7;
+          this_object->safi = (af_safi)ecast11;
           this_object->__isset_safi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -7718,7 +8636,7 @@ bgp_configurator_enable_address_family_args_class_init (BgpConfiguratorEnableAdd
                        NULL,
                        NULL,
                        1,
-                       1,
+                       3,
                        1,
                        G_PARAM_READWRITE));
 
@@ -7729,7 +8647,7 @@ bgp_configurator_enable_address_family_args_class_init (BgpConfiguratorEnableAdd
                        NULL,
                        NULL,
                        4,
-                       5,
+                       6,
                        4,
                        G_PARAM_READWRITE));
 }
@@ -8074,11 +8992,11 @@ bgp_configurator_disable_address_family_args_read (ThriftStruct *object, ThriftP
       case 2:
         if (ftype == T_I32)
         {
-          gint32 ecast8;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast8, error)) < 0)
+          gint32 ecast12;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast12, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->afi = (af_afi)ecast8;
+          this_object->afi = (af_afi)ecast12;
           this_object->__isset_afi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -8089,11 +9007,11 @@ bgp_configurator_disable_address_family_args_read (ThriftStruct *object, ThriftP
       case 3:
         if (ftype == T_I32)
         {
-          gint32 ecast9;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast9, error)) < 0)
+          gint32 ecast13;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast13, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->safi = (af_safi)ecast9;
+          this_object->safi = (af_safi)ecast13;
           this_object->__isset_safi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -8285,7 +9203,7 @@ bgp_configurator_disable_address_family_args_class_init (BgpConfiguratorDisableA
                        NULL,
                        NULL,
                        1,
-                       1,
+                       3,
                        1,
                        G_PARAM_READWRITE));
 
@@ -8296,7 +9214,7 @@ bgp_configurator_disable_address_family_args_class_init (BgpConfiguratorDisableA
                        NULL,
                        NULL,
                        4,
-                       5,
+                       6,
                        4,
                        G_PARAM_READWRITE));
 }
@@ -9934,6 +10852,7 @@ bgp_configurator_disable_graceful_restart_result_get_type (void)
 enum _BgpConfiguratorGetRoutesArgsProperties
 {
   PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_0,
+  PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_P_TYPE,
   PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_OPTYPE,
   PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_WIN_SIZE
 };
@@ -9990,6 +10909,21 @@ bgp_configurator_get_routes_args_read (ThriftStruct *object, ThriftProtocol *pro
       case 1:
         if (ftype == T_I32)
         {
+          gint32 ecast14;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast14, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->p_type = (protocol_type)ecast14;
+          this_object->__isset_p_type = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 2:
+        if (ftype == T_I32)
+        {
           if ((ret = thrift_protocol_read_i32 (protocol, &this_object->optype, error)) < 0)
             return -1;
           xfer += ret;
@@ -10000,7 +10934,7 @@ bgp_configurator_get_routes_args_read (ThriftStruct *object, ThriftProtocol *pro
           xfer += ret;
         }
         break;
-      case 2:
+      case 3:
         if (ftype == T_I32)
         {
           if ((ret = thrift_protocol_read_i32 (protocol, &this_object->winSize, error)) < 0)
@@ -10042,7 +10976,17 @@ bgp_configurator_get_routes_args_write (ThriftStruct *object, ThriftProtocol *pr
   if ((ret = thrift_protocol_write_struct_begin (protocol, "BgpConfiguratorGetRoutesArgs", error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "optype", T_I32, 1, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "p_type", T_I32, 1, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, (gint32) this_object->p_type, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "optype", T_I32, 2, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_i32 (protocol, this_object->optype, error)) < 0)
@@ -10052,7 +10996,7 @@ bgp_configurator_get_routes_args_write (ThriftStruct *object, ThriftProtocol *pr
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "winSize", T_I32, 2, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "winSize", T_I32, 3, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_i32 (protocol, this_object->winSize, error)) < 0)
@@ -10082,6 +11026,11 @@ bgp_configurator_get_routes_args_set_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_P_TYPE:
+      self->p_type = g_value_get_int (value);
+      self->__isset_p_type = TRUE;
+      break;
+
     case PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_OPTYPE:
       self->optype = g_value_get_int (value);
       self->__isset_optype = TRUE;
@@ -10108,6 +11057,10 @@ bgp_configurator_get_routes_args_get_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_P_TYPE:
+      g_value_set_int (value, self->p_type);
+      break;
+
     case PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_OPTYPE:
       g_value_set_int (value, self->optype);
       break;
@@ -10127,6 +11080,7 @@ bgp_configurator_get_routes_args_instance_init (BgpConfiguratorGetRoutesArgs * o
 {
   /* satisfy -Wall */
   THRIFT_UNUSED_VAR (object);
+  object->__isset_p_type = FALSE;
   object->optype = 0;
   object->__isset_optype = FALSE;
   object->winSize = 0;
@@ -10154,6 +11108,17 @@ bgp_configurator_get_routes_args_class_init (BgpConfiguratorGetRoutesArgsClass *
   gobject_class->finalize = bgp_configurator_get_routes_args_finalize;
   gobject_class->get_property = bgp_configurator_get_routes_args_get_property;
   gobject_class->set_property = bgp_configurator_get_routes_args_set_property;
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_P_TYPE,
+     g_param_spec_int ("p_type",
+                       NULL,
+                       NULL,
+                       1,
+                       4,
+                       1,
+                       G_PARAM_READWRITE));
 
   g_object_class_install_property
     (gobject_class,
@@ -10505,11 +11470,11 @@ bgp_configurator_enable_multipath_args_read (ThriftStruct *object, ThriftProtoco
       case 1:
         if (ftype == T_I32)
         {
-          gint32 ecast10;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast10, error)) < 0)
+          gint32 ecast15;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast15, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->afi = (af_afi)ecast10;
+          this_object->afi = (af_afi)ecast15;
           this_object->__isset_afi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -10520,11 +11485,11 @@ bgp_configurator_enable_multipath_args_read (ThriftStruct *object, ThriftProtoco
       case 2:
         if (ftype == T_I32)
         {
-          gint32 ecast11;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast11, error)) < 0)
+          gint32 ecast16;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast16, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->safi = (af_safi)ecast11;
+          this_object->safi = (af_safi)ecast16;
           this_object->__isset_safi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -10679,7 +11644,7 @@ bgp_configurator_enable_multipath_args_class_init (BgpConfiguratorEnableMultipat
                        NULL,
                        NULL,
                        1,
-                       1,
+                       3,
                        1,
                        G_PARAM_READWRITE));
 
@@ -10690,7 +11655,7 @@ bgp_configurator_enable_multipath_args_class_init (BgpConfiguratorEnableMultipat
                        NULL,
                        NULL,
                        4,
-                       5,
+                       6,
                        4,
                        G_PARAM_READWRITE));
 }
@@ -11015,11 +11980,11 @@ bgp_configurator_disable_multipath_args_read (ThriftStruct *object, ThriftProtoc
       case 1:
         if (ftype == T_I32)
         {
-          gint32 ecast12;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast12, error)) < 0)
+          gint32 ecast17;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast17, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->afi = (af_afi)ecast12;
+          this_object->afi = (af_afi)ecast17;
           this_object->__isset_afi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -11030,11 +11995,11 @@ bgp_configurator_disable_multipath_args_read (ThriftStruct *object, ThriftProtoc
       case 2:
         if (ftype == T_I32)
         {
-          gint32 ecast13;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast13, error)) < 0)
+          gint32 ecast18;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast18, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->safi = (af_safi)ecast13;
+          this_object->safi = (af_safi)ecast18;
           this_object->__isset_safi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -11189,7 +12154,7 @@ bgp_configurator_disable_multipath_args_class_init (BgpConfiguratorDisableMultip
                        NULL,
                        NULL,
                        1,
-                       1,
+                       3,
                        1,
                        G_PARAM_READWRITE));
 
@@ -11200,7 +12165,7 @@ bgp_configurator_disable_multipath_args_class_init (BgpConfiguratorDisableMultip
                        NULL,
                        NULL,
                        4,
-                       5,
+                       6,
                        4,
                        G_PARAM_READWRITE));
 }
@@ -11988,11 +12953,17 @@ bgp_configurator_multipaths_result_get_type (void)
 enum _BgpUpdaterOnUpdatePushRouteArgsProperties
 {
   PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_0,
+  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_P_TYPE,
   PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_RD,
   PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_PREFIX,
   PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_PREFIXLEN,
   PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_NEXTHOP,
-  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_LABEL
+  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ETHTAG,
+  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ESI,
+  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_MACADDRESS,
+  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L3LABEL,
+  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L2LABEL,
+  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ROUTERMAC
 };
 
 /* reads a bgp_updater_on_update_push_route_args object */
@@ -12045,6 +13016,21 @@ bgp_updater_on_update_push_route_args_read (ThriftStruct *object, ThriftProtocol
     switch (fid)
     {
       case 1:
+        if (ftype == T_I32)
+        {
+          gint32 ecast21;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast21, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->p_type = (protocol_type)ecast21;
+          this_object->__isset_p_type = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 2:
         if (ftype == T_STRING)
         {
           if (this_object->rd != NULL)
@@ -12063,7 +13049,7 @@ bgp_updater_on_update_push_route_args_read (ThriftStruct *object, ThriftProtocol
           xfer += ret;
         }
         break;
-      case 2:
+      case 3:
         if (ftype == T_STRING)
         {
           if (this_object->prefix != NULL)
@@ -12082,7 +13068,7 @@ bgp_updater_on_update_push_route_args_read (ThriftStruct *object, ThriftProtocol
           xfer += ret;
         }
         break;
-      case 3:
+      case 4:
         if (ftype == T_I32)
         {
           if ((ret = thrift_protocol_read_i32 (protocol, &this_object->prefixlen, error)) < 0)
@@ -12095,7 +13081,7 @@ bgp_updater_on_update_push_route_args_read (ThriftStruct *object, ThriftProtocol
           xfer += ret;
         }
         break;
-      case 4:
+      case 5:
         if (ftype == T_STRING)
         {
           if (this_object->nexthop != NULL)
@@ -12114,13 +13100,96 @@ bgp_updater_on_update_push_route_args_read (ThriftStruct *object, ThriftProtocol
           xfer += ret;
         }
         break;
-      case 5:
+      case 6:
         if (ftype == T_I32)
         {
-          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->label, error)) < 0)
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->ethtag, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->__isset_label = TRUE;
+          this_object->__isset_ethtag = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 7:
+        if (ftype == T_STRING)
+        {
+          if (this_object->esi != NULL)
+          {
+            g_free(this_object->esi);
+            this_object->esi = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->esi, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_esi = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 8:
+        if (ftype == T_STRING)
+        {
+          if (this_object->macaddress != NULL)
+          {
+            g_free(this_object->macaddress);
+            this_object->macaddress = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->macaddress, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_macaddress = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 9:
+        if (ftype == T_I32)
+        {
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->l3label, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_l3label = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 10:
+        if (ftype == T_I32)
+        {
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->l2label, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_l2label = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 11:
+        if (ftype == T_STRING)
+        {
+          if (this_object->routermac != NULL)
+          {
+            g_free(this_object->routermac);
+            this_object->routermac = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->routermac, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_routermac = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
             return -1;
@@ -12156,7 +13225,17 @@ bgp_updater_on_update_push_route_args_write (ThriftStruct *object, ThriftProtoco
   if ((ret = thrift_protocol_write_struct_begin (protocol, "BgpUpdaterOnUpdatePushRouteArgs", error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 1, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "p_type", T_I32, 1, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, (gint32) this_object->p_type, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 2, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->rd, error)) < 0)
@@ -12166,7 +13245,7 @@ bgp_updater_on_update_push_route_args_write (ThriftStruct *object, ThriftProtoco
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 2, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 3, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->prefix, error)) < 0)
@@ -12176,7 +13255,7 @@ bgp_updater_on_update_push_route_args_write (ThriftStruct *object, ThriftProtoco
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "prefixlen", T_I32, 3, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "prefixlen", T_I32, 4, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_i32 (protocol, this_object->prefixlen, error)) < 0)
@@ -12186,7 +13265,7 @@ bgp_updater_on_update_push_route_args_write (ThriftStruct *object, ThriftProtoco
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "nexthop", T_STRING, 4, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "nexthop", T_STRING, 5, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->nexthop, error)) < 0)
@@ -12196,10 +13275,60 @@ bgp_updater_on_update_push_route_args_write (ThriftStruct *object, ThriftProtoco
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "label", T_I32, 5, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "ethtag", T_I32, 6, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_i32 (protocol, this_object->label, error)) < 0)
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->ethtag, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "esi", T_STRING, 7, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->esi, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "macaddress", T_STRING, 8, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->macaddress, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "l3label", T_I32, 9, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->l3label, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "l2label", T_I32, 10, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->l2label, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "routermac", T_STRING, 11, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->routermac, error)) < 0)
     return -1;
   xfer += ret;
 
@@ -12226,6 +13355,11 @@ bgp_updater_on_update_push_route_args_set_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_P_TYPE:
+      self->p_type = g_value_get_int (value);
+      self->__isset_p_type = TRUE;
+      break;
+
     case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_RD:
       if (self->rd != NULL)
         g_free (self->rd);
@@ -12252,9 +13386,40 @@ bgp_updater_on_update_push_route_args_set_property (GObject *object,
       self->__isset_nexthop = TRUE;
       break;
 
-    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_LABEL:
-      self->label = g_value_get_int (value);
-      self->__isset_label = TRUE;
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ETHTAG:
+      self->ethtag = g_value_get_int (value);
+      self->__isset_ethtag = TRUE;
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ESI:
+      if (self->esi != NULL)
+        g_free (self->esi);
+      self->esi = g_value_dup_string (value);
+      self->__isset_esi = TRUE;
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_MACADDRESS:
+      if (self->macaddress != NULL)
+        g_free (self->macaddress);
+      self->macaddress = g_value_dup_string (value);
+      self->__isset_macaddress = TRUE;
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L3LABEL:
+      self->l3label = g_value_get_int (value);
+      self->__isset_l3label = TRUE;
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L2LABEL:
+      self->l2label = g_value_get_int (value);
+      self->__isset_l2label = TRUE;
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ROUTERMAC:
+      if (self->routermac != NULL)
+        g_free (self->routermac);
+      self->routermac = g_value_dup_string (value);
+      self->__isset_routermac = TRUE;
       break;
 
     default:
@@ -12273,6 +13438,10 @@ bgp_updater_on_update_push_route_args_get_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_P_TYPE:
+      g_value_set_int (value, self->p_type);
+      break;
+
     case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_RD:
       g_value_set_string (value, self->rd);
       break;
@@ -12289,8 +13458,28 @@ bgp_updater_on_update_push_route_args_get_property (GObject *object,
       g_value_set_string (value, self->nexthop);
       break;
 
-    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_LABEL:
-      g_value_set_int (value, self->label);
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ETHTAG:
+      g_value_set_int (value, self->ethtag);
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ESI:
+      g_value_set_string (value, self->esi);
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_MACADDRESS:
+      g_value_set_string (value, self->macaddress);
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L3LABEL:
+      g_value_set_int (value, self->l3label);
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L2LABEL:
+      g_value_set_int (value, self->l2label);
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ROUTERMAC:
+      g_value_set_string (value, self->routermac);
       break;
 
     default:
@@ -12304,6 +13493,7 @@ bgp_updater_on_update_push_route_args_instance_init (BgpUpdaterOnUpdatePushRoute
 {
   /* satisfy -Wall */
   THRIFT_UNUSED_VAR (object);
+  object->__isset_p_type = FALSE;
   object->rd = NULL;
   object->__isset_rd = FALSE;
   object->prefix = NULL;
@@ -12312,8 +13502,18 @@ bgp_updater_on_update_push_route_args_instance_init (BgpUpdaterOnUpdatePushRoute
   object->__isset_prefixlen = FALSE;
   object->nexthop = NULL;
   object->__isset_nexthop = FALSE;
-  object->label = 0;
-  object->__isset_label = FALSE;
+  object->ethtag = 0;
+  object->__isset_ethtag = FALSE;
+  object->esi = NULL;
+  object->__isset_esi = FALSE;
+  object->macaddress = NULL;
+  object->__isset_macaddress = FALSE;
+  object->l3label = 0;
+  object->__isset_l3label = FALSE;
+  object->l2label = 0;
+  object->__isset_l2label = FALSE;
+  object->routermac = NULL;
+  object->__isset_routermac = FALSE;
 }
 
 static void 
@@ -12338,6 +13538,21 @@ bgp_updater_on_update_push_route_args_finalize (GObject *object)
     g_free(tobject->nexthop);
     tobject->nexthop = NULL;
   }
+  if (tobject->esi != NULL)
+  {
+    g_free(tobject->esi);
+    tobject->esi = NULL;
+  }
+  if (tobject->macaddress != NULL)
+  {
+    g_free(tobject->macaddress);
+    tobject->macaddress = NULL;
+  }
+  if (tobject->routermac != NULL)
+  {
+    g_free(tobject->routermac);
+    tobject->routermac = NULL;
+  }
 }
 
 static void
@@ -12352,6 +13567,17 @@ bgp_updater_on_update_push_route_args_class_init (BgpUpdaterOnUpdatePushRouteArg
   gobject_class->finalize = bgp_updater_on_update_push_route_args_finalize;
   gobject_class->get_property = bgp_updater_on_update_push_route_args_get_property;
   gobject_class->set_property = bgp_updater_on_update_push_route_args_set_property;
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_P_TYPE,
+     g_param_spec_int ("p_type",
+                       NULL,
+                       NULL,
+                       1,
+                       4,
+                       1,
+                       G_PARAM_READWRITE));
 
   g_object_class_install_property
     (gobject_class,
@@ -12393,14 +13619,63 @@ bgp_updater_on_update_push_route_args_class_init (BgpUpdaterOnUpdatePushRouteArg
 
   g_object_class_install_property
     (gobject_class,
-     PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_LABEL,
-     g_param_spec_int ("label",
+     PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ETHTAG,
+     g_param_spec_int ("ethtag",
                        NULL,
                        NULL,
                        G_MININT32,
                        G_MAXINT32,
                        0,
                        G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ESI,
+     g_param_spec_string ("esi",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_MACADDRESS,
+     g_param_spec_string ("macaddress",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L3LABEL,
+     g_param_spec_int ("l3label",
+                       NULL,
+                       NULL,
+                       G_MININT32,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L2LABEL,
+     g_param_spec_int ("l2label",
+                       NULL,
+                       NULL,
+                       G_MININT32,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ROUTERMAC,
+     g_param_spec_string ("routermac",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
 }
 
 GType
@@ -12435,11 +13710,16 @@ bgp_updater_on_update_push_route_args_get_type (void)
 enum _BgpUpdaterOnUpdateWithdrawRouteArgsProperties
 {
   PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_0,
+  PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_P_TYPE,
   PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_RD,
   PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_PREFIX,
   PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_PREFIXLEN,
   PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_NEXTHOP,
-  PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_LABEL
+  PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_ETHTAG,
+  PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_ESI,
+  PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_MACADDRESS,
+  PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_L3LABEL,
+  PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_L2LABEL
 };
 
 /* reads a bgp_updater_on_update_withdraw_route_args object */
@@ -12492,6 +13772,21 @@ bgp_updater_on_update_withdraw_route_args_read (ThriftStruct *object, ThriftProt
     switch (fid)
     {
       case 1:
+        if (ftype == T_I32)
+        {
+          gint32 ecast22;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast22, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->p_type = (protocol_type)ecast22;
+          this_object->__isset_p_type = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 2:
         if (ftype == T_STRING)
         {
           if (this_object->rd != NULL)
@@ -12510,7 +13805,7 @@ bgp_updater_on_update_withdraw_route_args_read (ThriftStruct *object, ThriftProt
           xfer += ret;
         }
         break;
-      case 2:
+      case 3:
         if (ftype == T_STRING)
         {
           if (this_object->prefix != NULL)
@@ -12529,7 +13824,7 @@ bgp_updater_on_update_withdraw_route_args_read (ThriftStruct *object, ThriftProt
           xfer += ret;
         }
         break;
-      case 3:
+      case 4:
         if (ftype == T_I32)
         {
           if ((ret = thrift_protocol_read_i32 (protocol, &this_object->prefixlen, error)) < 0)
@@ -12542,7 +13837,7 @@ bgp_updater_on_update_withdraw_route_args_read (ThriftStruct *object, ThriftProt
           xfer += ret;
         }
         break;
-      case 4:
+      case 5:
         if (ftype == T_STRING)
         {
           if (this_object->nexthop != NULL)
@@ -12561,13 +13856,77 @@ bgp_updater_on_update_withdraw_route_args_read (ThriftStruct *object, ThriftProt
           xfer += ret;
         }
         break;
-      case 5:
+      case 6:
         if (ftype == T_I32)
         {
-          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->label, error)) < 0)
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->ethtag, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->__isset_label = TRUE;
+          this_object->__isset_ethtag = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 7:
+        if (ftype == T_STRING)
+        {
+          if (this_object->esi != NULL)
+          {
+            g_free(this_object->esi);
+            this_object->esi = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->esi, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_esi = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 8:
+        if (ftype == T_STRING)
+        {
+          if (this_object->macaddress != NULL)
+          {
+            g_free(this_object->macaddress);
+            this_object->macaddress = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->macaddress, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_macaddress = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 9:
+        if (ftype == T_I32)
+        {
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->l3label, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_l3label = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
+      case 10:
+        if (ftype == T_I32)
+        {
+          if ((ret = thrift_protocol_read_i32 (protocol, &this_object->l2label, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_l2label = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
             return -1;
@@ -12603,7 +13962,17 @@ bgp_updater_on_update_withdraw_route_args_write (ThriftStruct *object, ThriftPro
   if ((ret = thrift_protocol_write_struct_begin (protocol, "BgpUpdaterOnUpdateWithdrawRouteArgs", error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 1, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "p_type", T_I32, 1, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, (gint32) this_object->p_type, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "rd", T_STRING, 2, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->rd, error)) < 0)
@@ -12613,7 +13982,7 @@ bgp_updater_on_update_withdraw_route_args_write (ThriftStruct *object, ThriftPro
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 2, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "prefix", T_STRING, 3, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->prefix, error)) < 0)
@@ -12623,7 +13992,7 @@ bgp_updater_on_update_withdraw_route_args_write (ThriftStruct *object, ThriftPro
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "prefixlen", T_I32, 3, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "prefixlen", T_I32, 4, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_i32 (protocol, this_object->prefixlen, error)) < 0)
@@ -12633,7 +14002,7 @@ bgp_updater_on_update_withdraw_route_args_write (ThriftStruct *object, ThriftPro
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "nexthop", T_STRING, 4, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "nexthop", T_STRING, 5, error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_string (protocol, this_object->nexthop, error)) < 0)
@@ -12643,10 +14012,50 @@ bgp_updater_on_update_withdraw_route_args_write (ThriftStruct *object, ThriftPro
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "label", T_I32, 5, error)) < 0)
+  if ((ret = thrift_protocol_write_field_begin (protocol, "ethtag", T_I32, 6, error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_i32 (protocol, this_object->label, error)) < 0)
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->ethtag, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "esi", T_STRING, 7, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->esi, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "macaddress", T_STRING, 8, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->macaddress, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "l3label", T_I32, 9, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->l3label, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "l2label", T_I32, 10, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, this_object->l2label, error)) < 0)
     return -1;
   xfer += ret;
 
@@ -12673,6 +14082,11 @@ bgp_updater_on_update_withdraw_route_args_set_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_P_TYPE:
+      self->p_type = g_value_get_int (value);
+      self->__isset_p_type = TRUE;
+      break;
+
     case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_RD:
       if (self->rd != NULL)
         g_free (self->rd);
@@ -12699,9 +14113,33 @@ bgp_updater_on_update_withdraw_route_args_set_property (GObject *object,
       self->__isset_nexthop = TRUE;
       break;
 
-    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_LABEL:
-      self->label = g_value_get_int (value);
-      self->__isset_label = TRUE;
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_ETHTAG:
+      self->ethtag = g_value_get_int (value);
+      self->__isset_ethtag = TRUE;
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_ESI:
+      if (self->esi != NULL)
+        g_free (self->esi);
+      self->esi = g_value_dup_string (value);
+      self->__isset_esi = TRUE;
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_MACADDRESS:
+      if (self->macaddress != NULL)
+        g_free (self->macaddress);
+      self->macaddress = g_value_dup_string (value);
+      self->__isset_macaddress = TRUE;
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_L3LABEL:
+      self->l3label = g_value_get_int (value);
+      self->__isset_l3label = TRUE;
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_L2LABEL:
+      self->l2label = g_value_get_int (value);
+      self->__isset_l2label = TRUE;
       break;
 
     default:
@@ -12720,6 +14158,10 @@ bgp_updater_on_update_withdraw_route_args_get_property (GObject *object,
 
   switch (property_id)
   {
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_P_TYPE:
+      g_value_set_int (value, self->p_type);
+      break;
+
     case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_RD:
       g_value_set_string (value, self->rd);
       break;
@@ -12736,8 +14178,24 @@ bgp_updater_on_update_withdraw_route_args_get_property (GObject *object,
       g_value_set_string (value, self->nexthop);
       break;
 
-    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_LABEL:
-      g_value_set_int (value, self->label);
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_ETHTAG:
+      g_value_set_int (value, self->ethtag);
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_ESI:
+      g_value_set_string (value, self->esi);
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_MACADDRESS:
+      g_value_set_string (value, self->macaddress);
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_L3LABEL:
+      g_value_set_int (value, self->l3label);
+      break;
+
+    case PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_L2LABEL:
+      g_value_set_int (value, self->l2label);
       break;
 
     default:
@@ -12751,6 +14209,7 @@ bgp_updater_on_update_withdraw_route_args_instance_init (BgpUpdaterOnUpdateWithd
 {
   /* satisfy -Wall */
   THRIFT_UNUSED_VAR (object);
+  object->__isset_p_type = FALSE;
   object->rd = NULL;
   object->__isset_rd = FALSE;
   object->prefix = NULL;
@@ -12759,8 +14218,16 @@ bgp_updater_on_update_withdraw_route_args_instance_init (BgpUpdaterOnUpdateWithd
   object->__isset_prefixlen = FALSE;
   object->nexthop = NULL;
   object->__isset_nexthop = FALSE;
-  object->label = 0;
-  object->__isset_label = FALSE;
+  object->ethtag = 0;
+  object->__isset_ethtag = FALSE;
+  object->esi = NULL;
+  object->__isset_esi = FALSE;
+  object->macaddress = NULL;
+  object->__isset_macaddress = FALSE;
+  object->l3label = 0;
+  object->__isset_l3label = FALSE;
+  object->l2label = 0;
+  object->__isset_l2label = FALSE;
 }
 
 static void 
@@ -12785,6 +14252,16 @@ bgp_updater_on_update_withdraw_route_args_finalize (GObject *object)
     g_free(tobject->nexthop);
     tobject->nexthop = NULL;
   }
+  if (tobject->esi != NULL)
+  {
+    g_free(tobject->esi);
+    tobject->esi = NULL;
+  }
+  if (tobject->macaddress != NULL)
+  {
+    g_free(tobject->macaddress);
+    tobject->macaddress = NULL;
+  }
 }
 
 static void
@@ -12799,6 +14276,17 @@ bgp_updater_on_update_withdraw_route_args_class_init (BgpUpdaterOnUpdateWithdraw
   gobject_class->finalize = bgp_updater_on_update_withdraw_route_args_finalize;
   gobject_class->get_property = bgp_updater_on_update_withdraw_route_args_get_property;
   gobject_class->set_property = bgp_updater_on_update_withdraw_route_args_set_property;
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_P_TYPE,
+     g_param_spec_int ("p_type",
+                       NULL,
+                       NULL,
+                       1,
+                       4,
+                       1,
+                       G_PARAM_READWRITE));
 
   g_object_class_install_property
     (gobject_class,
@@ -12840,8 +14328,48 @@ bgp_updater_on_update_withdraw_route_args_class_init (BgpUpdaterOnUpdateWithdraw
 
   g_object_class_install_property
     (gobject_class,
-     PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_LABEL,
-     g_param_spec_int ("label",
+     PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_ETHTAG,
+     g_param_spec_int ("ethtag",
+                       NULL,
+                       NULL,
+                       G_MININT32,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_ESI,
+     g_param_spec_string ("esi",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_MACADDRESS,
+     g_param_spec_string ("macaddress",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_L3LABEL,
+     g_param_spec_int ("l3label",
+                       NULL,
+                       NULL,
+                       G_MININT32,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_WITHDRAW_ROUTE_ARGS_L2LABEL,
+     g_param_spec_int ("l2label",
                        NULL,
                        NULL,
                        G_MININT32,

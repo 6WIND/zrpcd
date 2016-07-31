@@ -185,8 +185,10 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
 
           zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
           inet_ntop (p->family, &p->prefix, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
-          zrpc_bgp_updater_on_update_push_route(vrf_rd_str, pfx_str, (const gint32)s->prefix.prefixlen, \
-                                                                  inet_ntoa(s->nexthop), s->label);
+          zrpc_bgp_updater_on_update_push_route(PROTOCOL_TYPE_PROTOCOL_L3VPN, 
+                                                vrf_rd_str, pfx_str,
+                                                (const gint32)s->prefix.prefixlen, inet_ntoa(s->nexthop),
+                                                0, NULL, NULL, s->label, 0, NULL);
         }
       else
         {
@@ -196,8 +198,10 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
           inet_ntop (p->family, &p->prefix, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
           zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
           inet_ntop (p->family, &s->nexthop, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
-          zrpc_bgp_updater_on_update_withdraw_route(vrf_rd_str, pfx_str, (const gint32)s->prefix.prefixlen,
-                                                    nh_str, s->label);
+          zrpc_bgp_updater_on_update_withdraw_route (PROTOCOL_TYPE_PROTOCOL_L3VPN, 
+                                                     vrf_rd_str, pfx_str,
+                                                     (const gint32)s->prefix.prefixlen, nh_str,
+                                                     0, NULL, NULL, s->label, 0);
         }
     }
   else
