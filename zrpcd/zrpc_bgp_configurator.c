@@ -110,8 +110,9 @@ static void instance_bgp_configurator_handler_finalize(GObject *object);
 static uint64_t
 zrpc_bgp_configurator_find_vrf(struct zrpc_vpnservice *ctxt, struct zrpc_rd_prefix *rd, gint32* _return);
 
-static uint64_t
-zrpc_bgp_configurator_find_peer(struct zrpc_vpnservice *ctxt, const gchar *peerIp, gint32* _return);
+static struct zrpc_vpnservice_cache_peer * 
+zrpc_bgp_configurator_find_peer(struct zrpc_vpnservice *ctxt, const gchar *peerIp, 
+                                gint32* _return, int create);
 
 /* enable/disable address family bgp neighbor, using capnp */
 static gboolean
@@ -260,10 +261,12 @@ zrpc_bgp_configurator_find_vrf(struct zrpc_vpnservice *ctxt, struct zrpc_rd_pref
  * It returns the capnp node identifier related to peer context,
  * 0 otherwise.
  */
-static uint64_t
-zrpc_bgp_configurator_find_peer(struct zrpc_vpnservice *ctxt, const gchar *peerIp, gint32* _return)
+static struct zrpc_vpnservice_cache_peer * 
+zrpc_bgp_configurator_find_peer(struct zrpc_vpnservice *ctxt, const gchar *peerIp, 
+                                gint32* _return, int create)
 {
-  struct zrpc_vpnservice_cache_peer *entry_bgppeer, *entry_bgppeer_next;
+  struct zrpc_vpnservice_cache_peer *entry_bgppeer, *entry_bgppeer_next, *entry;
+  int i,j;
 
   /* lookup in cache context, first */
   for (entry_bgppeer = ctxt->bgp_peer_list; entry_bgppeer; entry_bgppeer = entry_bgppeer_next)
@@ -273,10 +276,23 @@ zrpc_bgp_configurator_find_peer(struct zrpc_vpnservice *ctxt, const gchar *peerI
         {
           if(IS_ZRPC_DEBUG_CACHE)
             zrpc_log ("CACHE_PEER : match lookup entry %s", entry_bgppeer->peerIp);
-          return entry_bgppeer->peer_nid; /* match */
+          return entry_bgppeer; /* match */
         }
     }
-  return 0;
+  if(!create)
+    return 0;
+  entry = ZRPC_CALLOC (sizeof(struct zrpc_vpnservice_cache_peer));
+  entry->peerIp = ZRPC_STRDUP (peerIp);
+  entry->peer_nid = 0;
+  entry->asNumber = 0;
+  for(i = 0; i < AFI_MAX; i++)
+    for(j = 0; j < SAFI_MAX; j++)
+      entry->enableAddressFamily[i][j] = 0;
+  if(IS_ZRPC_DEBUG_CACHE)
+    zrpc_log ("CACHE_PEER : add entry peer %s", peerIp);
+  entry->next = ctxt->bgp_peer_list;
+  ctxt->bgp_peer_list = entry;
+  return entry;
 }
 
 /* enable/disable address family bgp neighbor, using capnp */
@@ -292,6 +308,7 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
   int af, saf;
   int ret;
   struct QZCGetRep *grep_peer;
+  struct zrpc_vpnservice_cache_peer *c_peer;
 
   if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
     {
@@ -324,13 +341,28 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  peer_nid = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return);
-  if(peer_nid == 0)
+  c_peer = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return, 1);
+  if(c_peer == NULL)
     {
-      *_return = BGP_ERR_PARAM;
-      *error = ERROR_BGP_PEER_NOTFOUND;
       return FALSE;
     }
+  c_peer->enableAddressFamily[af][saf] = value;
+  /* config saved, but not propagated to bgp while 
+   * bgp peer creation not done 
+   */
+  if(c_peer->peer_nid == 0)
+    {
+      if(IS_ZRPC_DEBUG)
+        {
+          if(TRUE == value)
+            zrpc_log ("enableAddressFamily( %s, afi %d, safi %d) config OK", peerIp, afi, safi);
+          else
+            zrpc_log ("disableAddressFamily( %s, afi %d, safi %d) config OK", peerIp, afi, safi);
+        }
+      return TRUE;
+    }
+  peer_nid = c_peer->peer_nid;
+
   /* prepare afisafi context */
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
@@ -396,6 +428,7 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
   int af, saf;
   int ret;
   struct QZCGetRep *grep_peer;
+  struct zrpc_vpnservice_cache_peer *c_peer;
 
   if(   zrpc_vpnservice_get_bgp_context(ctxt) == NULL
      || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
@@ -429,13 +462,14 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  peer_nid = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return);
-  if(peer_nid == 0)
+  c_peer = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return, 0);
+  if(c_peer == NULL || c_peer->peer_nid == 0)
     {
       *_return = BGP_ERR_PARAM;
       *error = ERROR_BGP_PEER_NOTFOUND;
       return FALSE;
     }
+  peer_nid = c_peer->peer_nid;
   /* prepare afisafi context */
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
@@ -503,6 +537,7 @@ zrpc_bgp_set_multihops(struct zrpc_vpnservice *ctxt,  gint32* _return, const gch
   capn_ptr peer_ctxt;
   struct peer peer;
   struct QZCGetRep *grep_peer;
+  struct zrpc_vpnservice_cache_peer *c_peer;
 
   memset (&peer, 0, sizeof (struct peer));
   if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
@@ -516,13 +551,14 @@ zrpc_bgp_set_multihops(struct zrpc_vpnservice *ctxt,  gint32* _return, const gch
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  peer_nid = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return);
-  if(peer_nid == 0)
+  c_peer  = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return, 0);
+  if(c_peer == NULL || c_peer->peer_nid == 0)
     {
       *_return = BGP_ERR_PARAM;
       *error = ERROR_BGP_PEER_NOTFOUND;
       return FALSE;
     }
+  peer_nid =c_peer->peer_nid;
   /* retrieve peer context */
   grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 2, \
                                  NULL, NULL, NULL, NULL);
@@ -1066,24 +1102,38 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
       return FALSE;
     }
   if(IS_ZRPC_DEBUG)
-    zrpc_log ("createPeer(%s,%u) OK", routerId, (uint32_t)asNumber);
-  /* add peer entry in cache */
-  entry = ZRPC_CALLOC(sizeof(struct zrpc_vpnservice_cache_peer));
-  entry->peerIp = ZRPC_STRDUP(routerId);
+    zrpc_log ("createPeer(%s,%u) OK", routerId, asNumber);
+  /* add entry peer in cache */
+  entry = zrpc_bgp_configurator_find_peer(ctxt, routerId, _return, 1);
+  if(entry == NULL)
+    {
+      return FALSE;
+    }
   entry->peer_nid = peer_nid;
-  entry->asNumber = (uint32_t )asNumber;
+  entry->asNumber = asNumber;
   if(IS_ZRPC_DEBUG_CACHE)
-    zrpc_log ("CACHE_PEER : add entry %llx", (long long unsigned int)peer_nid);
-  entry->next = ctxt->bgp_peer_list;
-  ctxt->bgp_peer_list = entry;
+    zrpc_log ("CACHE_PEER : upgrade entry %llx", (long long unsigned int)peer_nid);  
   /* set aficfg */
-  ret = zrpc_bgp_afi_config(ctxt, _return, routerId,
+  ret = zrpc_bgp_afi_config(ctxt, _return, routerId,                 \
                             AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN, TRUE, error);
+  if(entry->enableAddressFamily[ADDRESS_FAMILY_L2VPN][SUBSEQUENT_ADDRESS_FAMILY_EVPN])
+    {
+      ret = zrpc_bgp_afi_config(ctxt, _return, routerId,             \
+                                AF_AFI_AFI_L2VPN, AF_SAFI_SAFI_EVPN, TRUE, error);
+    }
+  ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId,        \
+                                     AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN,
+                                     PEER_FLAG_NEXTHOP_UNCHANGED, TRUE,
+                                     error);
 
-  return ret && zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId, \
-                                                AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN,
-                                                PEER_FLAG_NEXTHOP_UNCHANGED, TRUE,
-                                                error);
+  if(entry->enableAddressFamily[ADDRESS_FAMILY_L2VPN][SUBSEQUENT_ADDRESS_FAMILY_EVPN])
+    {
+      ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId,    \
+                                         AF_AFI_AFI_L2VPN, AF_SAFI_SAFI_EVPN,
+                                         PEER_FLAG_NEXTHOP_UNCHANGED, TRUE,
+                                         error);
+    }
+  return ret;
 }
 
 /*
@@ -1097,6 +1147,7 @@ instance_bgp_configurator_handler_delete_peer(BgpConfiguratorIf *iface, gint32* 
 {
   struct zrpc_vpnservice *ctxt = NULL;
   uint64_t bgppeer_nid;
+  struct zrpc_vpnservice_cache_peer *c_peer;
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
@@ -1111,13 +1162,14 @@ instance_bgp_configurator_handler_delete_peer(BgpConfiguratorIf *iface, gint32* 
       return FALSE;
     }
   /* if vrf not found, return an error */
-  bgppeer_nid = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return);
-  if(bgppeer_nid == 0)
+  c_peer = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return, 0);
+  if(c_peer == NULL || c_peer->peer_nid == 0)
     {
       *_return = BGP_ERR_PARAM;
       *error = ERROR_BGP_PEER_NOTFOUND;
       return FALSE;
     }
+  bgppeer_nid = c_peer->peer_nid;
   /* destroy node id */
   if( qzcclient_deletenode(ctxt->qzc_sock, &bgppeer_nid))
     {
@@ -1369,6 +1421,7 @@ instance_bgp_configurator_handler_set_update_source (BgpConfiguratorIf *iface, g
   struct peer peer;
   struct capn rc;
   struct capn_segment *cs;
+  struct zrpc_vpnservice_cache_peer *c_peer;
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
@@ -1389,13 +1442,14 @@ instance_bgp_configurator_handler_set_update_source (BgpConfiguratorIf *iface, g
       return FALSE;
     }
   /* if peer not found, return an error */
-  peer_nid = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return);
-  if(peer_nid == 0)
+  c_peer  = zrpc_bgp_configurator_find_peer(ctxt, peerIp, _return, 0);
+  if(c_peer == NULL || c_peer->peer_nid == 0)
     {
       *_return = BGP_ERR_PARAM;
       *error = ERROR_BGP_PEER_NOTFOUND;
       return FALSE;
     }
+  peer_nid = c_peer->peer_nid;
   /* retrieve peer context */
   grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 2, \
                                  NULL, NULL, NULL, NULL);

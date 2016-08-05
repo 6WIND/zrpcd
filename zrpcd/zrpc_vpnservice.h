@@ -59,6 +59,7 @@ struct zrpc_vpnservice_cache_peer
   uint32_t asNumber;
   char *peerIp;
   struct zrpc_vpnservice_cache_peer *next;
+  uint8_t enableAddressFamily[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
 };
 
 struct zrpc_vpnservice
