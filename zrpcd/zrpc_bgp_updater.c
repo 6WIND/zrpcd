@@ -33,11 +33,21 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
   response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, PROTOCOL_TYPE_PROTOCOL_L3VPN,
-                                                          rd, prefix, prefixlen, nexthop, 0, NULL, NULL, 
-                                                          l3label, 0, NULL, &error);
+                                                          rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress, 
+                                                          l3label, l2label, routermac, &error);
   if(IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_log ("onUpdatePushRoute(rd %s, pfx %s, nh %s, label %d)", \
-               rd, prefix, nexthop, l3label);
+  {
+    char ethtag_str[20];
+    sprintf(ethtag_str,"ethtag %u", (unsigned int)ethtag);
+
+    zrpc_log ("onUpdatePushRoute(rd %s, pfx %s, nh %s, label %d, %s%s %s %s%s) sent %s", \
+              rd, prefix, nexthop, l3label,                             \
+              esi==NULL?"":"esi ",esi==NULL?"":esi,                     \
+              ethtag==0?"":ethtag_str,
+              routermac==NULL?"":"routermac ", routermac==NULL?"":routermac,
+              (response == TRUE)?"OK":"NOK");
+  }
+
   return response;
 }
 
@@ -58,11 +68,19 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
   response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, PROTOCOL_TYPE_PROTOCOL_L3VPN,
-                                                         rd, prefix, prefixlen, nexthop, 0, NULL, NULL,
-                                                         l3label, 0, &error);
+                                                         rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress,
+                                                         l3label, l2label, &error);
   if(IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_log ("onUpdateWithdrawRoute(rd %s, pfx %s/%d, nh %s, label %d)", \
-              rd, prefix, prefixlen, nexthop, l3label);
+    {
+      char ethtag_str[20];
+      sprintf(ethtag_str,"ethtag %u", (unsigned int)ethtag);
+
+      zrpc_log ("onUpdateWithdrawRoute(rd %s, pfx %s/%d, nh %s, label %d, %s%s %s %s%s) sent %s", \
+                rd, prefix, prefixlen, nexthop, l3label,                \
+                esi==NULL?"":"esi ",esi==NULL?"":esi,                   \
+                ethtag==0?"":ethtag_str,
+                (response == TRUE)?"OK":"NOK");
+    }
   return response;
 }
 

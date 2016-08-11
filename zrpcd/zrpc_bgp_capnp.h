@@ -107,6 +107,9 @@ struct bgp_event_vrf
   struct zrpc_ipv4_prefix prefix; /* alias subtype */
   struct in_addr nexthop; /* alias peer */
   uint32_t label; /* alias type */
+  uint32_t ethtag;
+  char *esi;
+  char *mac_router;
 };
 
 struct bgp_event_shut
