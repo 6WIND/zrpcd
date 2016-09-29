@@ -111,12 +111,13 @@ struct bgp_event_vrf
 #define BGP_EVENT_SHUT 0x2
   uint8_t announce;
   struct zrpc_rd_prefix outbound_rd; /* dummy for event_shut */
-  struct zrpc_ipv4_prefix prefix; /* alias subtype */
+  struct zrpc_prefix prefix; /* alias subtype */
   struct in_addr nexthop; /* alias peer */
   uint32_t label; /* alias type */
   uint32_t ethtag;
   char *esi;
   char *mac_router;
+  uint32_t l2label;
 };
 
 struct bgp_event_shut
@@ -125,14 +126,9 @@ struct bgp_event_shut
   uint8_t type, subtype;
 };
 
-struct tbliter_v4
-{
-  struct zrpc_ipv4_prefix prefix;
-};
-
 struct bgp_api_route
 {
-  struct zrpc_ipv4_prefix prefix;
+  struct zrpc_prefix prefix;
   struct in_addr nexthop;
   uint32_t label;
   uint32_t ethtag;
@@ -220,8 +216,8 @@ void qcapn_BGPAfiSafi_write(const struct bgp *s, capn_ptr p, address_family_t af
 capn_ptr qcapn_new_BGPAfiSafi(struct capn_segment *s);
 
 capn_ptr qcapn_new_VRFTableIter(struct capn_segment *s);
-void qcapn_VRFTableIter_read(struct tbliter_v4 *s, capn_ptr p);
-void qcapn_VRFTableIter_write(const struct tbliter_v4 *s, capn_ptr p);
+void qcapn_VRFTableIter_read(struct zrpc_prefix *s, capn_ptr p);
+void qcapn_VRFTableIter_write(const struct zrpc_prefix *s, capn_ptr p);
 uint8_t qcapn_BGPVRF_get_layer_type(capn_ptr p);
 capn_ptr qcapn_new_BGPVRFRoute(struct capn_segment *s, uint8_t extend_by);
 void qcapn_BGPVRFRoute_read(struct bgp_api_route *s, capn_ptr p);
@@ -248,5 +244,7 @@ void qcapn_BGPVRFInfoIter_read(unsigned long *s, capn_ptr p, int offset);
 capn_ptr qcapn_new_BGPVRF(struct capn_segment *s);
 void qcapn_BGPVRF_read(struct bgp_vrf *s, capn_ptr p);
 void qcapn_BGPVRF_write(const struct bgp_vrf *s, capn_ptr p);
+void qcapn_prefix_macip_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index);
+void qcapn_prefix_macip_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t *index);
 
 #endif /* _ZRPC_BGP_CAPNP_H */

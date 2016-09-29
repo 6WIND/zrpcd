@@ -40,12 +40,13 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
     char ethtag_str[20];
     sprintf(ethtag_str,"ethtag %u", (unsigned int)ethtag);
 
-    zrpc_log ("onUpdatePushRoute(rd %s, pfx %s, nh %s, label %d, %s%s %s %s%s) sent %s", \
-              rd, prefix, nexthop, l3label,                             \
-              esi==NULL?"":"esi ",esi==NULL?"":esi,                     \
+    zrpc_log ("onUpdatePushRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d, %s%s, %s%s, %s %s%s) sent %s",
+              rd, prefix? prefix:"none", nexthop, l3label, l2label,
+              esi==NULL?"":"esi ",esi==NULL?"":esi,
+              macaddress==NULL?"":"macaddress ",macaddress==NULL?"":macaddress,
               ethtag==0?"":ethtag_str,
               routermac==NULL?"":"routermac ", routermac==NULL?"":routermac,
-              (response == TRUE)?"OK":"NOK");
+              response == TRUE?"OK":"NOK");
   }
 
   return response;
@@ -75,11 +76,12 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
       char ethtag_str[20];
       sprintf(ethtag_str,"ethtag %u", (unsigned int)ethtag);
 
-      zrpc_log ("onUpdateWithdrawRoute(rd %s, pfx %s/%d, nh %s, label %d, %s%s %s %s%s) sent %s", \
-                rd, prefix, prefixlen, nexthop, l3label,                \
+      zrpc_log ("onUpdateWithdrawRoute(rd %s, pfx %s/%d, nh %s, label %d, l2label %d, %s%s %s%s %s) sent %s", \
+                rd, prefix? prefix:"none", prefixlen, nexthop, l3label, l2label,
                 esi==NULL?"":"esi ",esi==NULL?"":esi,                   \
+                macaddress==NULL?"":"macaddress ",macaddress==NULL?"":macaddress,
                 ethtag==0?"":ethtag_str,
-                (response == TRUE)?"OK":"NOK");
+                response == TRUE?"OK":"NOK");
     }
   return response;
 }

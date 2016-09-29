@@ -34,6 +34,7 @@
 #define ZRPC_UTIL_RDRT_LEN                  28
 #define ZRPC_UTIL_IPV4_PREFIX_LEN_MAX       32
 #define ZRPC_UTIL_IPV6_LEN_MAX              51
+#define ZRPC_UTIL_IPV6_PREFIX_LEN_MAX      128
 
 /* for handling BGP pid */
 #define ZRPC_UTIL_PIDFILE_MASK 0644
@@ -62,12 +63,20 @@ typedef u_int8_t subsequent_address_family_t;
 #define ZRPC_MAX_ESI {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff}
 #define ZRPC_ESI_LEN 10
 
+#define ZRPC_MAC_LEN 6
+
+/* reuse AF_L2VPN define */
+#define AF_L2VPN 44
+
+struct zrpc_ethaddr {
+    u_char octet[ZRPC_MAC_LEN];
+} __attribute__ ((packed));
+
+
 struct zrpc_eth_segment_id
 {
   u_char val[ZRPC_ESI_LEN];
 };
-
-#define ZRPC_MAC_LEN 6
 
 /* Extended Communities attribute.  */
 struct zrpc_rdrt
@@ -96,6 +105,45 @@ struct zrpc_ipv4_prefix
   struct in_addr prefix PREFIX_GCC_ALIGN_ATTRIBUTES;
 };
 
+struct zrpc_ipv6_prefix
+{
+  u_char family;
+  u_char prefixlen;
+  struct in6_addr prefix PREFIX_GCC_ALIGN_ATTRIBUTES;
+};
+
+struct zrpc_macipaddr {
+  u_int32_t eth_tag_id;
+  u_int8_t mac_len;
+  struct zrpc_ethaddr mac;
+  u_int8_t ip_len;
+  union
+  {
+    struct in_addr in4;             /* AF_INET */
+    struct in6_addr in6;            /* AF_INET6 */
+  } ip __attribute__ ((packed));
+};
+
+struct zrpc_prefix
+{
+  u_char family;
+  u_char prefixlen;
+  union 
+  {
+    u_char prefix;
+    struct in_addr prefix4;
+    struct in6_addr prefix6;
+    struct zrpc_macipaddr prefix_macip;      /* AF_L2VPN */
+    struct zrpc_macipaddr prefix_ipvrf;      /* AF_L2VPN */
+  } u __attribute__ ((aligned (8)));
+};
+#define ZRPC_L2VPN_PREFIX_HAS_IPV4(p)  ((p)->u.prefix_macip.ip_len == ZRPC_UTIL_IPV4_PREFIX_LEN_MAX)
+#define ZRPC_L2VPN_PREFIX_HAS_IPV6(p)  ((p)->u.prefix_macip.ip_len == ZRPC_UTIL_IPV6_PREFIX_LEN_MAX)
+#define ZRPC_L2VPN_PREFIX_HAS_NOIP(p)  ((p)->u.prefix_macip.ip_len == 0)
+
+#define ZRPC_L2VPN_NOIP_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 2 /*mac len + ip len*/) * 8)
+#define ZRPC_L2VPN_IPV4_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 4 /*IP address*/ + 2 /*mac len + ip len*/) * 8)
+#define ZRPC_L2VPN_IPV6_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 16 /*IP address*/ + 2 /*mac len + ip len*/) * 8)
 
 extern struct zrpc_rdrt *zrpc_util_append_rdrt_to_list (u_char *, struct zrpc_rdrt *); 
 extern int zrpc_util_str2rd_prefix (char *buf, struct zrpc_rd_prefix *rd_p);

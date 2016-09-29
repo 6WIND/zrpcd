@@ -858,8 +858,9 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   /* prepare route entry */
   memset(&inst, 0, sizeof(struct bgp_api_route));
   inst.label = l3label;
+  inst.l2label = l2label;
+  inst.prefix.family = AF_INET;
   inet_aton (nexthop, &inst.nexthop);
-  zrpc_util_str2ipv4_prefix(prefix,&inst.prefix);
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
       afi = ADDRESS_FAMILY_L2VPN;
@@ -878,9 +879,37 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           goto error;
         }
       inst.mac_router = strdup(routermac);
+      if (macaddress && zrpc_util_str2mac (macaddress, NULL) != 0)
+        {
+          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
+          inst.prefix.family = AF_L2VPN;
+          inst.prefix.prefixlen = ZRPC_L2VPN_IPV4_PREFIX_LEN;
+          m->eth_tag_id = ethtag;
+          zrpc_util_str2mac(macaddress, (char*) &m->mac);
+          if (strncmp(prefix, "0.0.0.0/0", 9))
+            {
+              struct zrpc_ipv4_prefix dummy;
+
+              zrpc_util_str2ipv4_prefix(prefix,&dummy);
+              if (dummy.prefixlen != 0 && dummy.prefixlen != 32)
+                {
+                  *_return = BGP_ERR_PARAM;
+                   ret = FALSE;
+                   goto error;
+                }
+              memcpy(&m->ip.in4, &dummy.prefix, sizeof(struct in_addr));
+              m->ip_len = 32;
+            }
+          else
+            m->ip_len = 0;
+          m->mac_len = ZRPC_MAC_LEN * 8;
+        }
+      else
+        zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
     }
   else
     {
+      zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
       afi = ADDRESS_FAMILY_IP;
     }
   capn_init_malloc(&rc);
@@ -901,14 +930,14 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   if(IS_ZRPC_DEBUG)
     {
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
-        zrpc_log ("pushRoute(prefix %s, nexthop %s, rd %s, label %d esi %s, ethtag %ld, routermac %s)",
-                  prefix, nexthop, rd, l3label, esi, ethtag, routermac);
+        zrpc_log ("pushRoute(prefix %s, nexthop %s, rd %s, l3label %d, l2label %d,"
+                    " esi %s, ethtag %d, routermac %s, macaddress %s, enc_type %d) OK",
+                    prefix, nexthop, rd, l3label, l2label, esi, ethtag,
+                    routermac, macaddress, enc_type);
       else
         zrpc_log ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) OK",
                   prefix, nexthop, rd, l3label);
     }
-  capn_free(&rc);
-
   if (inst.esi)
     free(inst.esi);
   if (inst.mac_router)
@@ -960,8 +989,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
     }
   /* prepare route entry for AFI=IP */
   memset(&inst, 0, sizeof(struct bgp_api_route));
-  zrpc_util_str2ipv4_prefix(prefix,&inst.prefix);
-
+  inst.prefix.family = AF_INET;
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
       afi = ADDRESS_FAMILY_L2VPN;
@@ -971,12 +999,34 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           return FALSE;
         }
       inst.esi = strdup(esi);
-      inst.ethtag = (uint32_t) ethtag;
-      /* detect Auto Discovery and then check parameters coherency */
+      inst.ethtag = ethtag;
+      if (macaddress && zrpc_util_str2mac (macaddress, NULL) != 0)
+        {
+          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
+          inst.prefix.family = AF_L2VPN;
+          inst.prefix.prefixlen = ZRPC_L2VPN_IPV4_PREFIX_LEN;
+          m->eth_tag_id = ethtag;
+          zrpc_util_str2mac(macaddress, (char*) &m->mac);
+          if (strncmp(prefix, "0.0.0.0/0", 9))
+            {
+              struct zrpc_ipv4_prefix dummy;
+
+              zrpc_util_str2ipv4_prefix(prefix,&dummy);
+              memcpy(&m->ip.in4, &dummy.prefix, sizeof(struct in_addr));
+              m->ip_len = 32;
+            }
+          else
+            m->ip_len = 0;
+          m->mac_len = ZRPC_MAC_LEN * 8;
+        }
+      else
+        zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
+      afi = AFI_L2VPN;
     }
   else
     {
-      afi = ADDRESS_FAMILY_IP;
+      afi = AFI_IP;
+      zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
     }
 
   capn_init_malloc(&rc);
@@ -995,8 +1045,13 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   else
     {
       if(IS_ZRPC_DEBUG)
+        zrpc_log ("withdrawRoute(prefix %s, rd %s,"
+                  " esi %s, ethtag %d, macaddress %s) OK",
+                  prefix, rd, esi, ethtag, macaddress);
+      else
         zrpc_log ("withdrawRoute(prefix %s, rd %s) OK", prefix, rd);
     }
+  free(inst.esi);
   capn_free(&rc);
   return ret;
 }
@@ -1618,6 +1673,70 @@ instance_bgp_configurator_handler_enable_graceful_restart (BgpConfiguratorIf *if
   return TRUE;
 }
 
+/* fill in upd structure, from inst_route */
+static void get_update_entry_from_context( struct bgp_api_route *inst_route,
+                                    struct bgp_api_route *inst_multipath,
+                                    Update *upd)
+{
+  char rdstr[ZRPC_UTIL_RDRT_LEN];
+
+  upd->type = BGP_RT_ADD;
+  upd->macaddress = NULL;
+  if (inst_route->prefix.family == AF_INET)
+    {
+      upd->prefix = g_strdup(inet_ntop(AF_INET, &inst_route->prefix.u.prefix4, rdstr, ZRPC_UTIL_RDRT_LEN));
+      upd->prefixlen = inst_route->prefix.prefixlen;
+    }
+  else if (inst_route->prefix.family == AF_INET6)
+    {
+      upd->prefix = g_strdup(inet_ntop(AF_INET6, &inst_route->prefix.u.prefix6, rdstr, ZRPC_UTIL_RDRT_LEN));
+      upd->prefixlen = inst_route->prefix.prefixlen;
+    }
+  else if (inst_route->prefix.family == AF_L2VPN)
+    {
+      if (ZRPC_L2VPN_PREFIX_HAS_IPV4(&(inst_route->prefix)))
+        {
+          upd->prefix = g_strdup(inet_ntop (AF_INET, &(inst_route->prefix.u.prefix_macip.ip.in4), rdstr, ZRPC_UTIL_RDRT_LEN));
+          upd->prefixlen = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+        }
+      else if (ZRPC_L2VPN_PREFIX_HAS_IPV6(&(inst_route->prefix)))
+        {
+          upd->prefix = g_strdup(inet_ntop (AF_INET6, &(inst_route->prefix.u.prefix_macip.ip.in6), rdstr, ZRPC_UTIL_RDRT_LEN));
+          upd->prefixlen = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
+        }
+      else
+        {
+          upd->prefix = NULL;
+          upd->prefixlen = 0;
+        }
+      upd->macaddress = g_strdup(zrpc_util_mac2str((char*) &inst_route->prefix.u.prefix_macip.mac));
+    }
+  if(inst_multipath)
+    {
+      upd->nexthop = g_strdup(inet_ntop(AF_INET, &(inst_multipath->nexthop), rdstr, ZRPC_UTIL_RDRT_LEN));
+      upd->l3label = inst_multipath->label;
+      upd->l2label = inst_multipath->l2label;
+      upd->ethtag = inst_multipath->ethtag;
+      if(inst_multipath->esi)
+        upd->esi = g_strdup(inst_multipath->esi);
+      if(inst_multipath->mac_router)
+        upd->routermac = g_strdup(inst_multipath->mac_router);
+    }
+  else
+    {
+      upd->nexthop = g_strdup(inet_ntop(AF_INET, &(inst_route->nexthop), rdstr, ZRPC_UTIL_RDRT_LEN));
+      upd->l3label = inst_route->label;
+      upd->l2label = inst_route->l2label;
+      upd->ethtag = inst_route->ethtag;
+      if(inst_route->esi)
+        upd->esi = g_strdup(inst_route->esi);
+      if(inst_route->mac_router)
+        upd->routermac = g_strdup(inst_route->mac_router);
+
+    }
+  return;
+}
+
 /* disable Graceful Restart for BGP Router */
 gboolean
 instance_bgp_configurator_handler_disable_graceful_restart (BgpConfiguratorIf *iface, gint32* _return, GError **error)
@@ -1625,8 +1744,8 @@ instance_bgp_configurator_handler_disable_graceful_restart (BgpConfiguratorIf *i
   return instance_bgp_configurator_handler_enable_graceful_restart(iface, _return, 0, error);
 }
 
-struct tbliter_v4 *prev_iter_table_ptr = NULL;
-struct tbliter_v4 prev_iter_table_entry;
+struct zrpc_prefix *prev_iter_table_ptr = NULL;
+struct zrpc_prefix prev_iter_table_entry;
 gboolean
 instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes ** _return, const protocol_type p_type, 
                                               const gint32 optype, const gint32 winSize, GError **error)
@@ -1670,7 +1789,7 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
           ctxt->bgp_get_routes_list = entry2;
         }
       prev_iter_table_ptr = NULL;
-      memset(&prev_iter_table_entry, 0, sizeof(struct tbliter_v4));
+      memset(&prev_iter_table_entry, 0, sizeof(struct zrpc_prefix));
     }
   /* initialise context */
   route_updates_max = MAX(winSize/96, 1);
@@ -1712,6 +1831,7 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
       bgpvrf_nid = entry->bgpvrf_nid;
       do
         {
+          int prefix_addr_is_zero = 0;
            /* prepare afi context */
           capn_init_malloc(&rc);
           cs = capn_root(&rc).seg;
@@ -1765,13 +1885,29 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
             }
           qzcclient_qzcgetrep_free(grep_route);
           capn_free(&rc);
+          switch(inst_route.prefix.family)
+          {
+            case AF_INET:
+              prefix_addr_is_zero =  (inst_route.prefix.u.prefix4.s_addr == 0);
+              break;
+            case AF_INET6:
+              prefix_addr_is_zero =  (inst_route.prefix.u.prefix6.s6_addr == 0);
+              break;
+            case AF_L2VPN:
+              prefix_addr_is_zero =  (inst_route.prefix.u.prefix_macip.ip.in4.s_addr == 0);
+              break;
+            default:
+              /* bypass route entries with family not taken into account */
+              continue;
+              break;
+          }
           /* bypass route entries with zeroes */
-          if ( (inst_route.nexthop.s_addr == 0) &&              \
-               (inst_route.prefix.prefix.s_addr == 0) &&        \
-               (inst_route.prefix.prefixlen == 0) &&            \
-               (inst_route.label == 0) &&             \
-               (inst_route.ethtag == 0) &&                      \
-               (inst_route.esi == NULL) &&                      \
+          if ( (inst_route.nexthop.s_addr == 0) &&
+               (inst_route.prefix.prefixlen == 0) &&
+               (prefix_addr_is_zero) &&
+               (inst_route.label == 0) &&
+               (inst_route.ethtag == 0) &&
+               (inst_route.esi == NULL) &&
                (inst_route.mac_router == NULL))
             {
               if(prev_iter_table_ptr != NULL)
@@ -1786,30 +1922,17 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
             }
           /* add entry in update */
           upd = g_object_new (TYPE_UPDATE, NULL);
-          upd->type = BGP_RT_ADD;
-          upd->prefixlen = inst_route.prefix.prefixlen;
-          upd->prefix = g_strdup(inet_ntop(AF_INET, &(inst_route.prefix.prefix), rdstr, ZRPC_UTIL_RDRT_LEN));
-          upd->nexthop = g_strdup(inet_ntop(AF_INET, &(inst_route.nexthop), rdstr, ZRPC_UTIL_RDRT_LEN));
-          upd->l3label = inst_route.label;
-          upd->ethtag = inst_route.ethtag;
-          if(inst_route.esi)
-            upd->esi = g_strdup(inst_route.esi);
-          upd->macaddress = NULL;
-          if(inst_route.mac_router)
-            upd->routermac = g_strdup(inst_route.mac_router);
+          get_update_entry_from_context(&inst_route, NULL, upd);
           upd->rd = g_strdup(zrpc_util_rd_prefix2str(&(entry->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN));
           g_ptr_array_add((*_return)->updates, upd);
           route_updates++;
           if(inst_route.mac_router)
-            {
-              free(inst_route.mac_router);
-              inst_route.mac_router = NULL;
-            }
+            free(inst_route.mac_router);
+          inst_route.mac_router = NULL;
           if(inst_route.esi)
-            {
-              free(inst_route.esi);
-              inst_route.esi = NULL;
-            }
+            free(inst_route.esi);
+          inst_route.esi = NULL;
+
           /* multipath specific loop */
           while (mpath_iter_ptr)
             {
@@ -1848,44 +1971,43 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
               qzcclient_qzcgetrep_free(grep_multipath_route);
               capn_free(&rc);
 
+              switch(inst_route.prefix.family)
+              {
+                case AF_INET:
+                  prefix_addr_is_zero =  (inst_multipath_route.prefix.u.prefix4.s_addr == 0);
+                  break;
+                case AF_INET6:
+                  prefix_addr_is_zero =  (inst_multipath_route.prefix.u.prefix6.s6_addr == 0);
+                  break;
+                case AF_L2VPN:
+                  prefix_addr_is_zero =  (inst_multipath_route.prefix.u.prefix_macip.ip.in4.s_addr == 0);
+                  break;
+                default:
+                  continue;
+                  break;
+              }
               /* bypass route entries with zeroes */
-              if ( (inst_multipath_route.nexthop.s_addr == 0) &&              \
-                   (inst_multipath_route.prefix.prefix.s_addr == 0) &&        \
-                   (inst_multipath_route.prefix.prefixlen == 0) &&            \
-                   (inst_multipath_route.label == 0) && \
-                   (inst_multipath_route.ethtag == 0) &&        \
-                   (inst_multipath_route.esi == NULL) &&        \
+              if ( (inst_multipath_route.nexthop.s_addr == 0) &&
+                   (inst_multipath_route.prefix.prefixlen == 0) &&
+                   (prefix_addr_is_zero) &&
+                   (inst_multipath_route.label == 0) &&
+                   (inst_multipath_route.ethtag == 0) &&
+                   (inst_multipath_route.esi == NULL) &&
                    (inst_multipath_route.mac_router == NULL))
                 {
                   break;
                 }
               /* add entry in update */
               upd = g_object_new (TYPE_UPDATE, NULL);
-              upd->type = BGP_RT_ADD;
-              upd->prefixlen = inst_route.prefix.prefixlen; /* keep prefix from main loop */
-              upd->prefix = g_strdup(inet_ntop(AF_INET, &(inst_route.prefix.prefix), rdstr, ZRPC_UTIL_RDRT_LEN));
-              upd->nexthop = g_strdup(inet_ntop(AF_INET, &(inst_multipath_route.nexthop), rdstr, ZRPC_UTIL_RDRT_LEN));
-              upd->l3label = inst_multipath_route.label;
+              get_update_entry_from_context(&inst_route, &inst_multipath_route, upd);
               upd->rd = g_strdup(zrpc_util_rd_prefix2str(&(entry->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN));
-              upd->ethtag = inst_multipath_route.ethtag;
-              if(inst_multipath_route.esi)
-                {
-                upd->esi = g_strdup(inst_multipath_route.esi);
-                }
-              if(inst_multipath_route.mac_router)
-                upd->routermac = g_strdup(inst_multipath_route.mac_router);
               g_ptr_array_add((*_return)->updates, upd);
               route_updates++;
-              if(inst_multipath_route.mac_router)
-                {
-                  free(inst_multipath_route.mac_router);
-                  inst_multipath_route.mac_router = NULL;
-                }
-              if(inst_multipath_route.esi)
-                {
-                  free(inst_multipath_route.esi);
-                  inst_multipath_route.esi = NULL;
-                }
+              free(inst_multipath_route.mac_router);
+              inst_multipath_route.mac_router = NULL;
+              free(inst_multipath_route.esi);
+              inst_multipath_route.esi = NULL;
+
               if (!mpath_iter_ptr)
                 break; /* no more nexthop with MULTIPATH flag, go to next prefix */
             }

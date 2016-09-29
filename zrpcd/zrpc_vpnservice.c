@@ -178,6 +178,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
   if (s->announce != BGP_EVENT_SHUT)
     {
       gchar *esi;
+      gchar *macaddress = NULL;
+      gint32 ipprefixlen = 0;
 
       if(s->esi)
         {
@@ -189,32 +191,90 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       if (announce == TRUE)
         {
           char vrf_rd_str[ZRPC_UTIL_RDRT_LEN], pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
-          struct zrpc_ipv4_prefix *p = (struct zrpc_ipv4_prefix *)&(s->prefix);
+          struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
           gchar *mac_router;
+          char *pfx_str_p = &pfx_str[0];
 
           if(s->mac_router)
             mac_router = g_strdup((const gchar *)s->mac_router);
           else
             mac_router = NULL;
           zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
-          inet_ntop (p->family, &p->prefix, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+          if (p->family == AF_INET)
+            {
+              inet_ntop (p->family, &p->u.prefix4, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+              ipprefixlen = s->prefix.prefixlen;
+            }
+          else if (p->family == AF_INET6)
+            {
+              inet_ntop (p->family, &p->u.prefix6, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+              ipprefixlen = s->prefix.prefixlen;
+            }
+          else if (p->family == AF_L2VPN)
+            {
+              if (ZRPC_L2VPN_PREFIX_HAS_IPV4(p))
+                {
+                  inet_ntop (AF_INET, &p->u.prefix_macip.ip.in4, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+                  ipprefixlen = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+                }
+              else if (ZRPC_L2VPN_PREFIX_HAS_IPV6(p))
+                {
+                  inet_ntop (AF_INET6, &p->u.prefix_macip.ip.in6, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+                  ipprefixlen = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
+                }
+              else
+                {
+                  pfx_str_p = NULL;
+                  ipprefixlen = 0;
+                }
+              macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_macip.mac);
+            }
           zrpc_bgp_updater_on_update_push_route(s->esi?PROTOCOL_TYPE_PROTOCOL_EVPN:PROTOCOL_TYPE_PROTOCOL_L3VPN,
-                                                vrf_rd_str, pfx_str,
-                                                (const gint32)s->prefix.prefixlen, inet_ntoa(s->nexthop),
-                                                s->ethtag, esi, NULL, s->label, 0, mac_router);
+                                                vrf_rd_str, pfx_str_p,
+                                                (const gint32)ipprefixlen, inet_ntoa(s->nexthop),
+                                                s->ethtag, esi, macaddress, s->label, s->l2label, mac_router);
         }
       else
         {
           char vrf_rd_str[ZRPC_UTIL_RDRT_LEN], pfx_str[ZRPC_UTIL_IPV6_LEN_MAX], nh_str[ZRPC_UTIL_IPV6_LEN_MAX];
-          struct zrpc_ipv4_prefix *p = (struct zrpc_ipv4_prefix *)&(s->prefix);
+          struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
+          char *pfx_str_p = &pfx_str[0];
 
-          inet_ntop (p->family, &p->prefix, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+          if (p->family == AF_INET)
+            {
+              inet_ntop (p->family, &p->u.prefix4, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+              ipprefixlen = s->prefix.prefixlen;
+            }
+          else if (p->family == AF_INET6)
+            {
+              inet_ntop (p->family, &p->u.prefix6, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+              ipprefixlen = s->prefix.prefixlen;
+            }
+          else if (p->family == AF_L2VPN)
+            {
+              macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_macip.mac);
+              if (ZRPC_L2VPN_PREFIX_HAS_IPV4(p))
+                {
+                  inet_ntop (AF_INET, &p->u.prefix_macip.ip.in4, pfx_str_p, ZRPC_UTIL_IPV6_LEN_MAX);
+                  ipprefixlen = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+                }
+              else if (ZRPC_L2VPN_PREFIX_HAS_IPV6(p))
+                {
+                  inet_ntop (AF_INET6, &p->u.prefix_macip.ip.in6, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+                  ipprefixlen = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
+                }
+              else
+                {
+                  pfx_str_p = NULL;
+                  ipprefixlen = 0;
+                }
+            }
           zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
-          inet_ntop (p->family, &s->nexthop, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
+          inet_ntop (AF_INET, &s->nexthop, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
           zrpc_bgp_updater_on_update_withdraw_route (s->esi?PROTOCOL_TYPE_PROTOCOL_EVPN:PROTOCOL_TYPE_PROTOCOL_L3VPN,
-                                                     vrf_rd_str, pfx_str,
-                                                     (const gint32)s->prefix.prefixlen, nh_str,
-                                                     s->ethtag, esi, NULL, s->label, 0);
+                                                     vrf_rd_str, pfx_str_p,
+                                                     (const gint32)ipprefixlen, nh_str,
+                                                     s->ethtag, esi, macaddress, s->label, s->l2label);
 
         }
       if (s->esi)
@@ -229,7 +289,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       memset(t, 0, sizeof(struct bgp_event_shut));
       t->peer.s_addr = s->nexthop.s_addr;
       t->type = (uint8_t)s->label;
-      t->subtype = (uint8_t)s->prefix.prefix.s_addr;
+      t->subtype = (uint8_t)s->prefix.u.prefix4.s_addr;
       inet_ntop (AF_INET,&(t->peer), ip_str, ZRPC_UTIL_IPV6_LEN_MAX);
       zrpc_bgp_updater_on_notification_send_event(ip_str, t->type, t->subtype);
     }
