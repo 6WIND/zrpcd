@@ -10,6 +10,7 @@
 
 #include "zrpcd/zrpc_os_wrapper.h"
 #include "zrpcd/zrpc_util.h"
+#include "zrpcd/zrpc_bgp_capnp.h"
 
 #define ZRPC_LISTEN_PORT	 7644
 #define ZRPC_NOTIFICATION_PORT 6644
@@ -51,6 +52,7 @@ struct zrpc_vpnservice_cache_bgpvrf
   uint64_t bgpvrf_nid;
   struct zrpc_rd_prefix outbound_rd;
   struct zrpc_vpnservice_cache_bgpvrf *next;
+  bgp_layer_type_t ltype;
 };
 
 struct zrpc_vpnservice_cache_peer

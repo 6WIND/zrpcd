@@ -77,6 +77,11 @@ struct bgp
 
 };
 
+typedef enum
+{
+  ZRPC_BGP_LAYER_TYPE_2 = 1,
+  ZRPC_BGP_LAYER_TYPE_3 = 2
+} bgp_layer_type_t;
 
 struct bgp_vrf
 {
@@ -96,6 +101,8 @@ struct bgp_vrf
   /* maximum multipath entries for the VRF */
   uint32_t max_mpath;
 
+  /* ZRPC_BGP_LAYER_TYPE_2 or TYPE_3 */
+  bgp_layer_type_t ltype;
 };
 
 struct bgp_event_vrf
@@ -215,7 +222,7 @@ capn_ptr qcapn_new_BGPAfiSafi(struct capn_segment *s);
 capn_ptr qcapn_new_VRFTableIter(struct capn_segment *s);
 void qcapn_VRFTableIter_read(struct tbliter_v4 *s, capn_ptr p);
 void qcapn_VRFTableIter_write(const struct tbliter_v4 *s, capn_ptr p);
-
+uint8_t qcapn_BGPVRF_get_layer_type(capn_ptr p);
 capn_ptr qcapn_new_BGPVRFRoute(struct capn_segment *s, uint8_t extend_by);
 void qcapn_BGPVRFRoute_read(struct bgp_api_route *s, capn_ptr p);
 void qcapn_BGPVRFRoute_write(const struct bgp_api_route *s, capn_ptr p);
