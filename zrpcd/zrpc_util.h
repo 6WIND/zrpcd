@@ -144,6 +144,8 @@ struct zrpc_prefix
 #define ZRPC_L2VPN_NOIP_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 2 /*mac len + ip len*/) * 8)
 #define ZRPC_L2VPN_IPV4_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 4 /*IP address*/ + 2 /*mac len + ip len*/) * 8)
 #define ZRPC_L2VPN_IPV6_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 16 /*IP address*/ + 2 /*mac len + ip len*/) * 8)
+#define ZRPC_L2VPN_PREFIX_ETHTAGLEN (8 * sizeof(u_int32_t))
+#define ZRPC_L2VPN_PREFIX_AD (8 * sizeof (struct zrpc_eth_segment_id) + ZRPC_L2VPN_PREFIX_ETHTAGLEN)
 
 extern struct zrpc_rdrt *zrpc_util_append_rdrt_to_list (u_char *, struct zrpc_rdrt *); 
 extern int zrpc_util_str2rd_prefix (char *buf, struct zrpc_rd_prefix *rd_p);

@@ -150,6 +150,8 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
 #define ERROR_BGP_PEER_NOTFOUND g_error_new(1, 4, "BGP Peer %s not configured", peerIp);
 #define ERROR_BGP_NO_ROUTES_FOUND g_error_new(1, 6, "BGP GetRoutes: no routes");
 #define ERROR_BGP_INVALID_MAXPATH g_error_new(1, 5, "BGP maxpaths: out of range value 0 < %d < 8", maxPath);
+#define ERROR_BGP_INVALID_AD g_error_new(1, 5, "BGP [Push/Withdraw]Route: invalid parameter for Auto Discovery");
+#define ERROR_BGP_INVALID_AD_PROCESSING g_error_new(1, 6, "BGP [Push/Withdraw]Route: error when processing Auto Discovery");
 
 
 /*
@@ -831,6 +833,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   struct capn rc;
   struct capn_segment *cs;
   int ret;
+  gboolean is_auto_discovery = FALSE;
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
@@ -860,7 +863,27 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   inst.label = l3label;
   inst.l2label = l2label;
   inst.prefix.family = AF_INET;
-  inet_aton (nexthop, &inst.nexthop);
+
+  /* detect Auto Discovery and then check parameters coherency */
+  is_auto_discovery = (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
+                      && (prefix == NULL)
+                      && (enc_type == ENCAP_TYPE_VXLAN);
+  if (!is_auto_discovery && !prefix)
+    {
+      *_return = BGP_ERR_PARAM;
+      ret = FALSE;
+      goto error;
+    }
+
+  if (nexthop)
+    inet_aton (nexthop, &inst.nexthop);
+  else
+    {
+      *_return = BGP_ERR_PARAM;
+      ret = FALSE;
+      goto error;
+    }
+
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
       afi = ADDRESS_FAMILY_L2VPN;
@@ -879,6 +902,28 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           goto error;
         }
       inst.mac_router = strdup(routermac);
+
+      if (is_auto_discovery)
+        {
+          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
+
+          /* ethtag must be 0 or MAX_ET */
+          if( ((ethtag != 0 && ethtag != BGP_ETHTAG_MAX_ET)
+              || (!esi) || (!rd) || (macaddress)
+              || ( ethtag == 0 && l2label == LBL_NO_LABEL)
+              || ( ethtag == BGP_ETHTAG_MAX_ET && l2label != LBL_NO_LABEL))
+              || l3label )
+            {
+              *_return = BGP_ERR_PARAM;
+              *error = ERROR_BGP_INVALID_AD;
+              ret = FALSE;
+              goto error;
+            }
+          inst.prefix.family = AF_L2VPN;
+          inst.prefix.prefixlen = ZRPC_L2VPN_PREFIX_AD;
+          m->eth_tag_id = ethtag;
+          goto inst_filled;
+        }
       if (macaddress && zrpc_util_str2mac (macaddress, NULL) != 0)
         {
           struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
@@ -912,6 +957,8 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
       zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
       afi = ADDRESS_FAMILY_IP;
     }
+
+inst_filled:
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
@@ -924,7 +971,11 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
                            3, &bgpvrfroute, &bgp_datatype_bgpvrfroute,  \
                            &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
   if(ret == 0)
-    *_return = BGP_ERR_FAILED;
+    {
+      *_return = BGP_ERR_FAILED;
+      if (is_auto_discovery)
+        *error = ERROR_BGP_INVALID_AD_PROCESSING;
+    }
   capn_free(&rc);
  error:
   if(IS_ZRPC_DEBUG)
@@ -964,6 +1015,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   struct capn rc;
   struct capn_segment *cs;
   int ret;
+  gboolean is_auto_discovery = FALSE;
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
@@ -990,6 +1042,16 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   /* prepare route entry for AFI=IP */
   memset(&inst, 0, sizeof(struct bgp_api_route));
   inst.prefix.family = AF_INET;
+
+  /* detect Auto Discovery and then check parameters coherency */
+  is_auto_discovery = (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN) && (prefix == NULL);
+  if (!is_auto_discovery && !prefix)
+  {
+    *_return = BGP_ERR_PARAM;
+    ret = FALSE;
+    goto error;
+  }
+
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
       afi = ADDRESS_FAMILY_L2VPN;
@@ -1000,6 +1062,26 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
         }
       inst.esi = strdup(esi);
       inst.ethtag = ethtag;
+      /* detect Auto Discovery and then check parameters coherency */
+      if (is_auto_discovery)
+        {
+          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
+
+          /* labels must be 0, ethtag must be 0 or MAX_ET */
+          if(( ethtag != 0 && ethtag != BGP_ETHTAG_MAX_ET)
+              || (!esi) || (!rd) || (macaddress))
+            {
+              *error = ERROR_BGP_INVALID_AD;
+              *_return = BGP_ERR_PARAM;
+              ret = FALSE;
+              goto error;
+            }
+          inst.prefix.family = AF_L2VPN;
+          inst.prefix.prefixlen = ZRPC_L2VPN_PREFIX_AD;
+          m->eth_tag_id = ethtag;
+          goto inst_filled;
+        }
+
       if (macaddress && zrpc_util_str2mac (macaddress, NULL) != 0)
         {
           struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
@@ -1021,7 +1103,6 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
         }
       else
         zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
-      afi = AFI_L2VPN;
     }
   else
     {
@@ -1029,6 +1110,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
       zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
     }
 
+inst_filled:
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
@@ -1041,18 +1123,24 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
                              &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
                              &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
   if(ret == 0)
-    *_return = BGP_ERR_FAILED;
-  else
     {
-      if(IS_ZRPC_DEBUG)
+      *_return = BGP_ERR_FAILED;
+      if (is_auto_discovery)
+        *error = ERROR_BGP_INVALID_AD_PROCESSING;
+    }
+  capn_free(&rc);
+
+error:
+  if(IS_ZRPC_DEBUG)
+    {
+      if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
         zrpc_log ("withdrawRoute(prefix %s, rd %s,"
-                  " esi %s, ethtag %d, macaddress %s) OK",
-                  prefix, rd, esi, ethtag, macaddress);
+        " esi %s, ethtag %d, macaddress %s) OK",
+        prefix, rd, esi, ethtag, macaddress);
       else
         zrpc_log ("withdrawRoute(prefix %s, rd %s) OK", prefix, rd);
     }
   free(inst.esi);
-  capn_free(&rc);
   return ret;
 }
 
