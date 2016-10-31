@@ -294,9 +294,11 @@ qzcclient_setelem (struct qzcclient_sock *sock, uint64_t *nid,
   struct QZCRequest req;
   struct QZCReply *rep;
   struct QZCSetReq sreq;
+  struct QZCSetRep *srep;
   int ret = 1;
 
   /* have to use  local capn_segment - otherwise segfault */
+  srep = ZRPC_CALLOC (sizeof (struct QZCSetRep));
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
 
@@ -318,6 +320,15 @@ qzcclient_setelem (struct qzcclient_sock *sock, uint64_t *nid,
     {
       ret = 0;
     }
+  else
+    {
+      read_QZCSetRep (srep, rep->set);
+      if (ret)
+        {
+          read_QZCSetRepReturnCode (&ret, srep->data);
+        }
+    }
+  ZRPC_FREE (srep);
   ZRPC_FREE(rep);
   capn_free(&rc);
   return ret;
@@ -459,7 +470,10 @@ qzcclient_unsetelem (struct qzcclient_sock *sock, uint64_t *nid, int elem, \
   struct QZCRequest req;
   struct QZCReply *rep;
   struct QZCSetReq sreq;
+  struct QZCSetRep *srep;
   int ret = 1;
+
+  srep = ZRPC_CALLOC (sizeof (struct QZCSetRep));
 
   /* have to use  local capn_segment - otherwise segfault */
   capn_init_malloc(&rc);
@@ -482,7 +496,13 @@ qzcclient_unsetelem (struct qzcclient_sock *sock, uint64_t *nid, int elem, \
     {
       ret = 0;
     }
+  read_QZCSetRep (srep, rep->set);
   ZRPC_FREE(rep);
+  if (ret)
+    {
+      read_QZCSetRepReturnCode (&ret, srep->data);
+    }
+  ZRPC_FREE (srep);
   capn_free(&rc);
   return ret;
 }
