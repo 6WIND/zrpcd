@@ -38,7 +38,7 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
   if(IS_ZRPC_DEBUG_NOTIFICATION)
   {
     char ethtag_str[20];
-    sprintf(ethtag_str,"ethtag %u", (unsigned int)ethtag);
+    sprintf(ethtag_str,"ethtag %ld", ethtag);
 
     zrpc_log ("onUpdatePushRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d, %s%s, %s%s, %s %s%s) sent %s",
               rd, prefix? prefix:"none", nexthop, l3label, l2label,
@@ -74,7 +74,7 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
   if(IS_ZRPC_DEBUG_NOTIFICATION)
     {
       char ethtag_str[20];
-      sprintf(ethtag_str,"ethtag %u", (unsigned int)ethtag);
+      sprintf(ethtag_str,"ethtag %ld", ethtag);
 
       zrpc_log ("onUpdateWithdrawRoute(rd %s, pfx %s/%d, nh %s, label %d, l2label %d, %s%s %s%s %s) sent %s", \
                 rd, prefix? prefix:"none", prefixlen, nexthop, l3label, l2label,
