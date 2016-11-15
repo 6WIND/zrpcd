@@ -34,9 +34,17 @@ static gboolean zrpc_transport_current_status = FALSE;
 
 static void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response)
 {
-  zrpc_transport_current_status = response;
   if(zrpc_monitor_retry_job_in_progress)
     return;
+  if (zrpc_transport_current_status != response)
+    {
+      if (IS_ZRPC_DEBUG_NOTIFICATION)
+        zrpc_log ("bgpUpdater check connection with %s:%u %s",
+                  tm->zrpc_notification_address,
+                  setup->zrpc_notification_port,
+                  response == TRUE?"OK":"NOK");
+    }
+  zrpc_transport_current_status = response;
   if(response == FALSE)
     {
       setup->bgp_update_retries++;
@@ -95,10 +103,6 @@ static int zrpc_vpnservice_setup_bgp_updater_client_retry (struct thread *thread
 
   setup = THREAD_ARG (thread);
   assert (setup);
-  if (IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_log("bgpUpdater try to connect to %s:%u",
-               tm->zrpc_notification_address,
-               setup->zrpc_notification_port);
   thrift_transport_close (setup->bgp_updater_transport->transport, &error);
   response = thrift_transport_open (setup->bgp_updater_transport->transport, &error);
   zrpc_monitor_retry_job_in_progress = 0;
@@ -122,21 +126,12 @@ static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thre
   if (ret == 0 ||
       (ret < 0 && errno != ENOTCONN))
     {
-        if (IS_ZRPC_DEBUG_NOTIFICATION)
-        zrpc_log("bgpUpdater check connection with %s:%u OK",
-                   tm->zrpc_notification_address,
-                   setup->zrpc_notification_port);
       zrpc_monitor_retry_job_in_progress = 0;
       zrpc_transport_check_response(setup, 1);
       return 0;
     }
   thrift_transport_close (setup->bgp_updater_transport->transport, &error);
   response = thrift_transport_open (setup->bgp_updater_transport->transport, &error);
-  if (IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_log("bgpUpdater check connection with %s:%u %s",
-               tm->zrpc_notification_address,
-               setup->zrpc_notification_port,
-               response==FALSE?"NOK":"OK");
   zrpc_monitor_retry_job_in_progress = 0;
   zrpc_transport_check_response(setup, response);
   return 0;
