@@ -1,0 +1,65 @@
+/* QZC Client
+ * Copyright (c) 2016 6WIND,
+ *
+ * This file is part of ZRPC daemon.
+ *
+ * See the LICENSE file.
+ */
+#ifndef _QZCCLIENT_H
+#define _QZCCLIENT_H
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <stddef.h>
+
+#include <zmq.h>
+#include "thread.h"
+#include "zrpcd/qzcclient.capnp.h"
+
+struct qzcclient_sock;
+
+void qzcclient_init(void);
+
+void qzcclient_close(struct qzcclient_sock *sock);
+
+capn_ptr 
+qzcclient_msg_to_notification(zmq_msg_t *msg, struct capn *rc);
+
+struct qzcclient_sock *qzcclient_connect (const char *url);
+struct qzcclient_sock *qzcclient_subscribe (struct thread_master *master, const char *url,
+                                void (*func)(void *arg, void *zmqsock, struct zmq_msg_t *msg));
+struct QZCReply *qzcclient_do(struct qzcclient_sock *sock,
+                              struct QZCRequest *req_ptr);
+uint64_t
+qzcclient_wkn(struct qzcclient_sock *sock, uint64_t *wkn);
+
+uint64_t
+qzcclient_createchild (struct qzcclient_sock *sock,
+                       uint64_t *nid, int elem,
+                       capn_ptr *p, uint64_t *dtypeid);
+
+int
+qzcclient_setelem (struct qzcclient_sock *sock, uint64_t *nid,
+                   int elem, capn_ptr *data, uint64_t *type_data,
+                   capn_ptr *ctxt, uint64_t *type_ctxt);
+
+int
+qzcclient_deletenode (struct qzcclient_sock *sock, uint64_t *nid);
+
+struct QZCGetRep *qzcclient_getelem (struct qzcclient_sock *sock, uint64_t *nid,\
+                                     int elem, \
+                                     capn_ptr *ctxt, uint64_t *ctxt_type,\
+                                     capn_ptr *iter, uint64_t *iter_type);
+
+int
+qzcclient_unsetelem (struct qzcclient_sock *sock, uint64_t *nid, int elem, \
+                     capn_ptr *data, uint64_t *type_data, \
+                     capn_ptr *ctxt, uint64_t *type_ctxt);
+
+void
+qzcclient_qzcreply_free(struct QZCReply *rep);
+
+void
+qzcclient_qzcgetrep_free(struct QZCGetRep *rep);
+
+#endif /* _QZCCLIENT_H */
