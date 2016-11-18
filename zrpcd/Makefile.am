@@ -14,12 +14,14 @@ sbin_PROGRAMS = zrpcd
 libzrpc_a_SOURCES = \
 	zrpcd.c zrpc_vpnservice.c zrpc_network.c \
 	bgp_configurator.c bgp_updater.c vpnservice_types.c \
-	zrpc_debug.c zrpc_bgp_configurator.c zrpc_bgp_updater.c
+	zrpc_debug.c zrpc_bgp_configurator.c zrpc_bgp_updater.c \
+	qzmqclient.c qzcclient.capnp.c
 
 noinst_HEADERS = \
 	bgp_configurator.h bgp_updater.h vpnservice_types.h zrpc_bgp_updater.h \
 	zrpc_bgp_configurator.h zrpc_bgp_updater.h zrpc_debug.h zrpc_memory.h \
-	zrpcd.h zrpc_network.h zrpc_thrift_wrapper.h zrpc_vpnservice.h
+	zrpcd.h zrpc_network.h zrpc_thrift_wrapper.h zrpc_vpnservice.h \
+	qzmqclient.h qzcclient.capnp.h
 
 zrpcd_SOURCES = \
 	zrpc_main.c $(libzrpc_a_SOURCES)
