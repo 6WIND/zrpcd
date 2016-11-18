@@ -8,9 +8,20 @@
 #ifndef _ZRPC_VPNSERVICE_H
 #define _ZRPC_VPNSERVICE_H
 
+#include "zrpcd/zrpc_os_wrapper.h"
+
 #define ZRPC_LISTEN_PORT	 7644
 #define ZRPC_NOTIFICATION_PORT 6644
 #define ZRPC_CLIENT_ADDRESS "0.0.0.0"
+
+#define ZMQ_SOCK "ipc:///tmp/qzc-vpn2bgp"
+#define ZMQ_NOTIFY "ipc:///tmp/qzc-notify"
+
+#define BGPD_ARGS_STRING_1  "-p"
+#define BGPD_ARGS_STRING_3  "-Z"
+
+#define BGPD_PATH_BGPD_PID "/opt/quagga/var/run/quagga/bgpd.pid"
+#define BGPD_PATH_QUAGGA   "/opt/quagga"
 
 struct zrpc_vpnservice_client
 {
@@ -20,6 +31,12 @@ struct zrpc_vpnservice_client
   ThriftProtocol *protocol;
   ThriftServer *server;
   ThriftSimpleServer *simple_server;
+};
+
+struct zrpc_vpnservice_bgp_context
+{
+  uint32_t asNumber;
+  gint32 proc;
 };
 
 struct zrpc_vpnservice
@@ -44,6 +61,19 @@ struct zrpc_vpnservice
 
   /* bgp context */
   struct zrpc_vpnservice_bgp_context *bgp_context;
+
+  /* CapnProto Path */
+  char      *zmq_sock;
+
+  /* CapnProto Subscribe Path */
+  char      *zmq_subscribe_sock;
+
+  /* BGPD binay execution path */
+  char     *bgpd_execution_path;
+
+  /* QZC internal contexts */
+  struct qzcclient_sock *qzc_sock;
+  struct qzcclient_sock *qzc_subscribe_sock;
 };
 
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup);
@@ -65,5 +95,10 @@ void zrpc_vpnservice_setup_client(struct zrpc_vpnservice_client *peer,\
                                      ThriftTransport *transport);
 
 void zrpc_vpnservice_terminate_client(struct zrpc_vpnservice_client *peer);
+void zrpc_vpnservice_terminate_qzc(struct zrpc_vpnservice *setup);
+void zrpc_vpnservice_setup_qzc(struct zrpc_vpnservice *setup);
+struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_vpnservice *setup);
+void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup);
+void zrpc_vpnservice_terminate_bgp_context(struct zrpc_vpnservice *setup);
 
 #endif /* _ZRPC_VPNSERVICE_H */

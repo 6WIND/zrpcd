@@ -72,6 +72,8 @@ zrpc_delete (struct zrpc *zrpc)
       ZRPC_FREE (peer);
     }
   zrpc->peer = NULL;
+  zrpc_vpnservice_terminate_bgp_context (zrpc->zrpc_vpnservice);
+  zrpc_vpnservice_terminate_qzc(zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate_thrift_bgp_updater_client (zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate_thrift_bgp_configurator_server (zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate(zrpc->zrpc_vpnservice);
@@ -111,6 +113,9 @@ void  zrpc_create_context (struct zrpc **zrpc_val)
 
   /* creation of thrift contexts - configurator and updater */
   zrpc_server_socket(zrpc);
+
+  /* creation of capnproto context - updater */
+  zrpc_vpnservice_setup_qzc(zrpc->zrpc_vpnservice);
 
   /* run bgp_configurator_server */ 
   if(zrpc_server_listen (zrpc) < 0)

@@ -17,17 +17,48 @@
 #include "zrpcd/zrpc_bgp_configurator.h"
 #include "zrpcd/zrpcd.h"
 #include "zrpcd/zrpc_debug.h"
+#include "zrpcd/zrpc_util.h"
+#include "zrpcd/qzmqclient.h"
+#include "zrpcd/qzcclient.h"
+#include "zrpcd/zrpc_bgp_capnp.h"
+#include "zrpcd/qzcclient.capnp.h"
+
+static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *msg);
+
+/* callback function for capnproto bgpupdater notifications */
+static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *message)
+{
+  return;
+}
+
+#define SBIN_DIR "/sbin"
 
 void zrpc_vpnservice_setup(struct zrpc_vpnservice *setup)
 {
+  char bgpd_location_path[128];
+  char *ptr = bgpd_location_path;
+
   setup->zrpc_listen_port = ZRPC_LISTEN_PORT;
   setup->zrpc_notification_port = ZRPC_NOTIFICATION_PORT;
+  setup->zmq_sock = ZRPC_STRDUP(ZMQ_SOCK);
+  setup->zmq_subscribe_sock = ZRPC_STRDUP(ZMQ_NOTIFY);
+  ptr+=sprintf(ptr, "%s", BGPD_PATH_QUAGGA);
+  ptr+=sprintf(ptr, "%s/bgpd",SBIN_DIR);
+  setup->bgpd_execution_path = ZRPC_STRDUP(bgpd_location_path);
 }
 
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup)
 {
+  if(!setup)
+    return;
   setup->zrpc_listen_port = 0;
   setup->zrpc_notification_port = 0;
+  ZRPC_FREE(setup->zmq_sock);
+  setup->zmq_sock = NULL;
+  ZRPC_FREE(setup->zmq_subscribe_sock);
+  setup->zmq_subscribe_sock = NULL;
+  ZRPC_FREE(setup->bgpd_execution_path);
+  setup->bgpd_execution_path = NULL;
 }
 
 void zrpc_vpnservice_terminate_thrift_bgp_updater_client (struct zrpc_vpnservice *setup)
@@ -46,6 +77,57 @@ void zrpc_vpnservice_terminate_thrift_bgp_updater_client (struct zrpc_vpnservice
   if(setup->bgp_updater_socket)
     g_object_unref(setup->bgp_updater_socket);
   setup->bgp_updater_socket = NULL;
+}
+
+void zrpc_vpnservice_terminate_qzc(struct zrpc_vpnservice *setup)
+{
+  if(!setup)
+    return;
+  if(setup->qzc_subscribe_sock)
+    qzcclient_close (setup->qzc_subscribe_sock);
+  setup->qzc_subscribe_sock = NULL;
+  if(setup->qzc_sock)
+      qzcclient_close (setup->qzc_sock);
+  setup->qzc_sock = NULL;
+
+  qzmqclient_finish();
+}
+
+void zrpc_vpnservice_setup_qzc(struct zrpc_vpnservice *setup)
+{
+  qzcclient_init ();
+  if(setup->zmq_subscribe_sock && setup->qzc_subscribe_sock == NULL )
+    setup->qzc_subscribe_sock = qzcclient_subscribe(tm->global, \
+                                                    setup->zmq_subscribe_sock, \
+                                                    zrpc_vpnservice_callback);
+}
+
+void zrpc_vpnservice_terminate_bgp_context(struct zrpc_vpnservice *setup)
+{
+  if(!setup->bgp_context)
+    return;
+  if(setup->bgp_context->proc)
+    {
+      zrpc_log ("sending SIGINT signal to Bgpd (%d)",setup->bgp_context->proc);
+      kill(setup->bgp_context->proc, SIGINT);
+      setup->bgp_context->proc = 0;
+    }
+  if(setup->bgp_context)
+    {
+      ZRPC_FREE(setup->bgp_context);
+      setup->bgp_context = NULL;
+    }
+  return;
+}
+
+void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup)
+{
+  setup->bgp_context=ZRPC_CALLOC( sizeof(struct zrpc_vpnservice_bgp_context));
+}
+
+struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_vpnservice *setup)
+{
+  return setup->bgp_context;
 }
 
 gboolean zrpc_vpnservice_setup_thrift_bgp_updater_client (struct zrpc_vpnservice *setup)
