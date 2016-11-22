@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_util.h"
-#include "version.h"
+#include "zrpcd/zrpc_debug.h"
 
 struct zrpc_rdrt *zrpc_util_append_rdrt_to_list (u_char *incoming_rdrt, struct zrpc_rdrt *rdrt)
 {
@@ -252,6 +252,7 @@ int zrpc_util_rd_prefix_cmp (struct zrpc_rd_prefix *rd_p_1,
   return 0;
 }
 
+#if 0
 /*
  * retrieve installation path where daemon
  * will be put. Default is /. 0 is returned.
@@ -297,3 +298,5 @@ int zrpc_cmd_get_path_prefix_dir(char *path, unsigned int size)
   ZRPC_FREE (cfg_args);
   return len;
 }
+#endif
+

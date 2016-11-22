@@ -84,6 +84,8 @@ extern int zrpc_util_rd_prefix_cmp (struct zrpc_rd_prefix *rd_p_1,
                                         struct zrpc_rd_prefix *rd_p_2);
 struct zrpc_rdrt *zrpc_util_rdrt_import (u_char *vals, int listsize);
 
+#if 0
 extern int zrpc_cmd_get_path_prefix_dir(char *path, unsigned int size);
+#endif
 
 #endif /* _QUAGGA_ZRPC_UTIL_H */
