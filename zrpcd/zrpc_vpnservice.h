@@ -24,6 +24,9 @@
 #define BGPD_PATH_BGPD_PID "/opt/quagga/var/run/quagga/bgpd.pid"
 #define BGPD_PATH_QUAGGA   "/opt/quagga"
 
+#define ZRPC_CONFIG_FILE   "zrpcd.conf"
+
+
 struct thread;
 
 struct zrpc_vpnservice_client

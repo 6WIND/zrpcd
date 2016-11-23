@@ -6,12 +6,16 @@
  * See the LICENSE file.
  */
 
+
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
 //#include <getopt.h>
 
 #include "thread.h"
+#include "vector.h"
+#include "vty.h"
+#include "command.h"
 
 #include "zrpcd/zrpc_debug.h"
 #include "zrpcd/zrpcd.h"
@@ -27,6 +31,10 @@ static void zrpc_exit (int);
 static void zrpc_sighup (void);
 static void zrpc_sigint (void);
 static void zrpc_sigpipe (void);
+
+/* VTY port number and address.  */
+int vty_port = ZRPC_VTY_PORT;
+char *vty_addr = NULL;
 
 /* Help information display. */
 static void
@@ -54,6 +62,7 @@ static void  zrpc_sighup (void)
 
   /* Terminate all thread. */
   zrpc_terminate ();
+  vty_reset ();
   zrpc_log ("zrpcd restarting!");
 
   /* Try to return to normal operation. */
@@ -104,6 +113,9 @@ zrpc_exit (int status)
       tm->zrpc = NULL;
     }
   
+  cmd_terminate ();
+  vty_terminate ();
+
   /* reverse zrpc_global_init */
   if (tm->global)
     thread_master_free (tm->global);
@@ -170,9 +182,20 @@ main (int argc, char **argv)
   if (signal(SIGPIPE, zrpc_sig_handler) == SIG_ERR)
     zrpc_log("can't catch SIGPIPE");
 
+  cmd_init (1);
+  memory_init ();
+  vty_init (tm->global);
+
+  host.password = ZRPC_STRDUP ("zebra");
+  host.name = ZRPC_STRDUP ("zrpcd");
+
   /* BGP debug initialisation */
   zrpc_debug_init ();
 
+  /* Create VTY's socket */
+  vty_serv_sock (vty_addr, vty_port, ZRPC_VTYSH_PATH);
+
+  /* Try to return to normal operation. */
   /* create listen context */
   zrpc_create_context (&zrpc);
   tm->zrpc = zrpc;
