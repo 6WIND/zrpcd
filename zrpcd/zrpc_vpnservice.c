@@ -165,6 +165,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       zrpc_transport_check_response(ctxt, client_ready);
       if(client_ready == FALSE)
         {
+          if (IS_ZRPC_DEBUG_NOTIFICATION)
+            zrpc_log ("bgp->sdnc message failed to be sent");
           ctxt->bgp_update_lost_msgs++;
           return;
         }
