@@ -696,8 +696,8 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
   bgp_bm_nid = qzcclient_wkn(ctxt->qzc_sock, &bgp_bm_wkn);
   zrpc_vpnservice_get_bgp_context(ctxt)->asNumber = (uint32_t) asNumber;
   if(IS_ZRPC_DEBUG)
-    zrpc_log ("startBgp. bgpd called (AS %u, proc %d, announceFbit %s)",
-              (uint32_t)asNumber, pid, announceFbit == true?"true":"false");
+    zrpc_log ("startBgp. bgpd called (AS %u, proc %d, .., stalepath %u, announceFbit %s)",
+              (uint32_t)asNumber, pid, stalepathTime, announceFbit == true?"true":"false");
   /* from bgp_master, create bgp and retrieve bgp as node identifier */
   {
     struct capn_ptr bgp;
@@ -759,13 +759,12 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
   if(IS_ZRPC_DEBUG)
     {
       if(ret)
-          zrpc_log ("startBgp(%u, %s, .., %s) OK",(uint32_t)asNumber, routerId,
-                  announceFbit == true?"true":"false");
+          zrpc_log ("startBgp(%u, %s, .., %u, %s) OK",(uint32_t)asNumber, routerId,
+                  stalepathTime, announceFbit == true?"true":"false");
       else
-        zrpc_log ("startBgp(%u, %s, .., %s) NOK",(uint32_t)asNumber, routerId,
-                  announceFbit == true?"true":"false");
+        zrpc_log ("startBgp(%u, %s, .., %u, %s) NOK",(uint32_t)asNumber, routerId,
+                  stalepathTime, announceFbit == true?"true":"false");
     }
-
  return ret;
 }
 
