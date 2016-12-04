@@ -27,6 +27,8 @@
 
 #define ZRPC_CONFIG_FILE   "zrpcd.conf"
 
+#define ZRPC_DEFAULT_LOG_FILE "/opt/quagga/var/log/quagga/zrpcd.init.log"
+#define ZRPC_DEFAULT_LOG_LEVEL "debugging"
 
 struct thread;
 
@@ -44,6 +46,8 @@ struct zrpc_vpnservice_bgp_context
 {
   uint32_t asNumber;
   gint32 proc;
+  char *logFile;
+  char *logLevel;
 };
 
 /* zrpc cache contexts */

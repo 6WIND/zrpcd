@@ -124,6 +124,12 @@ zrpc_bgp_set_multihops(struct zrpc_vpnservice *ctxt,  gint32* _return, const gch
                           const gint32 nHops, GError **error);
 
 
+static gboolean
+zrpc_bgp_set_log_config(struct zrpc_vpnservice *ctxt, 
+                           struct zrpc_vpnservice_bgp_context *bgp_ctxt,
+                           gint32* _return,  GError **error);
+
+
 /* The implementation of InstanceBgpConfiguratorHandler follows. */
 
 G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
@@ -525,6 +531,66 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
   return TRUE;
 }
 
+static gboolean
+zrpc_bgp_set_log_config(struct zrpc_vpnservice *ctxt,
+                           struct zrpc_vpnservice_bgp_context*bgp_ctxt,  
+                           gint32* _return,  GError **error)
+{
+  struct capn rc;
+  struct capn_segment *cs;
+  struct bgp inst;
+  struct QZCGetRep *grep;
+  struct capn_ptr bgp;
+
+  /* get bgp_master configuration */
+  grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+  if(grep == NULL)
+    {
+      *_return = BGP_ERR_FAILED;
+      return FALSE;
+    }
+  memset(&inst, 0, sizeof(struct bgp));
+  qcapn_BGP_read(&inst, grep->data);
+  qzcclient_qzcgetrep_free( grep);
+  /* update bgp configuration with logLevel and logText */
+  capn_init_malloc(&rc);
+  cs = capn_root(&rc).seg;
+  bgp = qcapn_new_BGP(cs);
+  /* set default stalepath time */
+  if (bgp_ctxt->logFile == NULL)
+    {
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+  if (inst.logLevel)
+    free ( inst.logLevel);
+  if (inst.logFile)
+    free ( inst.logFile);
+  if(bgp_ctxt->logLevel)
+    inst.logLevel = strdup (bgp_ctxt->logLevel);
+  else
+    inst.logLevel = NULL;
+  if(bgp_ctxt->logFile)
+    inst.logFile = strdup (bgp_ctxt->logFile);
+  qcapn_BGP_write(&inst, bgp);
+  qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 1,          \
+                     &bgp, &bgp_datatype_bgp, NULL, NULL);
+  if(IS_ZRPC_DEBUG)
+    zrpc_log ("setLogConfig(%s, %s) OK", 
+              bgp_ctxt->logFile,
+              bgp_ctxt->logLevel==NULL?"none":
+              bgp_ctxt->logLevel);
+  capn_free(&rc);
+  if (inst.notify_zmq_url)
+    free (inst.notify_zmq_url);
+  if (inst.logLevel)
+    free ( inst.logLevel);
+  if (inst.logFile)
+    free ( inst.logFile);
+  return TRUE;
+}
+
+
 /* 
  * Enable and change EBGP maximum number of hops for a given bgp neighbor 
  * If Peer is not configured, it returns an error
@@ -721,6 +787,13 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
         return FALSE;
       }
   }
+  if (zrpc_vpnservice_get_bgp_context(ctxt)->logFile == NULL &&
+      zrpc_vpnservice_get_bgp_context(ctxt)->logLevel == NULL)
+    {
+      zrpc_vpnservice_get_bgp_context(ctxt)->logFile = strdup (ZRPC_DEFAULT_LOG_FILE);
+      zrpc_vpnservice_get_bgp_context(ctxt)->logLevel = strdup (ZRPC_DEFAULT_LOG_LEVEL);
+    }
+    zrpc_bgp_set_log_config (ctxt, zrpc_vpnservice_get_bgp_context(ctxt), _return, error);
 
   /* from bgp_master, inject configuration, and send zmq message to BGP */
   {
@@ -1713,7 +1786,50 @@ gboolean
 instance_bgp_configurator_handler_set_log_config (BgpConfiguratorIf *iface, gint32* _return, const gchar * logFileName,
                                                   const gchar * logLevel, GError **error)
 {
-  return TRUE;
+  struct zrpc_vpnservice *ctxt = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt)
+    {
+      *_return = BGP_ERR_FAILED;
+      return FALSE;
+    }
+  if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL)
+    {
+      zrpc_vpnservice_setup_bgp_context(ctxt);
+    }
+  if (zrpc_vpnservice_get_bgp_context(ctxt)->logFile)
+    {
+      free (zrpc_vpnservice_get_bgp_context(ctxt)->logFile);
+      zrpc_vpnservice_get_bgp_context(ctxt)->logFile = NULL;
+    }
+  if (zrpc_vpnservice_get_bgp_context(ctxt)->logLevel)
+    {
+      free (zrpc_vpnservice_get_bgp_context(ctxt)->logLevel);
+      zrpc_vpnservice_get_bgp_context(ctxt)->logLevel = NULL;
+    }
+  if (logFileName)
+    {
+      zrpc_vpnservice_get_bgp_context(ctxt)->logFile = strdup ( logFileName);
+    }
+  else
+    {
+      zrpc_vpnservice_get_bgp_context(ctxt)->logFile = strdup ( ZRPC_DEFAULT_LOG_FILE);
+    }
+  if (logLevel)
+    {
+      zrpc_vpnservice_get_bgp_context(ctxt)->logLevel = strdup ( logLevel);
+    }
+  else
+    {
+      zrpc_vpnservice_get_bgp_context(ctxt)->logLevel = strdup ( ZRPC_DEFAULT_LOG_LEVEL);
+    }
+  /* config stored, but not sent to BGP. silently return */
+  if (zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+    {
+      return TRUE;
+    }
+  return zrpc_bgp_set_log_config (ctxt, zrpc_vpnservice_get_bgp_context(ctxt), _return, error);
 }
 
 /*
@@ -1771,6 +1887,10 @@ instance_bgp_configurator_handler_enable_graceful_restart (BgpConfiguratorIf *if
     ZRPC_FREE (inst.name);
   if (inst.notify_zmq_url)
     ZRPC_FREE (inst.notify_zmq_url);
+  if (inst.logFile)
+    ZRPC_FREE (inst.logFile);
+  if (inst.logLevel)
+    ZRPC_FREE (inst.logLevel);
   return TRUE;
 }
 
