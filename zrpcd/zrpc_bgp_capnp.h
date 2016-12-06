@@ -125,6 +125,10 @@ struct bgp_api_route
   struct zrpc_ipv4_prefix prefix;
   struct in_addr nexthop;
   uint32_t label;
+  uint32_t ethtag;
+  uint32_t l2label;
+  char *esi;
+  char *mac_router;
 };
 
 /* BGP neighbor structure. */
@@ -192,7 +196,7 @@ struct peer
 #define BGP_DEFAULT_RESTART_TIME               120
 #define BGP_DEFAULT_STALEPATH_TIME             360
 
-#define  CAPN_BGPVRF_ROUTE_DEF_SIZE  8
+#define  CAPN_BGPVRF_ROUTE_DEF_SIZE  12
 
 
 capn_ptr qcapn_new_BGP(struct capn_segment *s);

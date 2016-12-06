@@ -304,13 +304,21 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  if(afi != AF_AFI_AFI_IP)
+  if (afi == AF_AFI_AFI_IP)
+    af = ADDRESS_FAMILY_IP;
+  else if (afi == AF_AFI_AFI_L2VPN)
+    af = ADDRESS_FAMILY_L2VPN;
+  else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  if(safi != AF_SAFI_SAFI_MPLS_VPN)
+  if (safi == AF_SAFI_SAFI_MPLS_VPN)
+    saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+  else if (safi == AF_SAFI_SAFI_EVPN)
+    saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+  else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
       *_return = BGP_ERR_PARAM;
@@ -327,8 +335,6 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   afisafi_ctxt = qcapn_new_AfiSafiKey(cs);
-  af = ADDRESS_FAMILY_IP;
-  saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
   capn_write8(afisafi_ctxt, 0, af);
   capn_write8(afisafi_ctxt, 1, saf);
   /* retrieve peer context */
@@ -403,13 +409,21 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  if(afi != AF_AFI_AFI_IP)
+  if (afi == AF_AFI_AFI_IP)
+    af = ADDRESS_FAMILY_IP;
+  else if (afi == AF_AFI_AFI_L2VPN)
+    af = ADDRESS_FAMILY_L2VPN;
+  else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  if(safi != AF_SAFI_SAFI_MPLS_VPN)
+  if (safi == AF_SAFI_SAFI_MPLS_VPN)
+    saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+  else if (safi == AF_SAFI_SAFI_EVPN)
+    saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+  else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
       *_return = BGP_ERR_PARAM;
@@ -426,8 +440,6 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   afisafi_ctxt = qcapn_new_AfiSafiKey(cs);
-  af = ADDRESS_FAMILY_IP;
-  saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
   capn_write8(afisafi_ctxt, 0, af);
   capn_write8(afisafi_ctxt, 1, saf);
   /* retrieve peer context */
@@ -777,7 +789,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
-  address_family_t afi = ADDRESS_FAMILY_IP;
+  address_family_t afi;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
   struct capn rc;
@@ -807,11 +819,34 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  /* prepare route entry for AFI=IP */
+  /* prepare route entry */
   memset(&inst, 0, sizeof(struct bgp_api_route));
   inst.label = l3label;
   inet_aton (nexthop, &inst.nexthop);
   zrpc_util_str2ipv4_prefix(prefix,&inst.prefix);
+  if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
+    {
+      afi = ADDRESS_FAMILY_L2VPN;
+      inst.ethtag = (uint32_t ) ethtag;
+      if( !esi || zrpc_util_str2esi (esi, NULL) == 0)
+        {
+          *_return = BGP_ERR_PARAM;
+          return FALSE;
+        }
+      inst.esi = strdup(esi);
+
+      if( !routermac || zrpc_util_str2mac (routermac, NULL) == 0)
+        {
+          *_return = BGP_ERR_PARAM;
+          ret = FALSE;
+          goto error;
+        }
+      inst.mac_router = strdup(routermac);
+    }
+  else
+    {
+      afi = ADDRESS_FAMILY_IP;
+    }
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
@@ -826,14 +861,22 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   if(ret == 0)
     *_return = BGP_ERR_FAILED;
   capn_free(&rc);
-
-if(IS_ZRPC_DEBUG)
+ error:
+  if(IS_ZRPC_DEBUG)
     {
-      if(IS_ZRPC_DEBUG)
+      if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
+        zrpc_log ("pushRoute(prefix %s, nexthop %s, rd %s, label %d esi %s, ethtag %ld, routermac %s)",
+                  prefix, nexthop, rd, l3label, esi, ethtag, routermac);
+      else
         zrpc_log ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) OK",
                   prefix, nexthop, rd, l3label);
     }
   capn_free(&rc);
+
+  if (inst.esi)
+    free(inst.esi);
+  if (inst.mac_router)
+    free(inst.mac_router);
   return ret;
 }
 
@@ -850,7 +893,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
-  address_family_t afi = ADDRESS_FAMILY_IP;
+  address_family_t afi;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
   struct capn rc;
@@ -882,6 +925,24 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   /* prepare route entry for AFI=IP */
   memset(&inst, 0, sizeof(struct bgp_api_route));
   zrpc_util_str2ipv4_prefix(prefix,&inst.prefix);
+
+  if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
+    {
+      afi = ADDRESS_FAMILY_L2VPN;
+      if( !esi || zrpc_util_str2esi (esi,NULL) == 0)
+        {
+          *_return = BGP_ERR_PARAM;
+          return FALSE;
+        }
+      inst.esi = strdup(esi);
+      inst.ethtag = (uint32_t) ethtag;
+      /* detect Auto Discovery and then check parameters coherency */
+    }
+  else
+    {
+      afi = ADDRESS_FAMILY_IP;
+    }
+
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
@@ -1786,25 +1847,30 @@ zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_
       *error = ERROR_BGP_AS_NOT_STARTED;
       return FALSE;
     }
-  if(afi != AF_AFI_AFI_IP)
+  if (afi == AF_AFI_AFI_IP)
+    af = ADDRESS_FAMILY_IP;
+  else if (afi == AF_AFI_AFI_L2VPN)
+    af = ADDRESS_FAMILY_L2VPN;
+  else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  if(safi != AF_SAFI_SAFI_MPLS_VPN)
+  if (safi == AF_SAFI_SAFI_MPLS_VPN)
+    saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+  else if (safi == AF_SAFI_SAFI_EVPN)
+    saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+  else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-
   /* prepare afisafi context */
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   afisafi_ctxt = qcapn_new_AfiSafiKey(cs);
-  af = AFI_IP;
-  saf = SAFI_MPLS_VPN;
   capn_write8(afisafi_ctxt, 0, af);
   capn_write8(afisafi_ctxt, 1, saf);
   /* retrieve bgp context */
