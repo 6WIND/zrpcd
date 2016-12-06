@@ -48,6 +48,23 @@ typedef enum {
 #define SUBSEQUENT_ADDRESS_FAMILY_MAX                  5
 typedef u_int8_t subsequent_address_family_t;
 
+/* value of first byte of ESI */
+#define ZRPC_ESI_TYPE_ARBITRARY 0 /* */
+#define ZRPC_ESI_TYPE_LACP      1 /* <> */
+#define ZRPC_ESI_TYPE_BRIDGE    2 /* <Root bridge Mac-6B>:<Root Br Priority-2B>:00 */
+#define ZRPC_ESI_TYPE_MAC       3 /* <Syst Mac Add-6B>:<Local Discriminator Value-3B> */
+#define ZRPC_ESI_TYPE_ROUTER    4 /* <RouterId-4B>:<Local Discriminator Value-4B> */
+#define ZRPC_ESI_TYPE_AS        5 /* <AS-4B>:<Local Discriminator Value-4B> */
+#define ZRPC_MAX_ESI {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff}
+#define ZRPC_ESI_LEN 10
+
+struct zrpc_eth_segment_id
+{
+  u_char val[ZRPC_ESI_LEN];
+};
+
+#define ZRPC_MAC_LEN 6
+
 /* Extended Communities attribute.  */
 struct zrpc_rdrt
 {
@@ -91,5 +108,11 @@ struct zrpc_rdrt *zrpc_util_rdrt_import (u_char *vals, int listsize);
 extern int zrpc_cmd_get_path_prefix_dir(char *path, unsigned int size);
 #endif
 extern uint32_t zrpc_util_get_pid_output (const char *path);
+
+extern int zrpc_util_str2esi (const char *str, struct zrpc_eth_segment_id *id);
+extern int zrpc_util_str2mac (const char *str, char *mac);
+extern char *zrpc_util_esi2str (struct zrpc_eth_segment_id *id);
+extern char *zrpc_util_mac2str (char *mac);
+extern char *zrpc_util_ecom_mac2str(char *ecom_mac);
 
 #endif /* _QUAGGA_ZRPC_UTIL_H */
