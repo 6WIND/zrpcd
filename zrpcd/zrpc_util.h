@@ -41,10 +41,12 @@
 /* Address family numbers from RFC1700. */
 typedef enum {
   ADDRESS_FAMILY_IP  = 1,
+  ADDRESS_FAMILY_IPV6  = 2,
   ADDRESS_FAMILY_L2VPN = 4,
   ADDRESS_FAMILY_MAX  = 5,
 } address_family_t;
 
+#define SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST      6
 #define SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN             4
 #define SUBSEQUENT_ADDRESS_FAMILY_EVPN                 5
 #define SUBSEQUENT_ADDRESS_FAMILY_MAX                  6
