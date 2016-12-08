@@ -32,7 +32,7 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
-  response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, PROTOCOL_TYPE_PROTOCOL_L3VPN,
+  response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, p_type,
                                                           rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress, 
                                                           l3label, l2label, routermac, &error);
   if(IS_ZRPC_DEBUG_NOTIFICATION)
@@ -68,7 +68,7 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
-  response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, PROTOCOL_TYPE_PROTOCOL_L3VPN,
+  response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, p_type,
                                                          rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress,
                                                          l3label, l2label, &error);
   if(IS_ZRPC_DEBUG_NOTIFICATION)
