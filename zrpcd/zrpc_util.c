@@ -53,6 +53,7 @@ zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type)
   unsigned long as_val = 0;
   uint64_t vrf_val = 0;
   char buf_local[ZRPC_UTIL_RDRT_LEN];
+  struct in_addr addr_ipv4;
 
   /* bad length */
   if(strlen(buf) > ZRPC_UTIL_RDRT_LEN)
@@ -67,14 +68,18 @@ zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type)
       ptr++;
       cnt++;
     }
-  if(dot_presence)
-    return 0;
   /* extract as number */
   if(*ptr == ':')
     {
       strncpy(buf_local, buf, cnt);
       buf_local[cnt]='\0';
-      as_val = atol(buf_local);
+      if(dot_presence)
+        {
+          if(inet_pton(AF_INET, buf_local, &addr_ipv4))
+            as_val = ntohl(addr_ipv4.s_addr);
+        }
+      else
+        as_val = atol(buf_local);
     }
   /* search for vrf val */
   remaining_length = strlen(buf) - cnt;
@@ -93,7 +98,29 @@ zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type)
       buf_local[cnt]='\0';
       vrf_val = atoll(buf_local);
     }
-  if(as_val > 0xffff)
+  if(dot_presence)
+    {
+      /* RD_TYPE_IP */
+      if (type == ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET)
+        {
+          rd_rt[0]=1;
+          rd_rt[1]=0;
+        }
+      else
+        {
+          rd_rt[0]=0;
+          rd_rt[1]=1;
+        }
+      /* IP Address */
+      rd_rt[2]= (as_val & 0xff000000) >> 24;
+      rd_rt[3]= (as_val & 0x00ff0000) >> 16;
+      rd_rt[4]= (as_val & 0x0000ff00) >> 8;
+      rd_rt[5]= as_val & 0x000000ff;
+      /* vrf */
+      rd_rt[6]= (vrf_val & 0xff00) >> 8;
+      rd_rt[7]= vrf_val & 0xff;
+    }
+  else if(as_val > 0xffff)
     {
       /* RDRT_TYPE_AS4 */
       if (type == ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET)
@@ -210,7 +237,6 @@ extern char *zrpc_util_rd_prefix2str (struct zrpc_rd_prefix *rd_p,
 
   type = (u_int16_t)(pnt[0] << 8) + (u_int16_t) pnt[1];
   pnt+=2;
-
   if (type == RDRT_TYPE_AS)
     {
       uint16_t rd_as;
@@ -238,6 +264,19 @@ extern char *zrpc_util_rd_prefix2str (struct zrpc_rd_prefix *rd_p,
       rd_val |= (u_int16_t) *pnt;
 
       snprintf (buf, size, "%u:%d", rd_as, rd_val);
+      return buf;
+    }
+  else if (type == RDRT_TYPE_IP)
+    {
+      struct in_addr ip_add;
+      uint16_t rd_val;
+
+      memcpy (&ip_add, pnt, 4);
+      pnt+=4;
+      rd_val  = ((u_int16_t) *pnt++ << 8);
+      rd_val |= (u_int16_t) *pnt;
+
+      snprintf (buf, size, "%s:%d", inet_ntoa (ip_add), rd_val);
       return buf;
     }
   buf[0]='\0';
