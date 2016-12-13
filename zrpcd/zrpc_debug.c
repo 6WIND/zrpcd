@@ -311,3 +311,9 @@ zrpc_debug_set_log_file_with_level (char *logFileName, char *logLevel)
   log_file_filename = ZRPC_STRDUP (logFileName);
   
 }
+
+void
+zrpc_debug_configure_stdout (int on)
+{
+  log_stdout = on;
+}
