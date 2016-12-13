@@ -796,13 +796,7 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
         return FALSE;
       }
   }
-  if (zrpc_vpnservice_get_bgp_context(ctxt)->logFile == NULL &&
-      zrpc_vpnservice_get_bgp_context(ctxt)->logLevel == NULL)
-    {
-      zrpc_vpnservice_get_bgp_context(ctxt)->logFile = strdup (ZRPC_DEFAULT_LOG_FILE);
-      zrpc_vpnservice_get_bgp_context(ctxt)->logLevel = strdup (ZRPC_DEFAULT_LOG_LEVEL);
-    }
-    zrpc_bgp_set_log_config (ctxt, zrpc_vpnservice_get_bgp_context(ctxt), _return, error);
+  zrpc_bgp_set_log_config (ctxt, zrpc_vpnservice_get_bgp_context(ctxt), _return, error);
 
   /* from bgp_master, inject configuration, and send zmq message to BGP */
   {
@@ -1994,6 +1988,8 @@ instance_bgp_configurator_handler_set_log_config (BgpConfiguratorIf *iface, gint
   /* config stored, but not sent to BGP. silently return */
   if (zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
     {
+      /* configure log settings to qthrift daemon too */
+      zrpc_debug_set_log_file_with_level ((char *)logFileName, (char *)logLevel);
       return TRUE;
     }
   return zrpc_bgp_set_log_config (ctxt, zrpc_vpnservice_get_bgp_context(ctxt), _return, error);
