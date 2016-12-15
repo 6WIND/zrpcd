@@ -363,9 +363,9 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
       if(IS_ZRPC_DEBUG)
         {
           if(TRUE == value)
-            zrpc_log ("enableAddressFamily( %s, afi %d, safi %d) config OK", peerIp, afi, safi);
+            zrpc_info ("enableAddressFamily( %s, afi %d, safi %d) config OK", peerIp, afi, safi);
           else
-            zrpc_log ("disableAddressFamily( %s, afi %d, safi %d) config OK", peerIp, afi, safi);
+            zrpc_info ("disableAddressFamily( %s, afi %d, safi %d) config OK", peerIp, afi, safi);
         }
       return TRUE;
     }
@@ -412,9 +412,9 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
   if(IS_ZRPC_DEBUG)
     {
       if(TRUE == value)
-        zrpc_log ("enableAddressFamily( %s, afi %d, safi %d) OK", peerIp, afi, safi);
+        zrpc_info ("enableAddressFamily( %s, afi %d, safi %d) OK", peerIp, afi, safi);
       else
-        zrpc_log ("disableAddressFamily( %s, afi %d, safi %d) OK", peerIp, afi, safi);
+        zrpc_info ("disableAddressFamily( %s, afi %d, safi %d) OK", peerIp, afi, safi);
     }
   *_return = 0;
   capn_free(&rc);
@@ -520,10 +520,10 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
   if(IS_ZRPC_DEBUG)
     {
       if(TRUE == update)
-        zrpc_log ("enable%s for peer %s in af_flag[%d][%d] OK", zrpc_af_flag2str(value),
+        zrpc_info ("enable%s for peer %s in af_flag[%d][%d] OK", zrpc_af_flag2str(value),
                     peerIp, afi, safi);
       else
-        zrpc_log ("disable%s for peer %s in af_flag[%d][%d] OK", zrpc_af_flag2str(value),
+        zrpc_info ("disable%s for peer %s in af_flag[%d][%d] OK", zrpc_af_flag2str(value),
                     peerIp, afi, safi);
     }
   _return = 0;
@@ -576,7 +576,7 @@ zrpc_bgp_set_log_config(struct zrpc_vpnservice *ctxt,
   qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 1,          \
                      &bgp, &bgp_datatype_bgp, NULL, NULL);
   if(IS_ZRPC_DEBUG)
-    zrpc_log ("setLogConfig(%s, %s) OK", 
+    zrpc_info ("setLogConfig(%s, %s) OK", 
               bgp_ctxt->logFile,
               bgp_ctxt->logLevel==NULL?"none":
               bgp_ctxt->logLevel);
@@ -651,9 +651,9 @@ zrpc_bgp_set_multihops(struct zrpc_vpnservice *ctxt,  gint32* _return, const gch
       if(IS_ZRPC_DEBUG)
         {
           if(nHops == 0)
-            zrpc_log ("unsetEbgpMultiHop(%s) OK", peerIp);
+            zrpc_info ("unsetEbgpMultiHop(%s) OK", peerIp);
           else
-            zrpc_log ("setEbgpMultiHop(%s, %d) OK", peerIp, nHops);
+            zrpc_info ("setEbgpMultiHop(%s, %d) OK", peerIp, nHops);
         }
     }
   if (peer.host)
@@ -762,7 +762,7 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
   bgp_bm_nid = qzcclient_wkn(ctxt->qzc_sock, &bgp_bm_wkn);
   zrpc_vpnservice_get_bgp_context(ctxt)->asNumber = (uint32_t) asNumber;
   if(IS_ZRPC_DEBUG)
-    zrpc_log ("startBgp. bgpd called (AS %u, proc %d, .., stalepath %u, announceFbit %s)",
+    zrpc_info ("startBgp. bgpd called (AS %u, proc %d, .., stalepath %u, announceFbit %s)",
               (uint32_t)asNumber, pid, stalepathTime, announceFbit == true?"true":"false");
   /* from bgp_master, create bgp and retrieve bgp as node identifier */
   {
@@ -832,10 +832,10 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
   if(IS_ZRPC_DEBUG)
     {
       if(ret)
-          zrpc_log ("startBgp(%u, %s, .., %u, %s) OK",(uint32_t)asNumber, routerId,
+          zrpc_info ("startBgp(%u, %s, .., %u, %s) OK",(uint32_t)asNumber, routerId,
                   stalepathTime, announceFbit == true?"true":"false");
       else
-        zrpc_log ("startBgp(%u, %s, .., %u, %s) NOK",(uint32_t)asNumber, routerId,
+        zrpc_info ("startBgp(%u, %s, .., %u, %s) NOK",(uint32_t)asNumber, routerId,
                   stalepathTime, announceFbit == true?"true":"false");
     }
  return ret;
@@ -1053,12 +1053,12 @@ inst_filled:
   if(IS_ZRPC_DEBUG)
     {
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
-        zrpc_log ("pushRoute(prefix %s, nexthop %s, rd %s, l3label %d, l2label %d,"
+        zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, l3label %d, l2label %d,"
                     " esi %s, ethtag %d, routermac %s, macaddress %s, enc_type %d) OK",
                     prefix, nexthop, rd, l3label, l2label, esi, ethtag,
                     routermac, macaddress, enc_type);
       else
-        zrpc_log ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) OK",
+        zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) OK",
                   prefix, nexthop, rd, l3label);
     }
   if (inst.esi)
@@ -1206,11 +1206,11 @@ error:
   if(IS_ZRPC_DEBUG)
     {
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
-        zrpc_log ("withdrawRoute(prefix %s, rd %s,"
+        zrpc_info ("withdrawRoute(prefix %s, rd %s,"
         " esi %s, ethtag %d, macaddress %s) OK",
         prefix, rd, esi, ethtag, macaddress);
       else
-        zrpc_log ("withdrawRoute(prefix %s, rd %s) OK", prefix, rd);
+        zrpc_info ("withdrawRoute(prefix %s, rd %s) OK", prefix, rd);
     }
   free(inst.esi);
   return ret;
@@ -1257,7 +1257,7 @@ instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _re
   zrpc_vpnservice_setup_bgp_cache(ctxt);
   zrpc_vpnservice_setup_qzc(ctxt);
   if(IS_ZRPC_DEBUG)
-    zrpc_log ("stopBgp(AS %u) OK", asNumber);
+    zrpc_info ("stopBgp(AS %u) OK", asNumber);
   return TRUE;
 }
 
@@ -1317,7 +1317,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
       return FALSE;
     }
   if(IS_ZRPC_DEBUG)
-    zrpc_log ("createPeer(%s,%u) OK", routerId, asNumber);
+    zrpc_info ("createPeer(%s,%u) OK", routerId, asNumber);
   /* add entry peer in cache */
   entry = zrpc_bgp_configurator_find_peer(ctxt, routerId, _return, 1);
   if(entry == NULL)
@@ -1415,7 +1415,7 @@ instance_bgp_configurator_handler_delete_peer(BgpConfiguratorIf *iface, gint32* 
             entry_bgppeer_prev = entry_bgppeer;
         }
       if(IS_ZRPC_DEBUG)
-        zrpc_log ("deletePeer(%s) OK", peerIp);
+        zrpc_info ("deletePeer(%s) OK", peerIp);
       return TRUE;
     }
   return FALSE;
@@ -1496,7 +1496,7 @@ instance_bgp_configurator_handler_add_vrf(BgpConfiguratorIf *iface, gint32* _ret
       entry->next = ctxt->bgp_vrf_list;
       ctxt->bgp_vrf_list = entry;
       if(IS_ZRPC_DEBUG)
-        zrpc_log ("addVrf(%s) OK", rd);
+        zrpc_info ("addVrf(%s) OK", rd);
       /* max_mpath has been set in bgpd with a default value owned by bgpd itself
        * must get back this value before going further else max_mpath will be overwritten
        * by first bgpvrf read */
@@ -1622,7 +1622,7 @@ gboolean instance_bgp_configurator_handler_del_vrf(BgpConfiguratorIf *iface, gin
               ZRPC_FREE (entry_bgpvrf);
               if(IS_ZRPC_DEBUG)
                 {
-                  zrpc_log ("delVrf(%s) OK", rd);
+                  zrpc_info ("delVrf(%s) OK", rd);
                 }
               return TRUE;
             }
@@ -1706,9 +1706,9 @@ instance_bgp_configurator_handler_set_update_source (BgpConfiguratorIf *iface, g
       if(IS_ZRPC_DEBUG)
         {
           if(srcIp == 0)
-            zrpc_log ("unsetUpdateSource(%s) OK", peerIp);
+            zrpc_info ("unsetUpdateSource(%s) OK", peerIp);
           else
-            zrpc_log ("setUpdateSource(%s, %s) OK", peerIp, srcIp);
+            zrpc_info ("setUpdateSource(%s, %s) OK", peerIp, srcIp);
         }
     }
   if (peer.host)
@@ -2343,9 +2343,9 @@ zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_
     if(IS_ZRPC_DEBUG)
       {
         if(enable)
-          zrpc_log ("enableMultipath for afi:%d safi:%d OK", af, saf);
+          zrpc_info ("enableMultipath for afi:%d safi:%d OK", af, saf);
         else
-          zrpc_log ("disableMultipath for afi:%d safi:%d OK", af, saf);
+          zrpc_info ("disableMultipath for afi:%d safi:%d OK", af, saf);
       }
   }
 
@@ -2466,7 +2466,7 @@ instance_bgp_configurator_handler_multipaths(BgpConfiguratorIf *iface, gint32* _
   {
     if(IS_ZRPC_DEBUG)
       {
-        zrpc_log ("maximum path for VRF %s set to %d", rd, maxPath);
+        zrpc_info ("maximum path for VRF %s set to %d", rd, maxPath);
       }
   }
 
