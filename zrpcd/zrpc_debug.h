@@ -22,11 +22,14 @@
 #define IS_ZRPC_DEBUG_CACHE  (zrpc_debug & ZRPC_DEBUG_CACHE)
 
 extern void zrpc_log (const char *format, ...);
+extern void zrpc_info (const char *format, ...);
 
 extern unsigned long zrpc_debug;
 
 extern void zrpc_debug_init (void);
 extern void zrpc_debug_reset (void);
+extern void
+zrpc_debug_set_log_file_with_level (char *logFileName, char *logLevel);
 
 
 

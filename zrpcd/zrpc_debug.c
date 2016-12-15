@@ -12,12 +12,55 @@
 #include "vty.h"
 #include "command.h"
 
+#include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_debug.h"
 
 #define ZRPC_STR "ZRPC Information\n"
 
+typedef enum 
+{
+  ZRPC_LOG_LEVEL_EMERGENCIES = 0,
+  ZRPC_LOG_LEVEL_ALERTS,
+  ZRPC_LOG_LEVEL_CRITICAL,
+  ZRPC_LOG_LEVEL_ERRORS,
+  ZRPC_LOG_LEVEL_WARNINGS,
+  ZRPC_LOG_LEVEL_NOTIFICATIONS,
+  ZRPC_LOG_LEVEL_INFORMATIONAL,
+  ZRPC_LOG_LEVEL_DEBUG
+} zrpc_log_level_t;
+
+const char *zrpc_log_level_str[]={"emergencies",
+                            "alerts",
+                            "critical",
+                            "errors",
+                            "warnings",
+                            "notifications",
+                            "informational",
+                            "debugging"};
+
+unsigned int log_stdout = 1;
+unsigned int log_file = 0;
+FILE *log_file_fp = NULL;
+char *log_file_filename = NULL;
+zrpc_log_level_t log_level = ZRPC_LOG_LEVEL_DEBUG;
 /* For debug statement. */
 unsigned long zrpc_debug = 0;
+
+static zrpc_log_level_t
+zrpc_level_match(const char *s);
+
+
+static zrpc_log_level_t
+zrpc_level_match(const char *s)
+{
+  int level ;
+  
+  for ( level = 0 ; zrpc_log_level_str [level] != NULL ; level ++ )
+    if (!strncmp (s, zrpc_log_level_str[level], 3 ))
+      return level;
+  return ZRPC_LOG_LEVEL_DEBUG;
+}
+
 
 DEFUN (show_debugging_zrpc,
        show_debugging_zrpc_cmd,
@@ -202,6 +245,9 @@ zrpc_log(const char *format, ...)
   static char dest[1024];
   va_list argptr;
 
+  if (log_level < ZRPC_LOG_LEVEL_DEBUG)
+    return;
+
   time (&t);
   tm_info = localtime(&t);
   strftime(buffer, 26, "%Y/%m/%d %H:%M:%S", tm_info);
@@ -209,5 +255,60 @@ zrpc_log(const char *format, ...)
   va_start(argptr, format);
   vsprintf(dest, format, argptr);
   va_end(argptr);
-  fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
+
+  if (log_stdout)
+    fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
+  if (!log_file_fp)
+    return;
+  /* XXX TODO */
+}
+
+void
+zrpc_info(const char *format, ...)
+{
+  time_t t;
+  char buffer[50];
+  struct tm* tm_info;
+  static char dest[1024];
+  va_list argptr;
+
+  if (log_level < ZRPC_LOG_LEVEL_INFORMATIONAL)
+    return;
+
+  time (&t);
+  tm_info = localtime(&t);
+  strftime(buffer, 26, "%Y/%m/%d %H:%M:%S", tm_info);
+
+  va_start(argptr, format);
+  vsprintf(dest, format, argptr);
+  va_end(argptr);
+  if (log_stdout)
+    fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
+  if (!log_file_fp)
+    return;
+  /* XXX TODO */
+}
+
+void
+zrpc_debug_set_log_file_with_level (char *logFileName, char *logLevel)
+{
+  log_level = zrpc_level_match(logLevel);
+  mode_t oldumask;
+  
+  return; /* XXX to remove */
+  /* close previous file */
+  if (log_file_fp)
+    fclose (log_file_fp);
+  log_file_fp = NULL;
+  if (log_file_filename)
+    ZRPC_FREE (log_file_filename);
+
+  /* reopen */
+  oldumask = umask (0777 & ~LOGFILE_MASK);
+  log_file_fp = fopen (logFileName, "a");
+  umask(oldumask);
+  if (log_file_fp == NULL)
+    return ;
+  log_file_filename = ZRPC_STRDUP (logFileName);
+  
 }
