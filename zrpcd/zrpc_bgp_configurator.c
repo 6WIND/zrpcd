@@ -1824,6 +1824,8 @@ instance_bgp_configurator_handler_set_log_config (BgpConfiguratorIf *iface, gint
     {
       zrpc_vpnservice_get_bgp_context(ctxt)->logLevel = strdup ( ZRPC_DEFAULT_LOG_LEVEL);
     }
+  zrpc_debug_set_log_file_with_level (zrpc_vpnservice_get_bgp_context(ctxt)->logFile,
+                                      zrpc_vpnservice_get_bgp_context(ctxt)->logLevel);
   /* config stored, but not sent to BGP. silently return */
   if (zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
     {

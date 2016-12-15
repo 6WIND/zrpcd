@@ -313,6 +313,7 @@ void zrpc_vpnservice_setup(struct zrpc_vpnservice *setup)
   ptr+=sprintf(ptr, "%s", BGPD_PATH_QUAGGA);
   ptr+=sprintf(ptr, "%s/bgpd",SBIN_DIR);
   setup->bgpd_execution_path = ZRPC_STRDUP(bgpd_location_path);
+  zrpc_vpnservice_setup_bgp_context (setup);
 }
 
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup)
@@ -390,6 +391,8 @@ void zrpc_vpnservice_terminate_bgp_context(struct zrpc_vpnservice *setup)
 
 void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup)
 {
+  if (setup->bgp_context)
+    return;
   setup->bgp_context=ZRPC_CALLOC( sizeof(struct zrpc_vpnservice_bgp_context));
 }
 
