@@ -50,11 +50,12 @@ the [Thrift documentation](https://thrift.apache.org/docs/install/debian) is:
 
 Then, pursue the procedure:
 
+    touch NEWS README AUTHORS ChangeLog
     autoreconf -i
-    ./configure --without-qt4 --without-qt5 --without-csharp --without-java\
-    --without-erlang --without-nodejs --without-perl --without-python\
-    --without-php --without-php_extension --without-dart --without-ruby\
-    --without-haskell --without-go --without-haxe --without-d\
+    ./configure --without-qt4 --without-qt5 --without-csharp --without-java \
+    --without-erlang --without-nodejs --without-perl --without-python \
+    --without-php --without-php_extension --without-dart --without-ruby \
+    --without-haskell --without-go --without-haxe --without-d \
     --prefix=/opt/quagga
     make
     make install
@@ -64,7 +65,7 @@ Then, pursue the procedure:
 You will also need to have ZMQ. Here is compilation procedure for ZMQ.
 
     git clone https://github.com/zeromq/zeromq4-1.git
-    cd zeromq-4.1
+    cd zeromq4-1
     git checkout 56b71af22db3
     autoreconf -i
     ./configure --without-libsodium --prefix=/opt/quagga
@@ -82,13 +83,18 @@ Note also some updates from
 
 The following procedure is used:
 
-    git clone https://github.com/pguibert6WIND/ccapnproto.git
-    cd ccapnproto
+    git clone https://github.com/opensourcerouting/c-capnproto
+    cd c-capnproto
+    git checkout 332076e52257
+    ./configure --prefix=/opt/quagga --without-gtest
     make
     mkdir /opt/quagga/lib -p
     mkdir /opt/quagga/include/c-capnproto -p
     cp capn.h /opt/quagga/include/c-capnproto/.
-    cp libcapn* /opt/quagga/lib/.
+    cp .libs/libcapn.so.1.0.0 .libs/libcapn_c.so.1.0.0
+    ln -s .libs/libcapn_c.so.1.0.0 .libs/libcapn_c.so
+    cp .libs/libcapn.so.1.0.0 /opt/quagga/lib/libcapn_c.so.1.0.0
+    ln -s /opt/quagga/lib/libcapn_c.so.1.0.0 libcapn_c.so
 
 ### Dependency: Quagga
 
@@ -99,6 +105,7 @@ for quagga too in order to handle queries from ZRPC.
 That quagga code is at following location:
 
      git clone https://github.com/6WIND/quagga.git
+     git checkout quagga_110_mpbgp_capnp
      
 Work is in progress to push to upstream the various series of patches, as indicated below. 
 Other will come, the work is expected to fall in quagga upstream soon.
@@ -113,16 +120,16 @@ To compile quagga in order to be used by ZRPC daemon, you will have to define en
 in order to indicate quagga where to search for libraries and headers. Execute the following on the
 shell:
 
-    export ZEROMQ_CFLAGS="-I/tmp/zmq/include"
-    export ZEROMQ_LIBS="-L/tmp/zmq/.libs/ -lzmq"
-    export CAPN_C_CFLAGS='-I/tmp/capnproto/'
-    export CAPN_C_LIBS='-L/tmp/capnproto -lcapn_c'
-    export LIBS='-L/tmp/zmq/.libs -L/tmp/capnproto'
+    export ZEROMQ_CFLAGS="-I/tmp/zeromq4-1/include"
+    export ZEROMQ_LIBS="-L/tmp/zeromq4-1/.libs/ -lzmq"
+    export CAPN_C_CFLAGS='-I/tmp/c-capnproto/ -I/tmp/'
+    export CAPN_C_LIBS='-L/tmp/c-capnproto/.libs/ -lcapn_c'
 
 You will have to enable zeromq and capnproto services. Perform the following:
 
     cd quagga
     autoreconf -i
+    LIBS='-L/tmp/zeromq4-1/.libs -L/tmp/c-capnproto/.libs/' \
     ./configure --with-zeromq --with-ccapnproto --prefix=/opt/quagga --enable-user=quagga \
     --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga \
     --disable-doc --enable-multipath=64
@@ -132,24 +139,15 @@ You will have to enable zeromq and capnproto services. Perform the following:
 ### ZRPC build
 
 Note that as other dependencies, GLIB2 and GOBJECT2 are other packages that need to be available on 
-the platform. No description is done about the availability of those packages. Ensure that the 
-following environment variables are set before trying to compile zrpcd.
-
-    export GLIB2_LIBS="-L/usr/lib/x86_64-linux-gnu -lglib-2.0"
-    export GLIB2_CFLAGS="-I/usr/lib/x86_64-linux-gnu/glib-2.0/include/ -I/usr/include/glib-2.0/"
-    export GOBJECT2_LIBS="-L/usr/lib/x86_64-linux-gnu -lgobject-2.0"
-    export GOBJECT2_CFLAGS="-I/usr/include/glib-2.0/gobject/"
+the platform. No description is done about the availability of those packages.
 
 To compile zrpc, once the dependencies above resolved, retake the environment settings used to compile
-quagga.
+quagga, and add the followingones:
 
-    export ZEROMQ_CFLAGS="-I/tmp/zmq/include"
-    export ZEROMQ_LIBS="-L/tmp/zmq/.libs/ -lzmq"
-    export THRIFT_CFLAGS="-I/tmp/thrift/thrift/lib/c_glib/src/thrift/c_glib/"
+    export THRIFT_CFLAGS="-I/tmp/thrift/lib/c_glib/src/thrift/c_glib/"
     export THRIFT_LIBS="-L/tmp/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
-    export CAPN_C_CFLAGS='-I/tmp/capnproto/'
-    export CAPN_C_LIBS='-L/tmp/capnproto -lcapn_c'
-    export LIBS='-L/tmp/zmq/.libs -L/tmp/capnproto -L/tmp/thrift/lib/c_glib/.libs/'
+    export QUAGGA_CFLAGS='-I/tmp/quagga/lib/'
+    export QUAGGA_LIBS='-L/tmp/quagga/lib/.libs -lzebra'
 
 perform the following in order to compile zrpc daemon:
 
@@ -157,13 +155,24 @@ perform the following in order to compile zrpc daemon:
     cd zrpcd
     touch NEWS README
     autoreconf -i 
-    ./configure --enable-zrpcd --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
-    --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga 
+    LIBS='-L/tmp/zeromq4-1/.libs -L/tmp/c-capnproto -L/tmp/thrift/lib/c_glib/.libs/ \
+     -L/tmp/quagga/lib/.libs' ./configure --enable-zrpcd --prefix=/opt/quagga \
+     --enable-user=quagga --enable-group=quagga \
+     --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga 
     make
     make install
     mkdir /opt/quagga/etc/init.d -p
-    cp pkgsrc/zrpcd /opt/quagga/etc/init.d/.
-    cp bgpd/bgpd.conf.sample3 /opt/quagga/etc/bgpd.conf
+    cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+    echo "hostname bgpd" >> /opt/quagga/etc/bgpd.conf
+    echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
+    echo "service advanced-vty" >> /opt/quagga/etc/bgpd.conf
+    echo "log stdout" >> /opt/quagga/etc/bgpd.conf
+    echo "line vty" >> /opt/quagga/etc/bgpd.conf
+    echo " exec-timeout 0 0 " >> /opt/quagga/etc/bgpd.conf
+    echo "debug bgp " >> /opt/quagga/etc/bgpd.conf
+    echo "debug bgp updates" >> /opt/quagga/etc/bgpd.conf
+    echo "debug bgp events" >> /opt/quagga/etc/bgpd.conf
+    echo "debug bgp fsm" >> /opt/quagga/etc/bgpd.conf
 
 ## Packaging ZRPC
 
