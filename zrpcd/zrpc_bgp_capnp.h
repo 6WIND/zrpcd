@@ -75,6 +75,8 @@ struct bgp
   /* outbound update feeds */
   char *notify_zmq_url;
 
+  char *logFile;
+  char *logLevel;
 };
 
 typedef enum
