@@ -24,6 +24,7 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
 gboolean
 zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar * rd, const gchar * prefix, const gint32 prefixlen, 
                                        const gchar * nexthop, const gint64 ethtag, const gchar * esi, const gchar * macaddress,
-                                       const gint32 l3label, const gint32 l2label, const gchar * routermac);
+                                       const gint32 l3label, const gint32 l2label, const gchar * routermac,
+                                       const gchar *gatewayIp);
 
 #endif /* _ZRPC_BGP_UPDATER_H */

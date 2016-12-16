@@ -232,7 +232,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
           zrpc_bgp_updater_on_update_push_route(s->esi?PROTOCOL_TYPE_PROTOCOL_EVPN:PROTOCOL_TYPE_PROTOCOL_L3VPN,
                                                 vrf_rd_str, pfx_str_p,
                                                 (const gint32)ipprefixlen, inet_ntoa(s->nexthop),
-                                                s->ethtag, esi, macaddress, s->label, s->l2label, mac_router);
+                                                s->ethtag, esi, macaddress, s->label, s->l2label,
+                                                mac_router, s->gatewayIp);
         }
       else
         {

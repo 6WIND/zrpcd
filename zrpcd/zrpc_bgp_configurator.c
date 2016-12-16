@@ -48,7 +48,7 @@ gboolean
 instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
                                              const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi,
                                              const gchar * macaddress, const gint32 l3label, const gint32 l2label,
-                                             const encap_type enc_type, const gchar * routermac, GError **error);
+                                             const encap_type enc_type, const gchar * routermac, const char *gatewayIp, GError **error);
 gboolean
 instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
                                                  const gchar * rd,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, GError **error);
@@ -893,7 +893,7 @@ gboolean
 instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
                                              const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi,
                                              const gchar * macaddress, const gint32 l3label, const gint32 l2label, 
-                                             const encap_type enc_type, const gchar * routermac, GError **error)
+                                             const encap_type enc_type, const gchar * routermac, const char *gatewayIp, GError **error)
 {
   struct zrpc_vpnservice *ctxt = NULL;
   struct bgp_api_route inst;
@@ -959,6 +959,9 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
       afi = ADDRESS_FAMILY_L2VPN;
+      if (gatewayIp)
+        inet_aton (gatewayIp, &inst.gatewayIp);
+
       inst.ethtag = (uint32_t ) ethtag;
       if( !esi || zrpc_util_str2esi (esi, NULL) == 0)
         {
@@ -1940,6 +1943,10 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
       upd->l3label = inst_multipath->label;
       upd->l2label = inst_multipath->l2label;
       upd->ethtag = inst_multipath->ethtag;
+      if (inst_multipath->gatewayIp.s_addr)
+        upd->gatewayip = g_strdup (inet_ntop(AF_INET, &(inst_multipath->gatewayIp), rdstr, ZRPC_UTIL_RDRT_LEN));
+      else
+        upd->gatewayip = NULL;
       if(inst_multipath->esi)
         upd->esi = g_strdup(inst_multipath->esi);
       if(inst_multipath->mac_router)
@@ -1951,6 +1958,10 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
       upd->l3label = inst_route->label;
       upd->l2label = inst_route->l2label;
       upd->ethtag = inst_route->ethtag;
+      if (inst_route->gatewayIp.s_addr)
+        upd->gatewayip = g_strdup (inet_ntop(AF_INET, &(inst_route->gatewayIp), rdstr, ZRPC_UTIL_RDRT_LEN));
+      else
+        upd->gatewayip = NULL;
       if(inst_route->esi)
         upd->esi = g_strdup(inst_route->esi);
       if(inst_route->mac_router)
