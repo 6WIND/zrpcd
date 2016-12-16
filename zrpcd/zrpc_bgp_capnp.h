@@ -120,6 +120,7 @@ struct bgp_event_vrf
   char *esi;
   char *mac_router;
   uint32_t l2label;
+  char *gatewayIp;
 };
 
 struct bgp_event_shut
@@ -137,6 +138,7 @@ struct bgp_api_route
   uint32_t l2label;
   char *esi;
   char *mac_router;
+  struct in_addr gatewayIp;
 };
 
 /* BGP neighbor structure. */
