@@ -52,7 +52,7 @@
  }
  
  enum af_safi {
-     SAFI_IPV4_LABELED_UNICAST = 4,
+     SAFI_IP_LABELED_UNICAST = 4,
      SAFI_MPLS_VPN = 5,
      SAFI_EVPN = 6
  }

@@ -29,7 +29,7 @@ toString_af_safi(int value)
 {
   static __thread char buf[16] = {0};
   switch(value) {
-  case AF_SAFI_SAFI_IPV4_LABELED_UNICAST:return "AF_SAFI_SAFI_IPV4_LABELED_UNICAST";
+  case AF_SAFI_SAFI_IP_LABELED_UNICAST:return "AF_SAFI_SAFI_IP_LABELED_UNICAST";
   case AF_SAFI_SAFI_MPLS_VPN:return "AF_SAFI_SAFI_MPLS_VPN";
   case AF_SAFI_SAFI_EVPN:return "AF_SAFI_SAFI_EVPN";
   default: g_snprintf(buf, 16, "%d", value); return buf;

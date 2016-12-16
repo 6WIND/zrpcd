@@ -28,7 +28,7 @@ const char *
 toString_af_afi(int value); 
 
 enum _af_safi {
-  AF_SAFI_SAFI_IPV4_LABELED_UNICAST = 4,
+  AF_SAFI_SAFI_IP_LABELED_UNICAST = 4,
   AF_SAFI_SAFI_MPLS_VPN = 5,
   AF_SAFI_SAFI_EVPN = 6
 };
