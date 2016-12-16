@@ -46,9 +46,9 @@ bgp_configurator_if_del_vrf (BgpConfiguratorIf *iface, gint32* _return, const gc
 }
 
 gboolean
-bgp_configurator_if_push_route (BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix, const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi, const gchar * macaddress, const gint32 l3label, const gint32 l2label, const encap_type enc_type, const gchar * routermac, GError **error)
+bgp_configurator_if_push_route (BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix, const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi, const gchar * macaddress, const gint32 l3label, const gint32 l2label, const encap_type enc_type, const gchar * routermac, const gchar * gatewayip, GError **error)
 {
-  return BGP_CONFIGURATOR_IF_GET_INTERFACE (iface)->push_route (iface, _return, p_type, prefix, nexthop, rd, ethtag, esi, macaddress, l3label, l2label, enc_type, routermac, error);
+  return BGP_CONFIGURATOR_IF_GET_INTERFACE (iface)->push_route (iface, _return, p_type, prefix, nexthop, rd, ethtag, esi, macaddress, l3label, l2label, enc_type, routermac, gatewayip, error);
 }
 
 gboolean
@@ -1394,7 +1394,7 @@ gboolean bgp_configurator_client_del_vrf (BgpConfiguratorIf * iface, gint32* _re
   return TRUE;
 }
 
-gboolean bgp_configurator_client_send_push_route (BgpConfiguratorIf * iface, const protocol_type p_type, const gchar * prefix, const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi, const gchar * macaddress, const gint32 l3label, const gint32 l2label, const encap_type enc_type, const gchar * routermac, GError ** error)
+gboolean bgp_configurator_client_send_push_route (BgpConfiguratorIf * iface, const protocol_type p_type, const gchar * prefix, const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi, const gchar * macaddress, const gint32 l3label, const gint32 l2label, const encap_type enc_type, const gchar * routermac, const gchar * gatewayip, GError ** error)
 {
   gint32 cseqid = 0;
   ThriftProtocol * protocol = BGP_CONFIGURATOR_CLIENT (iface)->output_protocol;
@@ -1514,6 +1514,16 @@ gboolean bgp_configurator_client_send_push_route (BgpConfiguratorIf * iface, con
       return 0;
     xfer += ret;
     if ((ret = thrift_protocol_write_string (protocol, routermac, error)) < 0)
+      return 0;
+    xfer += ret;
+
+    if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+      return 0;
+    xfer += ret;
+    if ((ret = thrift_protocol_write_field_begin (protocol, "gatewayip", T_STRING, 12, error)) < 0)
+      return 0;
+    xfer += ret;
+    if ((ret = thrift_protocol_write_string (protocol, gatewayip, error)) < 0)
       return 0;
     xfer += ret;
 
@@ -1661,9 +1671,9 @@ gboolean bgp_configurator_client_recv_push_route (BgpConfiguratorIf * iface, gin
   return TRUE;
 }
 
-gboolean bgp_configurator_client_push_route (BgpConfiguratorIf * iface, gint32* _return, const protocol_type p_type, const gchar * prefix, const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi, const gchar * macaddress, const gint32 l3label, const gint32 l2label, const encap_type enc_type, const gchar * routermac, GError ** error)
+gboolean bgp_configurator_client_push_route (BgpConfiguratorIf * iface, gint32* _return, const protocol_type p_type, const gchar * prefix, const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi, const gchar * macaddress, const gint32 l3label, const gint32 l2label, const encap_type enc_type, const gchar * routermac, const gchar * gatewayip, GError ** error)
 {
-  if (!bgp_configurator_client_send_push_route (iface, p_type, prefix, nexthop, rd, ethtag, esi, macaddress, l3label, l2label, enc_type, routermac, error))
+  if (!bgp_configurator_client_send_push_route (iface, p_type, prefix, nexthop, rd, ethtag, esi, macaddress, l3label, l2label, enc_type, routermac, gatewayip, error))
     return FALSE;
   if (!bgp_configurator_client_recv_push_route (iface, _return, error))
     return FALSE;
@@ -4406,11 +4416,11 @@ gboolean bgp_configurator_handler_del_vrf (BgpConfiguratorIf * iface, gint32* _r
   return BGP_CONFIGURATOR_HANDLER_GET_CLASS (iface)->del_vrf (iface, _return, rd, error);
 }
 
-gboolean bgp_configurator_handler_push_route (BgpConfiguratorIf * iface, gint32* _return, const protocol_type p_type, const gchar * prefix, const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi, const gchar * macaddress, const gint32 l3label, const gint32 l2label, const encap_type enc_type, const gchar * routermac, GError ** error)
+gboolean bgp_configurator_handler_push_route (BgpConfiguratorIf * iface, gint32* _return, const protocol_type p_type, const gchar * prefix, const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi, const gchar * macaddress, const gint32 l3label, const gint32 l2label, const encap_type enc_type, const gchar * routermac, const gchar * gatewayip, GError ** error)
 {
   g_return_val_if_fail (IS_BGP_CONFIGURATOR_HANDLER (iface), FALSE);
 
-  return BGP_CONFIGURATOR_HANDLER_GET_CLASS (iface)->push_route (iface, _return, p_type, prefix, nexthop, rd, ethtag, esi, macaddress, l3label, l2label, enc_type, routermac, error);
+  return BGP_CONFIGURATOR_HANDLER_GET_CLASS (iface)->push_route (iface, _return, p_type, prefix, nexthop, rd, ethtag, esi, macaddress, l3label, l2label, enc_type, routermac, gatewayip, error);
 }
 
 gboolean bgp_configurator_handler_withdraw_route (BgpConfiguratorIf * iface, gint32* _return, const protocol_type p_type, const gchar * prefix, const gchar * rd, const gint64 ethtag, const gchar * esi, const gchar * macaddress, GError ** error)
@@ -5444,6 +5454,7 @@ bgp_configurator_processor_process_push_route (BgpConfiguratorProcessor *self,
     gint l2label;
     encap_type enc_type;
     gchar * routermac;
+    gchar * gatewayip;
     gint return_value;
     BgpConfiguratorPushRouteResult * result_struct;
 
@@ -5459,6 +5470,7 @@ bgp_configurator_processor_process_push_route (BgpConfiguratorProcessor *self,
                   "l2label", &l2label,
                   "enc_type", &enc_type,
                   "routermac", &routermac,
+                  "gatewayip", &gatewayip,
                   NULL);
 
     g_object_unref (transport);
@@ -5480,6 +5492,7 @@ bgp_configurator_processor_process_push_route (BgpConfiguratorProcessor *self,
                                              l2label,
                                              enc_type,
                                              routermac,
+                                             gatewayip,
                                              error) == TRUE)
     {
       g_object_set (result_struct, "success", (gint)(gint32)return_value, NULL);
@@ -5533,6 +5546,8 @@ bgp_configurator_processor_process_push_route (BgpConfiguratorProcessor *self,
       g_free (macaddress);
     if (routermac != NULL)
       g_free (routermac);
+    if (gatewayip != NULL)
+      g_free (gatewayip);
     g_object_unref (result_struct);
 
     if (result == TRUE)

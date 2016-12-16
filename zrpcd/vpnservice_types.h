@@ -103,6 +103,8 @@ struct _Update
   gboolean __isset_nexthop;
   gchar * routermac;
   gboolean __isset_routermac;
+  gchar * gatewayip;
+  gboolean __isset_gatewayip;
 };
 typedef struct _Update Update;
 
@@ -511,6 +513,8 @@ struct _BgpConfiguratorPushRouteArgs
   gboolean __isset_enc_type;
   gchar * routermac;
   gboolean __isset_routermac;
+  gchar * gatewayip;
+  gboolean __isset_gatewayip;
 };
 typedef struct _BgpConfiguratorPushRouteArgs BgpConfiguratorPushRouteArgs;
 
@@ -1313,6 +1317,8 @@ struct _BgpUpdaterOnUpdatePushRouteArgs
   gboolean __isset_l2label;
   gchar * routermac;
   gboolean __isset_routermac;
+  gchar * gatewayip;
+  gboolean __isset_gatewayip;
 };
 typedef struct _BgpUpdaterOnUpdatePushRouteArgs BgpUpdaterOnUpdatePushRouteArgs;
 

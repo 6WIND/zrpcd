@@ -91,7 +91,8 @@ enum _UpdateProperties
   PROP_UPDATE_RD,
   PROP_UPDATE_PREFIX,
   PROP_UPDATE_NEXTHOP,
-  PROP_UPDATE_ROUTERMAC
+  PROP_UPDATE_ROUTERMAC,
+  PROP_UPDATE_GATEWAYIP
 };
 
 /* reads a update object */
@@ -335,6 +336,25 @@ update_read (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
           xfer += ret;
         }
         break;
+      case 13:
+        if (ftype == T_STRING)
+        {
+          if (this_object->gatewayip != NULL)
+          {
+            g_free(this_object->gatewayip);
+            this_object->gatewayip = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->gatewayip, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_gatewayip = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
       default:
         if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
           return -1;
@@ -484,6 +504,16 @@ update_write (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "gatewayip", T_STRING, 13, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->gatewayip, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
   if ((ret = thrift_protocol_write_field_stop (protocol, error)) < 0)
     return -1;
   xfer += ret;
@@ -576,6 +606,13 @@ update_set_property (GObject *object,
       self->__isset_routermac = TRUE;
       break;
 
+    case PROP_UPDATE_GATEWAYIP:
+      if (self->gatewayip != NULL)
+        g_free (self->gatewayip);
+      self->gatewayip = g_value_dup_string (value);
+      self->__isset_gatewayip = TRUE;
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -640,6 +677,10 @@ update_get_property (GObject *object,
       g_value_set_string (value, self->routermac);
       break;
 
+    case PROP_UPDATE_GATEWAYIP:
+      g_value_set_string (value, self->gatewayip);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -675,6 +716,8 @@ update_instance_init (Update * object)
   object->__isset_nexthop = FALSE;
   object->routermac = NULL;
   object->__isset_routermac = FALSE;
+  object->gatewayip = NULL;
+  object->__isset_gatewayip = FALSE;
 }
 
 static void 
@@ -713,6 +756,11 @@ update_finalize (GObject *object)
   {
     g_free(tobject->routermac);
     tobject->routermac = NULL;
+  }
+  if (tobject->gatewayip != NULL)
+  {
+    g_free(tobject->gatewayip);
+    tobject->gatewayip = NULL;
   }
 }
 
@@ -844,6 +892,15 @@ update_class_init (UpdateClass * cls)
     (gobject_class,
      PROP_UPDATE_ROUTERMAC,
      g_param_spec_string ("routermac",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_UPDATE_GATEWAYIP,
+     g_param_spec_string ("gatewayip",
                           NULL,
                           NULL,
                           NULL,
@@ -4637,7 +4694,8 @@ enum _BgpConfiguratorPushRouteArgsProperties
   PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L3LABEL,
   PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_L2LABEL,
   PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ENC_TYPE,
-  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ROUTERMAC
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ROUTERMAC,
+  PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_GATEWAYIP
 };
 
 /* reads a bgp_configurator_push_route_args object */
@@ -4872,6 +4930,25 @@ bgp_configurator_push_route_args_read (ThriftStruct *object, ThriftProtocol *pro
           xfer += ret;
         }
         break;
+      case 12:
+        if (ftype == T_STRING)
+        {
+          if (this_object->gatewayip != NULL)
+          {
+            g_free(this_object->gatewayip);
+            this_object->gatewayip = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->gatewayip, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_gatewayip = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
       default:
         if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
           return -1;
@@ -5011,6 +5088,16 @@ bgp_configurator_push_route_args_write (ThriftStruct *object, ThriftProtocol *pr
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "gatewayip", T_STRING, 12, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->gatewayip, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
   if ((ret = thrift_protocol_write_field_stop (protocol, error)) < 0)
     return -1;
   xfer += ret;
@@ -5098,6 +5185,13 @@ bgp_configurator_push_route_args_set_property (GObject *object,
       self->__isset_routermac = TRUE;
       break;
 
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_GATEWAYIP:
+      if (self->gatewayip != NULL)
+        g_free (self->gatewayip);
+      self->gatewayip = g_value_dup_string (value);
+      self->__isset_gatewayip = TRUE;
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -5158,6 +5252,10 @@ bgp_configurator_push_route_args_get_property (GObject *object,
       g_value_set_string (value, self->routermac);
       break;
 
+    case PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_GATEWAYIP:
+      g_value_set_string (value, self->gatewayip);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -5189,6 +5287,8 @@ bgp_configurator_push_route_args_instance_init (BgpConfiguratorPushRouteArgs * o
   object->__isset_enc_type = FALSE;
   object->routermac = NULL;
   object->__isset_routermac = FALSE;
+  object->gatewayip = NULL;
+  object->__isset_gatewayip = FALSE;
 }
 
 static void 
@@ -5227,6 +5327,11 @@ bgp_configurator_push_route_args_finalize (GObject *object)
   {
     g_free(tobject->routermac);
     tobject->routermac = NULL;
+  }
+  if (tobject->gatewayip != NULL)
+  {
+    g_free(tobject->gatewayip);
+    tobject->gatewayip = NULL;
   }
 }
 
@@ -5347,6 +5452,15 @@ bgp_configurator_push_route_args_class_init (BgpConfiguratorPushRouteArgsClass *
     (gobject_class,
      PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_ROUTERMAC,
      g_param_spec_string ("routermac",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_PUSH_ROUTE_ARGS_GATEWAYIP,
+     g_param_spec_string ("gatewayip",
                           NULL,
                           NULL,
                           NULL,
@@ -12963,7 +13077,8 @@ enum _BgpUpdaterOnUpdatePushRouteArgsProperties
   PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_MACADDRESS,
   PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L3LABEL,
   PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_L2LABEL,
-  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ROUTERMAC
+  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ROUTERMAC,
+  PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_GATEWAYIP
 };
 
 /* reads a bgp_updater_on_update_push_route_args object */
@@ -13196,6 +13311,25 @@ bgp_updater_on_update_push_route_args_read (ThriftStruct *object, ThriftProtocol
           xfer += ret;
         }
         break;
+      case 12:
+        if (ftype == T_STRING)
+        {
+          if (this_object->gatewayip != NULL)
+          {
+            g_free(this_object->gatewayip);
+            this_object->gatewayip = NULL;
+          }
+
+          if ((ret = thrift_protocol_read_string (protocol, &this_object->gatewayip, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->__isset_gatewayip = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
       default:
         if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
           return -1;
@@ -13335,6 +13469,16 @@ bgp_updater_on_update_push_route_args_write (ThriftStruct *object, ThriftProtoco
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "gatewayip", T_STRING, 12, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_string (protocol, this_object->gatewayip, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
   if ((ret = thrift_protocol_write_field_stop (protocol, error)) < 0)
     return -1;
   xfer += ret;
@@ -13422,6 +13566,13 @@ bgp_updater_on_update_push_route_args_set_property (GObject *object,
       self->__isset_routermac = TRUE;
       break;
 
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_GATEWAYIP:
+      if (self->gatewayip != NULL)
+        g_free (self->gatewayip);
+      self->gatewayip = g_value_dup_string (value);
+      self->__isset_gatewayip = TRUE;
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -13482,6 +13633,10 @@ bgp_updater_on_update_push_route_args_get_property (GObject *object,
       g_value_set_string (value, self->routermac);
       break;
 
+    case PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_GATEWAYIP:
+      g_value_set_string (value, self->gatewayip);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -13514,6 +13669,8 @@ bgp_updater_on_update_push_route_args_instance_init (BgpUpdaterOnUpdatePushRoute
   object->__isset_l2label = FALSE;
   object->routermac = NULL;
   object->__isset_routermac = FALSE;
+  object->gatewayip = NULL;
+  object->__isset_gatewayip = FALSE;
 }
 
 static void 
@@ -13552,6 +13709,11 @@ bgp_updater_on_update_push_route_args_finalize (GObject *object)
   {
     g_free(tobject->routermac);
     tobject->routermac = NULL;
+  }
+  if (tobject->gatewayip != NULL)
+  {
+    g_free(tobject->gatewayip);
+    tobject->gatewayip = NULL;
   }
 }
 
@@ -13672,6 +13834,15 @@ bgp_updater_on_update_push_route_args_class_init (BgpUpdaterOnUpdatePushRouteArg
     (gobject_class,
      PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_ROUTERMAC,
      g_param_spec_string ("routermac",
+                          NULL,
+                          NULL,
+                          NULL,
+                          G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_UPDATER_ON_UPDATE_PUSH_ROUTE_ARGS_GATEWAYIP,
+     g_param_spec_string ("gatewayip",
                           NULL,
                           NULL,
                           NULL,

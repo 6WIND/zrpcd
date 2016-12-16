@@ -95,7 +95,8 @@ enum protocol_type {
      9: string rd,
      10: string prefix,
      11: string nexthop,
-     12: string routermac
+     12: string routermac,
+     13: string gatewayip
  }
  
  /*
@@ -142,7 +143,8 @@ enum protocol_type {
       */
      i32 pushRoute(1:protocol_type p_type, 2:string prefix, 3:string nexthop, 4:string rd,
                    5:i64 ethtag, 6:string esi, 7:string macaddress,
-                   8:i32 l3label, 9:i32 l2label, 10:encap_type enc_type, 11:string routermac),
+                   8:i32 l3label, 9:i32 l2label, 10:encap_type enc_type,
+                   11:string routermac, 12:string gatewayip),
      /*
       * 'p_type' is mandatory
       * kludge: second argument is either 'rd' (VPNv4) or 
@@ -184,7 +186,8 @@ enum protocol_type {
    oneway void onUpdatePushRoute(1:protocol_type p_type, 2:string rd, 3:string prefix, 
                                  4:i32 prefixlen, 5:string nexthop, 
                                  6:i64 ethtag, 7:string esi, 8:string macaddress,
-                                 9:i32 l3label, 10:i32 l2label, 11:string routermac),
+                                 9:i32 l3label, 10:i32 l2label,
+                                 11:string routermac, 12:string gatewayip),
    oneway void onUpdateWithdrawRoute(1:protocol_type p_type, 2:string rd, 3:string prefix, 
                                      4:i32 prefixlen, 5:string nexthop,
                                      6:i64 ethtag, 7:string esi, 8:string macaddress,
