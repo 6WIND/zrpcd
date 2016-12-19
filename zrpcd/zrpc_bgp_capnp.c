@@ -443,9 +443,7 @@ void qcapn_BGPVRFRoute_write(const struct bgp_api_route *s, capn_ptr p)
         capn_write8(tempptr, 0, s->prefix.family);
         capn_write8(tempptr, 1, s->prefix.prefixlen);
         if (s->prefix.family == AF_INET)
-          {
-            capn_write32(tempptr, 4, ntohl(s->prefix.u.prefix4.s_addr));
-          }
+          capn_write32(tempptr, 4, ntohl(s->prefix.u.prefix4.s_addr));
         else if (s->prefix.family == AF_INET6)
           {
             size_t i;
@@ -466,9 +464,7 @@ void qcapn_BGPVRFRoute_write(const struct bgp_api_route *s, capn_ptr p)
         capn_setp(p, 0, tempptr);
     }
     {
-        capn_ptr tempptr = capn_new_struct(p.seg, 8, 0);
-        capn_write32(tempptr, 0, ntohl(s->nexthop.s_addr));
-        capn_setp(p, 1, tempptr);
+      qcapn_prefix_ipv4ipv6_write (p, &s->nexthop, 1);
     }
     capn_write32(p, 0, s->label);
     capn_write32(p, 4, s->ethtag);
@@ -543,10 +539,9 @@ void qcapn_BGPVRFRoute_read(struct bgp_api_route *s, capn_ptr p)
             qcapn_prefix_macip_read (tmp_p, &s->prefix, &index);
           }
     }
-    
+
     {
-        capn_ptr tmp_p = capn_getp(p, 1, 1);
-        s->nexthop.s_addr = htonl(capn_read32(tmp_p, 0));
+      qcapn_prefix_ipv4ipv6_read (p, &s->nexthop, 1);
     }
     s->label = capn_read32(p, 0);
     s->ethtag = capn_read32(p, 4);
@@ -580,10 +575,6 @@ void qcapn_BGPVRFRoute_read(struct bgp_api_route *s, capn_ptr p)
         {
           s->mac_router = NULL;
         }
-    }
-    {
-        capn_ptr tmp_p = capn_getp(p, 4, 1);
-        s->nexthop.s_addr = htonl(capn_read32(tmp_p, 0));
     }
 }
 
@@ -683,8 +674,7 @@ void qcapn_BGPEventVRFRoute_read(struct bgp_event_vrf *s, capn_ptr p)
     }
 
     {
-        capn_ptr tmp_p = capn_getp(p, 1, 1);
-        s->nexthop.s_addr = htonl(capn_read32(tmp_p, 0));
+      qcapn_prefix_ipv4ipv6_read (p, &s->nexthop, 1);
     }
     {
         capn_ptr tmp_p = capn_getp(p, 2, 1);
@@ -744,8 +734,7 @@ void qcapn_BGPEventShut_read(struct bgp_event_shut *s, capn_ptr p)
     capn_resolve(&p);
     
     {
-        capn_ptr tmp_p = capn_getp(p, 0, 1);
-        s->peer.s_addr = htonl(capn_read32(tmp_p, 0));
+      qcapn_prefix_ipv4ipv6_read (p, &s->peer, 0);
     }
     s->type = capn_read8(p, 0);
     s->subtype = capn_read8(p, 1);
@@ -871,5 +860,60 @@ void qcapn_BGPAfiSafi_read(struct bgp *s, capn_ptr p, address_family_t afi, subs
       tmp = !!(capn_read8(p, 0) & (1 << 2));
       if (tmp) s->af_flags[afi][safi] |=  BGP_CONFIG_MULTIPATH;
       else     s->af_flags[afi][safi] &= ~BGP_CONFIG_MULTIPATH;
+    }
+}
+
+void qcapn_prefix_ipv4ipv6_write (capn_ptr p, const struct zrpc_prefix *pfx, uint8_t index)
+{
+  capn_ptr tempptr;
+  int size = 8;
+
+  if (pfx->family == AF_INET)
+    size = 8;
+  else if (pfx->family == AF_INET6)
+    size = 20;
+
+  tempptr = capn_new_struct(p.seg, size, 0);
+  capn_write8(tempptr, 0, pfx->family);
+  capn_write8(tempptr, 1, pfx->prefixlen);
+  if (pfx->family == AF_INET)
+    {
+      capn_write32(tempptr, 4, ntohl(pfx->u.prefix4.s_addr));
+    }
+  else if (pfx->family == AF_INET6)
+    {
+      size_t i;
+      uint32_t *in6;
+      for(i=0; i < 4; i++)
+        {
+          in6 = (uint32_t *)&(pfx->u.prefix6);
+          in6+=i;
+          capn_write32(tempptr, 4 + 4*i, ntohl(*(in6)));
+        }
+    }
+  capn_setp(p, index, tempptr);
+}
+
+void qcapn_prefix_ipv4ipv6_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t index)
+{
+  capn_ptr tmp_p = capn_getp(p, index, 1);
+  pfx->family = capn_read8(tmp_p, 0);
+  pfx->prefixlen = capn_read8(tmp_p, 1);
+
+  if (pfx->family == AF_INET)
+    {
+      pfx->u.prefix4.s_addr = htonl(capn_read32(tmp_p, 4));
+    }
+  else if (pfx->family == AF_INET6)
+    {
+      size_t i;
+      u_int32_t *in6;
+      
+      for(i=0; i < 4; i++)
+        {
+          in6 = (uint32_t *)&(pfx->u.prefix6);
+          in6+=i;
+          *in6 = htonl(capn_read32(tmp_p, 4 + 4*i));
+        }
     }
 }

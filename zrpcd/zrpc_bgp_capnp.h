@@ -114,7 +114,7 @@ struct bgp_event_vrf
   uint8_t announce;
   struct zrpc_rd_prefix outbound_rd; /* dummy for event_shut */
   struct zrpc_prefix prefix; /* alias subtype */
-  struct in_addr nexthop; /* alias peer */
+  struct zrpc_prefix nexthop; /* alias peer */
   uint32_t label; /* alias type */
   uint32_t ethtag;
   char *esi;
@@ -125,14 +125,14 @@ struct bgp_event_vrf
 
 struct bgp_event_shut
 {
-  struct in_addr peer;
+  struct zrpc_prefix peer;
   uint8_t type, subtype;
 };
 
 struct bgp_api_route
 {
   struct zrpc_prefix prefix;
-  struct in_addr nexthop;
+  struct zrpc_prefix nexthop;
   uint32_t label;
   uint32_t ethtag;
   uint32_t l2label;
@@ -250,5 +250,7 @@ void qcapn_BGPVRF_read(struct bgp_vrf *s, capn_ptr p);
 void qcapn_BGPVRF_write(const struct bgp_vrf *s, capn_ptr p);
 void qcapn_prefix_macip_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index);
 void qcapn_prefix_macip_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t *index);
+void qcapn_prefix_ipv4ipv6_write (capn_ptr p, const struct zrpc_prefix *pfx, uint8_t index);
+void qcapn_prefix_ipv4ipv6_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t index);
 
 #endif /* _ZRPC_BGP_CAPNP_H */

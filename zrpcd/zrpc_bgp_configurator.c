@@ -953,7 +953,15 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
     }
 
   if (nexthop)
-    inet_aton (nexthop, &inst.nexthop);
+    {
+      ret = zrpc_util_str2_prefix (nexthop, &inst.nexthop);
+      if (ret == 0)
+        {
+          *_return = BGP_ERR_PARAM;
+          ret = FALSE;
+          goto error;
+        }
+    }
   else
     {
       *_return = BGP_ERR_PARAM;
@@ -2193,7 +2201,7 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
               break;
           }
           /* bypass route entries with zeroes */
-          if ( (inst_route.nexthop.s_addr == 0) &&
+          if ( (inst_route.nexthop.prefixlen == 0) &&
                (inst_route.prefix.prefixlen == 0) &&
                (prefix_addr_is_zero) &&
                (inst_route.label == 0) &&
@@ -2278,7 +2286,7 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
                   break;
               }
               /* bypass route entries with zeroes */
-              if ( (inst_multipath_route.nexthop.s_addr == 0) &&
+              if ( (inst_multipath_route.nexthop.prefixlen == 0) &&
                    (inst_multipath_route.prefix.prefixlen == 0) &&
                    (prefix_addr_is_zero) &&
                    (inst_multipath_route.label == 0) &&

@@ -33,6 +33,7 @@
 #define ZRPC_UTIL_RDRT_SIZE                  8
 #define ZRPC_UTIL_RDRT_LEN                  28
 #define ZRPC_UTIL_IPV4_PREFIX_LEN_MAX       32
+#define ZRPC_UTIL_IPV4_LEN_MAX              20
 #define ZRPC_UTIL_IPV6_LEN_MAX              51
 #define ZRPC_UTIL_IPV6_PREFIX_LEN_MAX      128
 
@@ -152,6 +153,9 @@ extern int zrpc_util_str2rd_prefix (char *buf, struct zrpc_rd_prefix *rd_p);
 extern int zrpc_util_str2ipv4_prefix (const char *buf, struct zrpc_ipv4_prefix *ipv4_p);
 extern int zrpc_util_str2ipv6_prefix (const char *buf, struct zrpc_ipv6_prefix *ipv6_p);
 extern int zrpc_util_str2_prefix (const char *buf, struct zrpc_prefix *prefix_p);
+extern void zrpc_util_copy_prefix (struct zrpc_prefix *dst, struct zrpc_prefix *src);
+extern int zrpc_util_prefix_2str (struct zrpc_prefix *pfx, char *buf, socklen_t len);
+
 extern int zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type);
 extern void zrpc_util_rdrt_free (struct zrpc_rdrt *rdrt);
 extern char *zrpc_util_rd_prefix2str (struct zrpc_rd_prefix *rd_p, 

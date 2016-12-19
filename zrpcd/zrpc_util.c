@@ -205,7 +205,10 @@ int zrpc_util_str2ipv4_prefix (const char *buf, struct zrpc_ipv4_prefix *ipv4_p)
   pnt = strchr (buf, '/');
   if (pnt == NULL) 
     {
-      return 0;
+      ipv4_p->prefixlen = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+      ipv4_p->family = AF_INET;
+      ret = inet_aton (buf, &ipv4_p->prefix);
+      return ret;
     }
   cp = ZRPC_MALLOC ((pnt - buf) + 1);
   strncpy (cp, buf, pnt - buf);
@@ -236,7 +239,10 @@ int zrpc_util_str2ipv6_prefix (const char *buf, struct zrpc_ipv6_prefix *ipv6_p)
   /* If string doesn't contain `/' treat it as host route. */
   if (pnt == NULL) 
     {
-      return 0;
+      ipv6_p->prefixlen = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
+      ipv6_p->family = AF_INET6;
+      ret = inet_pton (AF_INET6, buf, &ipv6_p->prefix);
+      return ret;
     }
   cp = ZRPC_MALLOC ((pnt - buf) + 1);
   strncpy (cp, buf, pnt - buf);
@@ -250,6 +256,47 @@ int zrpc_util_str2ipv6_prefix (const char *buf, struct zrpc_ipv6_prefix *ipv6_p)
     return 0;
   ipv6_p->family = AF_INET6;
   return ret;
+}
+
+int zrpc_util_prefix_2str (struct zrpc_prefix *pfx, char *buf, socklen_t len)
+{
+  char *ptr;
+  int ret = 0;
+
+  if ( pfx->family == AF_INET && len >= ZRPC_UTIL_IPV4_LEN_MAX)
+    {
+      const void *src =  &pfx->u.prefix4;
+      ptr = ( char *)inet_ntop (AF_INET, src, buf, (socklen_t)len);
+      if (ptr == NULL)
+        return 0;
+      ptr += strlen(buf) + 1;
+      if (pfx->prefixlen != ZRPC_UTIL_IPV4_PREFIX_LEN_MAX)
+        sprintf (ptr, "/%u", pfx->prefixlen);
+      return ret;
+    }
+  if ( pfx->family == AF_INET6 && len >= ZRPC_UTIL_IPV6_LEN_MAX)
+    {
+      const void *src =  &pfx->u.prefix6;
+      ptr = (char *)inet_ntop (AF_INET6, src, buf, (socklen_t)len);
+      if (ptr == NULL)
+        return 0;
+      ptr += strlen(buf) + 1;
+      if (ptr && pfx->prefixlen != ZRPC_UTIL_IPV6_PREFIX_LEN_MAX)
+        sprintf (ptr, "/%u", pfx->prefixlen);
+    }
+  return ret;
+}
+
+void zrpc_util_copy_prefix (struct zrpc_prefix *dst, struct zrpc_prefix *src)
+{
+  dst->family = src->family;
+  dst->prefixlen = src->prefixlen;
+
+  if (dst->family == AF_INET)
+    dst->u.prefix4 = src->u.prefix4;
+  else if (src->family == AF_INET6)
+    dst->u.prefix6 = src->u.prefix6;
+  return;
 }
 
 int zrpc_util_str2_prefix (const char *buf, struct zrpc_prefix *prefix_p)
