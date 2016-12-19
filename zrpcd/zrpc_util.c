@@ -212,7 +212,8 @@ int zrpc_util_str2ipv4_prefix (const char *buf, struct zrpc_ipv4_prefix *ipv4_p)
   *(cp + (pnt - buf)) = '\0';
   ret = inet_aton (cp, &ipv4_p->prefix);
   ZRPC_FREE (cp);
-  
+  if (ret == 0)
+    return 0;
   /* Get prefix length. */
   ipv4_p->prefixlen = (u_char) atoi (++pnt);
   if (ipv4_p->prefixlen > ZRPC_UTIL_IPV4_PREFIX_LEN_MAX)
@@ -220,6 +221,51 @@ int zrpc_util_str2ipv4_prefix (const char *buf, struct zrpc_ipv4_prefix *ipv4_p)
 
   ipv4_p->family = AF_INET;
   return  ret;
+}
+
+/* assuming input buffer is on format A.B.C.D/xx 
+ * return 0 if error */
+int zrpc_util_str2ipv6_prefix (const char *buf, struct zrpc_ipv6_prefix *ipv6_p)
+{
+  char *pnt;
+  char *cp;
+  int ret;
+
+  pnt = strchr (buf, '/');
+
+  /* If string doesn't contain `/' treat it as host route. */
+  if (pnt == NULL) 
+    {
+      return 0;
+    }
+  cp = ZRPC_MALLOC ((pnt - buf) + 1);
+  strncpy (cp, buf, pnt - buf);
+  *(cp + (pnt - buf)) = '\0';
+  ret = inet_pton (AF_INET6, cp, &ipv6_p->prefix);
+  ZRPC_FREE (cp);
+  if (ret == 0)
+    return 0;
+  ipv6_p->prefixlen = (u_char) atoi (++pnt);
+  if (ipv6_p->prefixlen > ZRPC_UTIL_IPV6_PREFIX_LEN_MAX)
+    return 0;
+  ipv6_p->family = AF_INET6;
+  return ret;
+}
+
+int zrpc_util_str2_prefix (const char *buf, struct zrpc_prefix *prefix_p)
+{
+  struct zrpc_ipv6_prefix *ipv6_p;
+  struct zrpc_ipv4_prefix *ipv4_p;
+  int ret;
+
+  ipv4_p = (struct zrpc_ipv4_prefix *)prefix_p;
+  ret = zrpc_util_str2ipv4_prefix (buf, ipv4_p);
+  if (ret)
+    return ret;
+
+  ipv6_p = (struct zrpc_ipv6_prefix *)prefix_p;
+  ret = zrpc_util_str2ipv6_prefix (buf, ipv6_p);
+  return ret;
 }
 
 extern char *zrpc_util_rd_prefix2str (struct zrpc_rd_prefix *rd_p, 

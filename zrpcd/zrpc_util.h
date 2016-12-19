@@ -150,6 +150,8 @@ struct zrpc_prefix
 extern struct zrpc_rdrt *zrpc_util_append_rdrt_to_list (u_char *, struct zrpc_rdrt *); 
 extern int zrpc_util_str2rd_prefix (char *buf, struct zrpc_rd_prefix *rd_p);
 extern int zrpc_util_str2ipv4_prefix (const char *buf, struct zrpc_ipv4_prefix *ipv4_p);
+extern int zrpc_util_str2ipv6_prefix (const char *buf, struct zrpc_ipv6_prefix *ipv6_p);
+extern int zrpc_util_str2_prefix (const char *buf, struct zrpc_prefix *prefix_p);
 extern int zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type);
 extern void zrpc_util_rdrt_free (struct zrpc_rdrt *rdrt);
 extern char *zrpc_util_rd_prefix2str (struct zrpc_rd_prefix *rd_p, 
