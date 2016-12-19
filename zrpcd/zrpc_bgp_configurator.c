@@ -900,7 +900,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
-  address_family_t afi;
+  address_family_t afi = ADDRESS_FAMILY_IP;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
   struct capn rc;
@@ -1026,12 +1026,30 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           m->mac_len = ZRPC_MAC_LEN * 8;
         }
       else
-        zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
+        {
+          ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
+          if (ret == 0)
+            {
+              *_return = BGP_ERR_PARAM;
+              ret = FALSE;
+              goto error;
+            }
+        }
     }
   else
     {
-      zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
-      afi = ADDRESS_FAMILY_IP;
+      ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
+      if (ret == 0)
+        {
+          *_return = BGP_ERR_PARAM;
+          ret = FALSE;
+          goto error;
+        }
+      if (inst.prefix.family == AF_INET)
+
+        afi = ADDRESS_FAMILY_IP;
+      else if (inst.prefix.family == AF_INET6)
+        afi = ADDRESS_FAMILY_IPV6;
     }
 
 inst_filled:
@@ -1085,7 +1103,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
-  address_family_t afi;
+  address_family_t afi = ADDRESS_FAMILY_IP;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
   struct capn rc;
@@ -1178,12 +1196,30 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           m->mac_len = ZRPC_MAC_LEN * 8;
         }
       else
-        zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
+        {
+          ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
+          if (ret == 0)
+            {
+              *_return = BGP_ERR_PARAM;
+              ret = FALSE;
+              goto error;
+            }
+        }
     }
   else
     {
-      afi = AFI_IP;
-      zrpc_util_str2ipv4_prefix(prefix, (struct zrpc_ipv4_prefix*) &inst.prefix);
+      ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
+      if (ret == 0)
+        {
+          *_return = BGP_ERR_PARAM;
+          ret = FALSE;
+          goto error;
+        }
+      if (inst.prefix.family == AF_INET)
+
+        afi = ADDRESS_FAMILY_IP;
+      else if (inst.prefix.family == AF_INET6)
+        afi = ADDRESS_FAMILY_IPV6;
     }
 
 inst_filled:
