@@ -332,6 +332,8 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
     }
   if (afi == AF_AFI_AFI_IP)
     af = ADDRESS_FAMILY_IP;
+  else   if (afi == AF_AFI_AFI_IPV6)
+    af = ADDRESS_FAMILY_IPV6;
   else if (afi == AF_AFI_AFI_L2VPN)
     af = ADDRESS_FAMILY_L2VPN;
   else
@@ -453,6 +455,8 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
     }
   if (afi == AF_AFI_AFI_IP)
     af = ADDRESS_FAMILY_IP;
+  else if (afi == AF_AFI_AFI_IPV6)
+    af = ADDRESS_FAMILY_IPV6;
   else if (afi == AF_AFI_AFI_L2VPN)
     af = ADDRESS_FAMILY_L2VPN;
   else
@@ -1376,6 +1380,11 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
       ret = zrpc_bgp_afi_config(ctxt, _return, routerId,             \
                                 AF_AFI_AFI_L2VPN, AF_SAFI_SAFI_EVPN, TRUE, error);
     }
+  if(entry->enableAddressFamily[ADDRESS_FAMILY_IPV6][SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN])
+    {
+      ret = zrpc_bgp_afi_config(ctxt, _return, routerId,             \
+                                AF_AFI_AFI_IPV6, AF_SAFI_SAFI_MPLS_VPN, TRUE, error);
+    }
   ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId,        \
                                      AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN,
                                      PEER_FLAG_NEXTHOP_UNCHANGED, TRUE,
@@ -1390,6 +1399,14 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
       ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId,    \
                                          AF_AFI_AFI_L2VPN, AF_SAFI_SAFI_EVPN,
                                          PEER_FLAG_SOFT_RECONFIG, TRUE,
+                                         error);
+    }
+
+  if(entry->enableAddressFamily[ADDRESS_FAMILY_IPV6][AF_SAFI_SAFI_MPLS_VPN])
+    {
+      ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId,    \
+                                         AF_AFI_AFI_IPV6, AF_SAFI_SAFI_MPLS_VPN,
+                                         PEER_FLAG_NEXTHOP_UNCHANGED, TRUE,
                                          error);
     }
   return ret;
@@ -2332,6 +2349,8 @@ zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_
     }
   if (afi == AF_AFI_AFI_IP)
     af = ADDRESS_FAMILY_IP;
+  else if (afi == AF_AFI_AFI_IPV6)
+    af = ADDRESS_FAMILY_IPV6;
   else if (afi == AF_AFI_AFI_L2VPN)
     af = ADDRESS_FAMILY_L2VPN;
   else
