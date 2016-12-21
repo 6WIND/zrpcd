@@ -2001,7 +2001,9 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
     }
   if(inst_multipath)
     {
-      upd->nexthop = g_strdup(inet_ntop(AF_INET, &(inst_multipath->nexthop), rdstr, ZRPC_UTIL_RDRT_LEN));
+      char nh_str[ZRPC_UTIL_IPV6_LEN_MAX];
+      zrpc_util_prefix_2str (&(inst_multipath->nexthop), nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
+      upd->nexthop = g_strdup(nh_str);
       upd->l3label = inst_multipath->label;
       upd->l2label = inst_multipath->l2label;
       upd->ethtag = inst_multipath->ethtag;
@@ -2016,7 +2018,9 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
     }
   else
     {
-      upd->nexthop = g_strdup(inet_ntop(AF_INET, &(inst_route->nexthop), rdstr, ZRPC_UTIL_RDRT_LEN));
+      char nh_str[ZRPC_UTIL_IPV6_LEN_MAX];
+      zrpc_util_prefix_2str (&(inst_route->nexthop), nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
+      upd->nexthop = g_strdup(nh_str);
       upd->l3label = inst_route->label;
       upd->l2label = inst_route->l2label;
       upd->ethtag = inst_route->ethtag;
