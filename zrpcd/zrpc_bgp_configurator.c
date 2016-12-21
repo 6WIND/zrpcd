@@ -89,7 +89,8 @@ instance_bgp_configurator_handler_disable_default_originate(BgpConfiguratorIf *i
                                                             const af_afi afi, const af_safi safi, GError **error);
 gboolean
 instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes ** _return, const protocol_type p_type, 
-                                              const gint32 optype, const gint32 winSize, GError **error);
+                                              const gint32 optype, const gint32 winSize,
+                                              const af_afi afi, GError **error);
 
 gboolean
 instance_bgp_configurator_handler_enable_multipath(BgpConfiguratorIf *iface, gint32* _return,
@@ -1982,12 +1983,13 @@ struct zrpc_prefix *prev_iter_table_ptr = NULL;
 struct zrpc_prefix prev_iter_table_entry;
 gboolean
 instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes ** _return, const protocol_type p_type, 
-                                              const gint32 optype, const gint32 winSize, GError **error)
+                                              const gint32 optype, const gint32 winSize, 
+                                              const af_afi afi, GError **error)
 {
   struct capn_ptr afikey, iter_table, *iter_table_ptr = NULL;
   struct capn rc;
   struct capn_segment *cs;
-  address_family_t afi = ADDRESS_FAMILY_IP;
+  address_family_t afi_int = ADDRESS_FAMILY_IP;
   struct zrpc_vpnservice *ctxt = NULL;
   uint64_t bgpvrf_nid;
   struct QZCGetRep *grep_route = NULL;
@@ -1997,6 +1999,8 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
   int route_updates_max, route_updates;
   Update *upd;
 
+  if (afi == AF_AFI_AFI_IPV6)
+    afi_int = ADDRESS_FAMILY_IPV6;
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
     {
@@ -2071,7 +2075,7 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
           cs = capn_root(&rc).seg;
           afikey = qcapn_new_AfiKey(cs);
           capn_resolve(&afikey);
-          capn_write8(afikey, 0, afi);
+          capn_write8(afikey, 0, afi_int);
 	  if(prev_iter_table_ptr)
 	  {
                  iter_table = qcapn_new_VRFTableIter(cs);
