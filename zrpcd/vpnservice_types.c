@@ -10968,7 +10968,8 @@ enum _BgpConfiguratorGetRoutesArgsProperties
   PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_0,
   PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_P_TYPE,
   PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_OPTYPE,
-  PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_WIN_SIZE
+  PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_WIN_SIZE,
+  PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_AFI
 };
 
 /* reads a bgp_configurator_get_routes_args object */
@@ -11061,6 +11062,21 @@ bgp_configurator_get_routes_args_read (ThriftStruct *object, ThriftProtocol *pro
           xfer += ret;
         }
         break;
+      case 4:
+        if (ftype == T_I32)
+        {
+          gint32 ecast15;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast15, error)) < 0)
+            return -1;
+          xfer += ret;
+          this_object->afi = (af_afi)ecast15;
+          this_object->__isset_afi = TRUE;
+        } else {
+          if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
+            return -1;
+          xfer += ret;
+        }
+        break;
       default:
         if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
           return -1;
@@ -11120,6 +11136,16 @@ bgp_configurator_get_routes_args_write (ThriftStruct *object, ThriftProtocol *pr
   if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
     return -1;
   xfer += ret;
+  if ((ret = thrift_protocol_write_field_begin (protocol, "afi", T_I32, 4, error)) < 0)
+    return -1;
+  xfer += ret;
+  if ((ret = thrift_protocol_write_i32 (protocol, (gint32) this_object->afi, error)) < 0)
+    return -1;
+  xfer += ret;
+
+  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+    return -1;
+  xfer += ret;
   if ((ret = thrift_protocol_write_field_stop (protocol, error)) < 0)
     return -1;
   xfer += ret;
@@ -11155,6 +11181,11 @@ bgp_configurator_get_routes_args_set_property (GObject *object,
       self->__isset_winSize = TRUE;
       break;
 
+    case PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_AFI:
+      self->afi = g_value_get_int (value);
+      self->__isset_afi = TRUE;
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -11183,6 +11214,10 @@ bgp_configurator_get_routes_args_get_property (GObject *object,
       g_value_set_int (value, self->winSize);
       break;
 
+    case PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_AFI:
+      g_value_set_int (value, self->afi);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -11199,6 +11234,7 @@ bgp_configurator_get_routes_args_instance_init (BgpConfiguratorGetRoutesArgs * o
   object->__isset_optype = FALSE;
   object->winSize = 0;
   object->__isset_winSize = FALSE;
+  object->__isset_afi = FALSE;
 }
 
 static void 
@@ -11254,6 +11290,17 @@ bgp_configurator_get_routes_args_class_init (BgpConfiguratorGetRoutesArgsClass *
                        G_MININT32,
                        G_MAXINT32,
                        0,
+                       G_PARAM_READWRITE));
+
+  g_object_class_install_property
+    (gobject_class,
+     PROP_BGP_CONFIGURATOR_GET_ROUTES_ARGS_AFI,
+     g_param_spec_int ("afi",
+                       NULL,
+                       NULL,
+                       1,
+                       3,
+                       1,
                        G_PARAM_READWRITE));
 }
 
@@ -11584,11 +11631,11 @@ bgp_configurator_enable_multipath_args_read (ThriftStruct *object, ThriftProtoco
       case 1:
         if (ftype == T_I32)
         {
-          gint32 ecast15;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast15, error)) < 0)
+          gint32 ecast16;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast16, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->afi = (af_afi)ecast15;
+          this_object->afi = (af_afi)ecast16;
           this_object->__isset_afi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -11599,11 +11646,11 @@ bgp_configurator_enable_multipath_args_read (ThriftStruct *object, ThriftProtoco
       case 2:
         if (ftype == T_I32)
         {
-          gint32 ecast16;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast16, error)) < 0)
+          gint32 ecast17;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast17, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->safi = (af_safi)ecast16;
+          this_object->safi = (af_safi)ecast17;
           this_object->__isset_safi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -12094,11 +12141,11 @@ bgp_configurator_disable_multipath_args_read (ThriftStruct *object, ThriftProtoc
       case 1:
         if (ftype == T_I32)
         {
-          gint32 ecast17;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast17, error)) < 0)
+          gint32 ecast18;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast18, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->afi = (af_afi)ecast17;
+          this_object->afi = (af_afi)ecast18;
           this_object->__isset_afi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -12109,11 +12156,11 @@ bgp_configurator_disable_multipath_args_read (ThriftStruct *object, ThriftProtoc
       case 2:
         if (ftype == T_I32)
         {
-          gint32 ecast18;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast18, error)) < 0)
+          gint32 ecast19;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast19, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->safi = (af_safi)ecast18;
+          this_object->safi = (af_safi)ecast19;
           this_object->__isset_safi = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -13133,11 +13180,11 @@ bgp_updater_on_update_push_route_args_read (ThriftStruct *object, ThriftProtocol
       case 1:
         if (ftype == T_I32)
         {
-          gint32 ecast21;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast21, error)) < 0)
+          gint32 ecast22;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast22, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->p_type = (protocol_type)ecast21;
+          this_object->p_type = (protocol_type)ecast22;
           this_object->__isset_p_type = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -13945,11 +13992,11 @@ bgp_updater_on_update_withdraw_route_args_read (ThriftStruct *object, ThriftProt
       case 1:
         if (ftype == T_I32)
         {
-          gint32 ecast22;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast22, error)) < 0)
+          gint32 ecast23;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast23, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->p_type = (protocol_type)ecast22;
+          this_object->p_type = (protocol_type)ecast23;
           this_object->__isset_p_type = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)

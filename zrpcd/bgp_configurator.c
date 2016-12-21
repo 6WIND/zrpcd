@@ -112,9 +112,9 @@ bgp_configurator_if_disable_graceful_restart (BgpConfiguratorIf *iface, gint32* 
 }
 
 gboolean
-bgp_configurator_if_get_routes (BgpConfiguratorIf *iface, Routes ** _return, const protocol_type p_type, const gint32 optype, const gint32 winSize, GError **error)
+bgp_configurator_if_get_routes (BgpConfiguratorIf *iface, Routes ** _return, const protocol_type p_type, const gint32 optype, const gint32 winSize, const af_afi afi, GError **error)
 {
-  return BGP_CONFIGURATOR_IF_GET_INTERFACE (iface)->get_routes (iface, _return, p_type, optype, winSize, error);
+  return BGP_CONFIGURATOR_IF_GET_INTERFACE (iface)->get_routes (iface, _return, p_type, optype, winSize, afi, error);
 }
 
 gboolean
@@ -1026,14 +1026,14 @@ gboolean bgp_configurator_client_send_add_vrf (BgpConfiguratorIf * iface, const 
       return 0;
     xfer += ret;
     {
-      guint i19;
+      guint i20;
 
       if ((ret = thrift_protocol_write_list_begin (protocol, T_STRING, (gint32) (irts ? irts->len : 0), error)) < 0)
         return 0;
       xfer += ret;
-      for (i19 = 0; i19 < (irts ? irts->len : 0); i19++)
+      for (i20 = 0; i20 < (irts ? irts->len : 0); i20++)
       {
-        if ((ret = thrift_protocol_write_string (protocol, ((gchar*)g_ptr_array_index ((GPtrArray *) irts, i19)), error)) < 0)
+        if ((ret = thrift_protocol_write_string (protocol, ((gchar*)g_ptr_array_index ((GPtrArray *) irts, i20)), error)) < 0)
           return 0;
         xfer += ret;
 
@@ -1049,14 +1049,14 @@ gboolean bgp_configurator_client_send_add_vrf (BgpConfiguratorIf * iface, const 
       return 0;
     xfer += ret;
     {
-      guint i20;
+      guint i21;
 
       if ((ret = thrift_protocol_write_list_begin (protocol, T_STRING, (gint32) (erts ? erts->len : 0), error)) < 0)
         return 0;
       xfer += ret;
-      for (i20 = 0; i20 < (erts ? erts->len : 0); i20++)
+      for (i21 = 0; i21 < (erts ? erts->len : 0); i21++)
       {
-        if ((ret = thrift_protocol_write_string (protocol, ((gchar*)g_ptr_array_index ((GPtrArray *) erts, i20)), error)) < 0)
+        if ((ret = thrift_protocol_write_string (protocol, ((gchar*)g_ptr_array_index ((GPtrArray *) erts, i21)), error)) < 0)
           return 0;
         xfer += ret;
 
@@ -3550,7 +3550,7 @@ gboolean bgp_configurator_client_disable_graceful_restart (BgpConfiguratorIf * i
   return TRUE;
 }
 
-gboolean bgp_configurator_client_send_get_routes (BgpConfiguratorIf * iface, const protocol_type p_type, const gint32 optype, const gint32 winSize, GError ** error)
+gboolean bgp_configurator_client_send_get_routes (BgpConfiguratorIf * iface, const protocol_type p_type, const gint32 optype, const gint32 winSize, const af_afi afi, GError ** error)
 {
   gint32 cseqid = 0;
   ThriftProtocol * protocol = BGP_CONFIGURATOR_CLIENT (iface)->output_protocol;
@@ -3590,6 +3590,16 @@ gboolean bgp_configurator_client_send_get_routes (BgpConfiguratorIf * iface, con
       return 0;
     xfer += ret;
     if ((ret = thrift_protocol_write_i32 (protocol, winSize, error)) < 0)
+      return 0;
+    xfer += ret;
+
+    if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+      return 0;
+    xfer += ret;
+    if ((ret = thrift_protocol_write_field_begin (protocol, "afi", T_I32, 4, error)) < 0)
+      return 0;
+    xfer += ret;
+    if ((ret = thrift_protocol_write_i32 (protocol, (gint32) afi, error)) < 0)
       return 0;
     xfer += ret;
 
@@ -3739,9 +3749,9 @@ gboolean bgp_configurator_client_recv_get_routes (BgpConfiguratorIf * iface, Rou
   return TRUE;
 }
 
-gboolean bgp_configurator_client_get_routes (BgpConfiguratorIf * iface, Routes ** _return, const protocol_type p_type, const gint32 optype, const gint32 winSize, GError ** error)
+gboolean bgp_configurator_client_get_routes (BgpConfiguratorIf * iface, Routes ** _return, const protocol_type p_type, const gint32 optype, const gint32 winSize, const af_afi afi, GError ** error)
 {
-  if (!bgp_configurator_client_send_get_routes (iface, p_type, optype, winSize, error))
+  if (!bgp_configurator_client_send_get_routes (iface, p_type, optype, winSize, afi, error))
     return FALSE;
   if (!bgp_configurator_client_recv_get_routes (iface, _return, error))
     return FALSE;
@@ -4493,11 +4503,11 @@ gboolean bgp_configurator_handler_disable_graceful_restart (BgpConfiguratorIf * 
   return BGP_CONFIGURATOR_HANDLER_GET_CLASS (iface)->disable_graceful_restart (iface, _return, error);
 }
 
-gboolean bgp_configurator_handler_get_routes (BgpConfiguratorIf * iface, Routes ** _return, const protocol_type p_type, const gint32 optype, const gint32 winSize, GError ** error)
+gboolean bgp_configurator_handler_get_routes (BgpConfiguratorIf * iface, Routes ** _return, const protocol_type p_type, const gint32 optype, const gint32 winSize, const af_afi afi, GError ** error)
 {
   g_return_val_if_fail (IS_BGP_CONFIGURATOR_HANDLER (iface), FALSE);
 
-  return BGP_CONFIGURATOR_HANDLER_GET_CLASS (iface)->get_routes (iface, _return, p_type, optype, winSize, error);
+  return BGP_CONFIGURATOR_HANDLER_GET_CLASS (iface)->get_routes (iface, _return, p_type, optype, winSize, afi, error);
 }
 
 gboolean bgp_configurator_handler_enable_multipath (BgpConfiguratorIf * iface, gint32* _return, const af_afi afi, const af_safi safi, GError ** error)
@@ -6583,6 +6593,7 @@ bgp_configurator_processor_process_get_routes (BgpConfiguratorProcessor *self,
     protocol_type p_type;
     gint optype;
     gint winSize;
+    af_afi afi;
     Routes * return_value;
     BgpConfiguratorGetRoutesResult * result_struct;
 
@@ -6590,6 +6601,7 @@ bgp_configurator_processor_process_get_routes (BgpConfiguratorProcessor *self,
                   "p_type", &p_type,
                   "optype", &optype,
                   "winSize", &winSize,
+                  "afi", &afi,
                   NULL);
 
     g_object_unref (transport);
@@ -6603,6 +6615,7 @@ bgp_configurator_processor_process_get_routes (BgpConfiguratorProcessor *self,
                                              p_type,
                                              optype,
                                              winSize,
+                                             afi,
                                              error) == TRUE)
     {
       g_object_set (result_struct, "success", return_value, NULL);

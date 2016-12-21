@@ -1091,6 +1091,8 @@ struct _BgpConfiguratorGetRoutesArgs
   gboolean __isset_optype;
   gint32 winSize;
   gboolean __isset_winSize;
+  af_afi afi;
+  gboolean __isset_afi;
 };
 typedef struct _BgpConfiguratorGetRoutesArgs BgpConfiguratorGetRoutesArgs;
 
