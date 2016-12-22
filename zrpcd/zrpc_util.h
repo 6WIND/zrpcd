@@ -51,7 +51,7 @@ typedef enum {
 #define SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST      6
 #define SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN             4
 #define SUBSEQUENT_ADDRESS_FAMILY_EVPN                 5
-#define SUBSEQUENT_ADDRESS_FAMILY_MAX                  6
+#define SUBSEQUENT_ADDRESS_FAMILY_MAX                  7
 typedef u_int8_t subsequent_address_family_t;
 
 /* value of first byte of ESI */

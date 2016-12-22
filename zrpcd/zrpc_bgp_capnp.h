@@ -135,7 +135,7 @@ struct bgp_api_route
   struct zrpc_prefix nexthop;
   uint32_t label;
   uint32_t ethtag;
-  uint32_t l2label;
+  uint32_t l2label; /* alias information on labeled unicast */
   char *esi;
   char *mac_router;
   struct in_addr gatewayIp;
