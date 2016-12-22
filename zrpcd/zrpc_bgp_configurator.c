@@ -930,11 +930,18 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
     }
   /* get route distinguisher internal representation */
   memset(&rd_inst, 0, sizeof(struct zrpc_rd_prefix));
-  if (rd)
-    zrpc_util_str2rd_prefix((char *)rd, &rd_inst);
-  /* if vrf not found, return an error */
-  bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
-  if(bgpvrf_nid == 0)
+  if (rd && zrpc_util_str2rd_prefix((char *)rd, &rd_inst))
+    {
+      /* if vrf not found, return an error */
+      bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+      if(bgpvrf_nid == 0)
+        {
+          *error = ERROR_BGP_RD_NOTFOUND;
+          *_return = BGP_ERR_PARAM;
+          return FALSE;
+        }
+    }
+  else if (PROTOCOL_TYPE_PROTOCOL_LU != p_type)
     {
       *error = ERROR_BGP_RD_NOTFOUND;
       *_return = BGP_ERR_PARAM;
@@ -1083,9 +1090,28 @@ inst_filled:
   afikey = qcapn_new_AfiKey(cs);
   capn_write8(afikey, 0, afi);
   /* set route within afi context using QZC set request */
-  ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, \
-                           3, &bgpvrfroute, &bgp_datatype_bgpvrfroute,  \
-                           &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+  if (bgpvrf_nid != 0)
+    {
+      ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid,             \
+                               3, &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
+                               &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+    }
+  else
+    {
+      struct QZCGetRep *grep;
+
+      /* get bgp_master configuration */
+      grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+      if(grep == NULL)
+        {
+          *_return = BGP_ERR_FAILED;
+          return FALSE;
+        }
+      qzcclient_qzcgetrep_free( grep);
+      ret = qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid,
+                               3, &bgpvrfroute, &bgp_datatype_bgpvrfroute,
+                               &afikey,  &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+    }
   if(ret == 0)
     {
       *_return = BGP_ERR_FAILED;
@@ -1099,11 +1125,11 @@ inst_filled:
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
         zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, l3label %d, l2label %d,"
                     " esi %s, ethtag %d, routermac %s, macaddress %s, enc_type %d) OK",
-                    prefix, nexthop, rd, l3label, l2label, esi, ethtag,
+                    prefix, nexthop, rd==NULL?"<none>":rd, l3label, l2label, esi, ethtag,
                     routermac, macaddress, enc_type);
       else
         zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) OK",
-                  prefix, nexthop, rd, l3label);
+                  prefix, nexthop, rd==NULL?"<none>":rd, l3label);
     }
   if (inst.esi)
     free(inst.esi);
@@ -1145,11 +1171,18 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
       *error = ERROR_BGP_AS_NOT_STARTED;
       return FALSE;
     }
-  /* get route distinguisher internal representation */
-  zrpc_util_str2rd_prefix((char *)rd, &rd_inst);
-  /* if vrf not found, return an error */
-  bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
-  if(bgpvrf_nid == 0)
+  if (rd && zrpc_util_str2rd_prefix((char *)rd, &rd_inst))
+    {
+      /* if vrf not found, return an error */
+      bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+      if(bgpvrf_nid == 0)
+        {
+          *error = ERROR_BGP_RD_NOTFOUND;
+          *_return = BGP_ERR_PARAM;
+          return FALSE;
+        }
+    }
+  else if (PROTOCOL_TYPE_PROTOCOL_LU != p_type)
     {
       *error = ERROR_BGP_RD_NOTFOUND;
       *_return = BGP_ERR_PARAM;
@@ -1257,10 +1290,30 @@ inst_filled:
   /* prepare afi context */
   afikey = qcapn_new_AfiKey(cs);
   capn_write8(afikey, 0, afi);
-  /* set route within afi context using QZC set request */
-  ret = qzcclient_unsetelem (ctxt->qzc_sock, &bgpvrf_nid, 3, \
-                             &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
-                             &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+
+  if (bgpvrf_nid != 0)
+    {
+      /* set route within afi context using QZC set request */
+      ret = qzcclient_unsetelem (ctxt->qzc_sock, &bgpvrf_nid, 3,      \
+                                 &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
+                                 &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+    }
+  else
+    {
+      struct QZCGetRep *grep;
+
+      /* get bgp_master configuration */
+      grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+      if(grep == NULL)
+        {
+          *_return = BGP_ERR_FAILED;
+          return FALSE;
+        }
+      qzcclient_qzcgetrep_free( grep);
+      ret = qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid,
+                               4, &bgpvrfroute, &bgp_datatype_bgpvrfroute,
+                               &afikey,  &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+    }
   if(ret == 0)
     {
       *_return = BGP_ERR_FAILED;
@@ -1275,7 +1328,7 @@ error:
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
         zrpc_info ("withdrawRoute(prefix %s, rd %s,"
         " esi %s, ethtag %d, macaddress %s) OK",
-        prefix, rd, esi, ethtag, macaddress);
+        prefix, rd==NULL?"<none>":rd, esi, ethtag, macaddress);
       else
         zrpc_info ("withdrawRoute(prefix %s, rd %s) OK", prefix, rd);
     }
