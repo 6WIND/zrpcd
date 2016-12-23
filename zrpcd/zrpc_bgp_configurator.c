@@ -1905,17 +1905,19 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
        return FALSE;
      }
    ret = zrpc_bgp_afi_config(ctxt, _return, peerIp, afi, safi, TRUE, error);
-   if(ret == TRUE && afi == AF_AFI_AFI_L2VPN && safi == AF_SAFI_SAFI_EVPN)
+   if(ret == TRUE && 
+      ((afi == AF_AFI_AFI_L2VPN && safi == AF_SAFI_SAFI_EVPN) ||
+       (afi == AF_AFI_AFI_IPV6 && safi == AF_SAFI_SAFI_MPLS_VPN) ||
+       (afi == AF_AFI_AFI_IPV6 && safi == AF_SAFI_SAFI_IP_LABELED_UNICAST) ||
+       (afi == AF_AFI_AFI_IP && safi == AF_SAFI_SAFI_IP_LABELED_UNICAST)))
      {
        zrpc_bgp_peer_af_flag_config(ctxt, _return, peerIp,
-                                       afi, safi,
-                                       PEER_FLAG_NEXTHOP_UNCHANGED, TRUE,
-                                       error);
+                                    afi, safi,
+                                    PEER_FLAG_NEXTHOP_UNCHANGED, TRUE,
+                                    error);
      }
    if (ret == TRUE && 
-       ( (afi == AF_AFI_AFI_IPV6 && safi == AF_SAFI_SAFI_MPLS_VPN) ||
-         (afi == AF_AFI_AFI_IPV6 && safi == AF_SAFI_SAFI_IP_LABELED_UNICAST) ||
-         (afi == AF_AFI_AFI_IP && safi == AF_SAFI_SAFI_IP_LABELED_UNICAST)))
+       ((afi == AF_AFI_AFI_L2VPN && safi == AF_SAFI_SAFI_EVPN)))
      {
        zrpc_bgp_peer_af_flag_config(ctxt, _return, peerIp,
                                     afi, safi,
