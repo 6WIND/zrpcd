@@ -36,7 +36,7 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
   response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, p_type,
                                                           rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress, 
                                                           l3label, l2label, routermac, gatewayIp, &error);
-  if(IS_ZRPC_DEBUG_NOTIFICATION)
+  if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
   {
     char ethtag_str[20];
     sprintf(ethtag_str,"ethtag %ld", ethtag);
@@ -72,7 +72,7 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
   response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, p_type,
                                                          rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress,
                                                          l3label, l2label, &error);
-  if(IS_ZRPC_DEBUG_NOTIFICATION)
+  if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
     {
       char ethtag_str[20];
       sprintf(ethtag_str,"ethtag %ld", ethtag);
@@ -123,7 +123,7 @@ zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 e
       return FALSE;
   response = bgp_updater_client_on_notification_send_event(ctxt->bgp_updater_client, \
                                                            prefix, errCode, errSubcode, &error); 
-  if(IS_ZRPC_DEBUG_NOTIFICATION)
+  if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
     zrpc_log ("onNotificationSendEvent(%s, errCode %d, errSubCode %d)", \
                 prefix, errCode, errSubcode);
   return response;

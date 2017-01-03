@@ -232,7 +232,6 @@ zrpc_debug_init (void)
   install_element (ENABLE_NODE, &debug_zrpc_cache_cmd);
   install_element (ENABLE_NODE, &no_debug_zrpc_cache_cmd);
 
-  zrpc_debug |= ZRPC_DEBUG_NOTIFICATION;
   zrpc_debug |= ZRPC_DEBUG;
 }
 
