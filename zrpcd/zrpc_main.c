@@ -63,7 +63,6 @@ static void  zrpc_sighup (void)
   zrpc_terminate ();
   vty_reset ();
   zrpc_log ("zrpcd restarting!");
-
   /* Try to return to normal operation. */
 }
 
@@ -73,7 +72,7 @@ static void zrpc_sigint (void)
   zrpc_log ("Terminating on signal");
 
   zrpc_terminate ();
-
+  zrpc_debug_flush ();
   zrpc_exit (0);
 }
 

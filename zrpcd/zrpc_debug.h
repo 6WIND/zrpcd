@@ -32,6 +32,8 @@ extern void
 zrpc_debug_set_log_file_with_level (char *logFileName, char *logLevel);
 extern void
 zrpc_debug_configure_stdout (int on);
+extern void
+zrpc_debug_flush (void);
 
 
 

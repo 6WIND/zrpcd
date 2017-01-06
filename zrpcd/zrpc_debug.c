@@ -259,7 +259,7 @@ zrpc_log(const char *format, ...)
     fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
   if (!log_file_fp)
     return;
-  /* XXX TODO */
+  fprintf (log_file_fp, "%s ZRPC: %s\r\n", buffer, dest);
 }
 
 void
@@ -285,7 +285,7 @@ zrpc_info(const char *format, ...)
     fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
   if (!log_file_fp)
     return;
-  /* XXX TODO */
+  fprintf (log_file_fp, "%s ZRPC: %s\r\n", buffer, dest);
 }
 
 void
@@ -296,11 +296,7 @@ zrpc_debug_set_log_file_with_level (char *logFileName, char *logLevel)
   
   return; /* XXX to remove */
   /* close previous file */
-  if (log_file_fp)
-    fclose (log_file_fp);
-  log_file_fp = NULL;
-  if (log_file_filename)
-    ZRPC_FREE (log_file_filename);
+  zrpc_debug_flush();
 
   /* reopen */
   oldumask = umask (0777 & ~LOGFILE_MASK);
@@ -316,4 +312,14 @@ void
 zrpc_debug_configure_stdout (int on)
 {
   log_stdout = on;
+}
+
+void
+zrpc_debug_flush (void)
+{
+  if (log_file_fp)
+    fclose (log_file_fp);
+  log_file_fp = NULL;
+  if (log_file_filename)
+    ZRPC_FREE (log_file_filename);
 }
