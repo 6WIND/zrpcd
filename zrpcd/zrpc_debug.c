@@ -235,6 +235,8 @@ zrpc_debug_init (void)
   zrpc_debug |= ZRPC_DEBUG;
 }
 
+char dest_sys[1024];
+
 void
 zrpc_log(const char *format, ...)
 {
@@ -257,9 +259,16 @@ zrpc_log(const char *format, ...)
 
   if (log_stdout)
     fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
-  if (!log_file_fp)
+  if (!log_file_filename)
     return;
-  fprintf (log_file_fp, "%s ZRPC: %s\r\n", buffer, dest);
+  //log_file_fp = fopen (log_file_filename, "a");
+  //if (log_file_fp == NULL)
+  //  return ;
+  sprintf(dest_sys, "echo \"%s ZRPC: %s\" >> %s", buffer, dest, log_file_filename); 
+  system (dest_sys);
+  //fprintf (log_file_fp, "%s ZRPC: %s\r\n", buffer, dest);
+  //fclose (log_file_fp);
+
 }
 
 void
@@ -283,29 +292,32 @@ zrpc_info(const char *format, ...)
   va_end(argptr);
   if (log_stdout)
     fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
-  if (!log_file_fp)
+  if (!log_file_filename)
     return;
-  fprintf (log_file_fp, "%s ZRPC: %s\r\n", buffer, dest);
+  //log_file_fp = fopen (log_file_filename, "a");
+  //if (log_file_fp == NULL)
+  //  return ;
+  sprintf(dest_sys, "echo \"%s ZRPC: %s\" >> %s", buffer, dest, log_file_filename); 
+  system (dest_sys);
+  //  fprintf (log_file_fp, "%s ZRPC: %s\r\n", buffer, dest);
+  //fclose (log_file_fp);
 }
 
 void
 zrpc_debug_set_log_file_with_level (char *logFileName, char *logLevel)
 {
   log_level = zrpc_level_match(logLevel);
-  mode_t oldumask;
   
-  return; /* XXX to remove */
   /* close previous file */
   zrpc_debug_flush();
 
-  /* reopen */
-  oldumask = umask (0777 & ~LOGFILE_MASK);
-  log_file_fp = fopen (logFileName, "a");
-  umask(oldumask);
-  if (log_file_fp == NULL)
-    return ;
+  //  log_file_fp = fopen (logFileName, "a");
+  //umask(oldumask);
+  //if (log_file_fp == NULL)
+  //  return ;
   log_file_filename = ZRPC_STRDUP (logFileName);
-  
+  //fclose (log_file_fp);
+  //log_file_fp = NULL;
 }
 
 void
@@ -322,4 +334,5 @@ zrpc_debug_flush (void)
   log_file_fp = NULL;
   if (log_file_filename)
     ZRPC_FREE (log_file_filename);
+  log_file_filename = NULL;
 }
