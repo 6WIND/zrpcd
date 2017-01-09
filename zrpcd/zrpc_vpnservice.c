@@ -92,6 +92,12 @@ static int zrpc_vpnservice_bgp_updater_check_connection (struct zrpc_vpnservice 
     ret = 0;
   else
     ret = recv(fd, buffer, 32, MSG_PEEK | MSG_DONTWAIT);
+  if (ret == 0)
+    {
+      /* error */
+      errno = ENOTCONN;
+      return -1;
+    }
   return ret;
 }
 
@@ -123,17 +129,16 @@ static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thre
   setup = THREAD_ARG (thread);
   assert (setup);
   ret = zrpc_vpnservice_bgp_updater_check_connection (setup);
-  if (ret == 0 ||
-      (ret < 0 && errno != ENOTCONN))
+  if (ret < 0 && errno == ENOTCONN)
     {
+      thrift_transport_close (setup->bgp_updater_transport->transport, &error);
+      response = thrift_transport_open (setup->bgp_updater_transport->transport, &error);
       zrpc_monitor_retry_job_in_progress = 0;
-      zrpc_transport_check_response(setup, 1);
+      zrpc_transport_check_response(setup, response);
       return 0;
     }
-  thrift_transport_close (setup->bgp_updater_transport->transport, &error);
-  response = thrift_transport_open (setup->bgp_updater_transport->transport, &error);
   zrpc_monitor_retry_job_in_progress = 0;
-  zrpc_transport_check_response(setup, response);
+  zrpc_transport_check_response(setup, 1);
   return 0;
 }
 /* callback function for capnproto bgpupdater notifications */
