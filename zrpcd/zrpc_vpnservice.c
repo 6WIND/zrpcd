@@ -38,11 +38,10 @@ static void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolea
     return;
   if (zrpc_transport_current_status != response)
     {
-      if (IS_ZRPC_DEBUG_NOTIFICATION)
-        zrpc_log ("bgpUpdater check connection with %s:%u %s",
-                  tm->zrpc_notification_address,
-                  setup->zrpc_notification_port,
-                  response == TRUE?"OK":"NOK");
+      zrpc_log ("bgpUpdater check connection with %s:%u %s",
+                tm->zrpc_notification_address,
+                setup->zrpc_notification_port,
+                response == TRUE?"OK":"NOK");
     }
   zrpc_transport_current_status = response;
   if(response == FALSE)
