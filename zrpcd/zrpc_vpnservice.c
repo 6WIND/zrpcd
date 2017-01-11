@@ -185,7 +185,11 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       gchar *esi;
       gchar *macaddress = NULL;
       gint32 ipprefixlen = 0;
+      char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
+      struct zrpc_rd_prefix null_rd;
+      int zrpc_invalid_rd = 0;
 
+      memset (&null_rd, 0, sizeof (struct zrpc_rd_prefix));
       if(s->esi)
         {
           esi = g_strdup((const gchar *)s->esi);
@@ -195,10 +199,14 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       announce = (s->announce & BGP_EVENT_MASK_ANNOUNCE)?TRUE:FALSE;
       zrpc_util_prefix_2str (&s->nexthop, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       nexthop = nh_str;
+      if (memcmp (&s->outbound_rd, &null_rd, sizeof(struct zrpc_rd_prefix)))
+        zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
+      else
+        zrpc_invalid_rd = 1;
 
       if (announce == TRUE)
         {
-          char vrf_rd_str[ZRPC_UTIL_RDRT_LEN], pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
+          char pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
           struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
           gchar *mac_router;
           char *pfx_str_p = &pfx_str[0];
@@ -207,7 +215,6 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
             mac_router = g_strdup((const gchar *)s->mac_router);
           else
             mac_router = NULL;
-          zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
           if (p->family == AF_INET)
             {
               inet_ntop (p->family, &p->u.prefix4, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
@@ -238,14 +245,14 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
               macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_macip.mac);
             }
           zrpc_bgp_updater_on_update_push_route(s->esi?PROTOCOL_TYPE_PROTOCOL_EVPN:PROTOCOL_TYPE_PROTOCOL_L3VPN,
-                                                vrf_rd_str, pfx_str_p,
+                                                (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                 (const gint32)ipprefixlen, nexthop,
                                                 s->ethtag, esi, macaddress, s->label, s->l2label,
                                                 mac_router, s->gatewayIp);
         }
       else
         {
-          char vrf_rd_str[ZRPC_UTIL_RDRT_LEN], pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
+          char pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
           struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
           char *pfx_str_p = &pfx_str[0];
 
@@ -278,9 +285,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                   ipprefixlen = 0;
                 }
             }
-          zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
           zrpc_bgp_updater_on_update_withdraw_route (s->esi?PROTOCOL_TYPE_PROTOCOL_EVPN:PROTOCOL_TYPE_PROTOCOL_L3VPN,
-                                                     vrf_rd_str, pfx_str_p,
+                                                     (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                      (const gint32)ipprefixlen, nexthop,
                                                      s->ethtag, esi, macaddress, s->label, s->l2label);
 
