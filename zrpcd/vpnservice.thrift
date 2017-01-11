@@ -63,7 +63,8 @@
      GRE = 2,
      IP_IN_IP = 7,
      VXLAN = 8,
-     MPLS = 10
+     MPLS = 10,
+     MPLS_OVER_GRE = 11
  }
 
  // layer type
@@ -140,18 +141,20 @@ enum protocol_type {
       *       value should have 'colon' separators : 00:02:ab:de:45:23:54:75:fd:ab as example
       * encap_type: restricted for VXLAN if L3VPN-EVPN configured.
       *             ignored if L3VPN-MPLS is configured.
+      * af_afi: indicates whether prefix is IPv4 or IPv6
       */
      i32 pushRoute(1:protocol_type p_type, 2:string prefix, 3:string nexthop, 4:string rd,
                    5:i64 ethtag, 6:string esi, 7:string macaddress,
                    8:i32 l3label, 9:i32 l2label, 10:encap_type enc_type,
-                   11:string routermac, 12:string gatewayip),
+                   11:string routermac, 12:string gatewayip, 13:af_afi afi),
      /*
       * 'p_type' is mandatory
       * kludge: second argument is either 'rd' (VPNv4) or 
       * label (v4LU) as a string (eg: "2500")
+      * af_afi: indicates whether prefix is IPv4 or IPv6
       */
      i32 withdrawRoute(1:protocol_type p_type, 2:string prefix, 3:string rd,
-                       4:i64 ethtag, 5:string esi, 6:string macaddress),
+                       4:i64 ethtag, 5:string esi, 6:string macaddress, 7:af_afi afi),
      i32 setEbgpMultihop(1:string peerIp, 2:i32 nHops),
      i32 unsetEbgpMultihop(1:string peerIp),
      i32 setUpdateSource(1:string peerIp, 2:string srcIp),
@@ -187,11 +190,11 @@ enum protocol_type {
                                  4:i32 prefixlen, 5:string nexthop, 
                                  6:i64 ethtag, 7:string esi, 8:string macaddress,
                                  9:i32 l3label, 10:i32 l2label,
-                                 11:string routermac, 12:string gatewayip),
+                                 11:string routermac, 12:string gatewayip, 13:af_afi afi),
    oneway void onUpdateWithdrawRoute(1:protocol_type p_type, 2:string rd, 3:string prefix, 
                                      4:i32 prefixlen, 5:string nexthop,
                                      6:i64 ethtag, 7:string esi, 8:string macaddress,
-                                     9:i32 l3label, 10:i32 l2label),
+                                     9:i32 l3label, 10:i32 l2label, 14:af_afi afi),
    // tell them we're open for business
    oneway void onStartConfigResyncNotification(),
    // relay to odl a bgp Notification we got from peer 

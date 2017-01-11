@@ -43,7 +43,8 @@ enum _encap_type {
   ENCAP_TYPE_GRE = 2,
   ENCAP_TYPE_IP_IN_IP = 7,
   ENCAP_TYPE_VXLAN = 8,
-  ENCAP_TYPE_MPLS = 10
+  ENCAP_TYPE_MPLS = 10,
+  ENCAP_TYPE_MPLS_OVER_GRE = 11
 };
 typedef enum _encap_type encap_type;
 
@@ -515,6 +516,8 @@ struct _BgpConfiguratorPushRouteArgs
   gboolean __isset_routermac;
   gchar * gatewayip;
   gboolean __isset_gatewayip;
+  af_afi afi;
+  gboolean __isset_afi;
 };
 typedef struct _BgpConfiguratorPushRouteArgs BgpConfiguratorPushRouteArgs;
 
@@ -575,6 +578,8 @@ struct _BgpConfiguratorWithdrawRouteArgs
   gboolean __isset_esi;
   gchar * macaddress;
   gboolean __isset_macaddress;
+  af_afi afi;
+  gboolean __isset_afi;
 };
 typedef struct _BgpConfiguratorWithdrawRouteArgs BgpConfiguratorWithdrawRouteArgs;
 
@@ -1321,6 +1326,8 @@ struct _BgpUpdaterOnUpdatePushRouteArgs
   gboolean __isset_routermac;
   gchar * gatewayip;
   gboolean __isset_gatewayip;
+  af_afi afi;
+  gboolean __isset_afi;
 };
 typedef struct _BgpUpdaterOnUpdatePushRouteArgs BgpUpdaterOnUpdatePushRouteArgs;
 
@@ -1364,6 +1371,8 @@ struct _BgpUpdaterOnUpdateWithdrawRouteArgs
   gboolean __isset_l3label;
   gint32 l2label;
   gboolean __isset_l2label;
+  af_afi afi;
+  gboolean __isset_afi;
 };
 typedef struct _BgpUpdaterOnUpdateWithdrawRouteArgs BgpUpdaterOnUpdateWithdrawRouteArgs;
 
