@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 //#include <getopt.h>
 
 #include "thread.h"
@@ -31,6 +33,7 @@ static void zrpc_exit (int);
 static void zrpc_sighup (void);
 static void zrpc_sigint (void);
 static void zrpc_sigpipe (void);
+static void zrpc_sigchild (void);
 
 /* VTY port number and address.  */
 int vty_port = ZRPC_VTY_PORT;
@@ -76,6 +79,40 @@ static void zrpc_sigint (void)
   zrpc_exit (0);
 }
 
+/* SIGCHLD handler. */
+static void zrpc_sigchild (void)
+{
+  pid_t p;
+  int status;
+  struct zrpc_vpnservice *ctxt = NULL;
+  uint32_t asNumber;
+
+  while ((p=waitpid(-1, &status, WNOHANG)) != -1)
+    {
+      if (p == 0)
+        return;
+      /* Handle the death of pid p */
+      zrpc_info ("BGPD terminated (%u)",p);
+      zrpc_vpnservice_get_context (&ctxt);
+      /* kill BGP Daemon */
+      if(ctxt == NULL)
+        /* nothing to be done - context not yet created */
+        return;
+      if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL)
+        /* nothing to be done - BGP config already flushed */
+        return;
+      asNumber = zrpc_vpnservice_get_bgp_context(ctxt)->asNumber;
+      /* reset Thrift Context */
+      zrpc_vpnservice_terminate_bgp_context(ctxt);
+      zrpc_vpnservice_terminate_bgpvrf_cache(ctxt);
+      zrpc_vpnservice_terminate_qzc(ctxt);
+      /* creation of capnproto context */
+      zrpc_vpnservice_setup_bgp_cache(ctxt);
+      zrpc_vpnservice_setup_qzc(ctxt);
+      if(asNumber)
+        zrpc_info ("stopBgp(AS %u) OK", asNumber);
+    }
+}
 
 /* signal handler. only sigup and sigint are handled */
 static void zrpc_sig_handler(int signo)
@@ -91,6 +128,10 @@ static void zrpc_sig_handler(int signo)
   else if (signo ==  SIGPIPE)
     {
       zrpc_sigpipe ();
+    }
+  else if (signo ==  SIGCHLD)
+    {
+      zrpc_sigchild ();
     }
 }
 
@@ -179,6 +220,8 @@ main (int argc, char **argv)
     zrpc_log("can't catch SIGHUP");
   if (signal(SIGPIPE, zrpc_sig_handler) == SIG_ERR)
     zrpc_log("can't catch SIGPIPE");
+  if (signal(SIGCHLD, zrpc_sig_handler) == SIG_ERR)
+    zrpc_log("can't catch SIGCHLD");
 
   cmd_init (1);
   memory_init ();
