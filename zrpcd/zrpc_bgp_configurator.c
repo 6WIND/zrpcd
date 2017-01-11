@@ -48,10 +48,10 @@ gboolean
 instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
                                              const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi,
                                              const gchar * macaddress, const gint32 l3label, const gint32 l2label,
-                                             const encap_type enc_type, const gchar * routermac, const char *gatewayIp, GError **error);
+                                             const encap_type enc_type, const gchar * routermac, const char *gatewayIp, const af_afi afi, GError **error);
 gboolean
 instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
-                                                 const gchar * rd,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, GError **error);
+                                                 const gchar * rd,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, const af_afi afi, GError **error);
 gboolean
 instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint64 asNumber, GError **error);
 gboolean
@@ -896,13 +896,13 @@ gboolean
 instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
                                              const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi,
                                              const gchar * macaddress, const gint32 l3label, const gint32 l2label, 
-                                             const encap_type enc_type, const gchar * routermac, const char *gatewayIp, GError **error)
+                                             const encap_type enc_type, const gchar * routermac, const char *gatewayIp, const af_afi afi, GError **error)
 {
   struct zrpc_vpnservice *ctxt = NULL;
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
-  address_family_t afi = ADDRESS_FAMILY_IP;
+  address_family_t afi_int = ADDRESS_FAMILY_IP;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
   struct capn rc;
@@ -977,7 +977,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
 
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
-      afi = ADDRESS_FAMILY_L2VPN;
+      afi_int = ADDRESS_FAMILY_L2VPN;
       if (gatewayIp)
         inet_aton (gatewayIp, &inst.gatewayIp);
 
@@ -1052,6 +1052,13 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
               ret = FALSE;
               goto error;
             }
+          if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
+              (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
+            {
+              *_return = BGP_ERR_PARAM;
+              ret = FALSE;
+              goto error;
+            }
         }
     }
   else
@@ -1063,11 +1070,17 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           ret = FALSE;
           goto error;
         }
+      if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
+          (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
+        {
+          *_return = BGP_ERR_PARAM;
+          ret = FALSE;
+          goto error;
+        }
       if (inst.prefix.family == AF_INET)
-
-        afi = ADDRESS_FAMILY_IP;
+        afi_int = ADDRESS_FAMILY_IP;
       else if (inst.prefix.family == AF_INET6)
-        afi = ADDRESS_FAMILY_IPV6;
+        afi_int = ADDRESS_FAMILY_IPV6;
       /* reuse l2label to carry safi information for */
       if (PROTOCOL_TYPE_PROTOCOL_LU == p_type)
         {
@@ -1082,7 +1095,7 @@ inst_filled:
   qcapn_BGPVRFRoute_write(&inst, bgpvrfroute);
   /* prepare afi context */
   afikey = qcapn_new_AfiKey(cs);
-  capn_write8(afikey, 0, afi);
+  capn_write8(afikey, 0, afi_int);
   /* set route within afi context using QZC set request */
   if (bgpvrf_nid != 0)
     {
@@ -1139,13 +1152,13 @@ inst_filled:
  */
 gboolean
 instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
-                                                 const gchar * rd,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, GError **error)
+                                                 const gchar * rd,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, const af_afi afi, GError **error)
 {
   struct zrpc_vpnservice *ctxt = NULL;
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
-  address_family_t afi = ADDRESS_FAMILY_IP;
+  address_family_t afi_int = ADDRESS_FAMILY_IP;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
   struct capn rc;
@@ -1197,7 +1210,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
 
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
-      afi = ADDRESS_FAMILY_L2VPN;
+      afi_int = ADDRESS_FAMILY_L2VPN;
       if( !esi || zrpc_util_str2esi (esi,NULL) == 0)
         {
           *_return = BGP_ERR_PARAM;
@@ -1253,6 +1266,13 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
               ret = FALSE;
               goto error;
             }
+          if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
+              (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
+            {
+              *_return = BGP_ERR_PARAM;
+              ret = FALSE;
+              goto error;
+            }
         }
     }
   else
@@ -1264,11 +1284,17 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           ret = FALSE;
           goto error;
         }
+      if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
+          (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
+        {
+          *_return = BGP_ERR_PARAM;
+          ret = FALSE;
+          goto error;
+        }
       if (inst.prefix.family == AF_INET)
-
-        afi = ADDRESS_FAMILY_IP;
+        afi_int = ADDRESS_FAMILY_IP;
       else if (inst.prefix.family == AF_INET6)
-        afi = ADDRESS_FAMILY_IPV6;
+        afi_int = ADDRESS_FAMILY_IPV6;
       /* reuse l2label to carry safi information for */
       if (PROTOCOL_TYPE_PROTOCOL_LU == p_type)
         {
@@ -1283,7 +1309,7 @@ inst_filled:
   qcapn_BGPVRFRoute_write(&inst, bgpvrfroute);
   /* prepare afi context */
   afikey = qcapn_new_AfiKey(cs);
-  capn_write8(afikey, 0, afi);
+  capn_write8(afikey, 0, afi_int);
 
   if (bgpvrf_nid != 0)
     {

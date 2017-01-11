@@ -188,6 +188,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
       struct zrpc_rd_prefix null_rd;
       int zrpc_invalid_rd = 0;
+      struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
+      afi_t afi_out;
 
       memset (&null_rd, 0, sizeof (struct zrpc_rd_prefix));
       if(s->esi)
@@ -203,11 +205,16 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
       else
         zrpc_invalid_rd = 1;
+      if (p->family == AF_INET)
+        afi_out = AF_AFI_AFI_IP;
+      else if (p->family == AF_INET6)
+        afi_out = AF_AFI_AFI_IPV6;
+      else
+        afi_out = AF_AFI_AFI_IP; /* only L2VPN -> IPv6 */
 
       if (announce == TRUE)
         {
           char pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
-          struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
           gchar *mac_router;
           char *pfx_str_p = &pfx_str[0];
 
@@ -248,12 +255,11 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                                                 (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                 (const gint32)ipprefixlen, nexthop,
                                                 s->ethtag, esi, macaddress, s->label, s->l2label,
-                                                mac_router, s->gatewayIp);
+                                                mac_router, s->gatewayIp, afi_out);
         }
       else
         {
           char pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
-          struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
           char *pfx_str_p = &pfx_str[0];
 
           if (p->family == AF_INET)
@@ -288,8 +294,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
           zrpc_bgp_updater_on_update_withdraw_route (s->esi?PROTOCOL_TYPE_PROTOCOL_EVPN:PROTOCOL_TYPE_PROTOCOL_L3VPN,
                                                      (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                      (const gint32)ipprefixlen, nexthop,
-                                                     s->ethtag, esi, macaddress, s->label, s->l2label);
-
+                                                     s->ethtag, esi, macaddress, s->label, s->l2label,
+                                                     afi_out);
         }
       if (s->esi)
         free (s->esi);

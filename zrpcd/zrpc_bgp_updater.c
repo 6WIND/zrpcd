@@ -24,7 +24,7 @@ gboolean
 zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar * rd, const gchar * prefix, const gint32 prefixlen, 
                                        const gchar * nexthop, const gint64 ethtag, const gchar * esi, const gchar * macaddress,
                                        const gint32 l3label, const gint32 l2label, const gchar * routermac,
-                                       const gchar * gatewayIp)
+                                       const gchar * gatewayIp, const af_afi afi)
 {
   GError *error = NULL;
   gboolean response;
@@ -35,7 +35,7 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
       return FALSE;
   response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, p_type,
                                                           rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress, 
-                                                          l3label, l2label, routermac, gatewayIp, &error);
+                                                          l3label, l2label, routermac, gatewayIp, afi, &error);
   if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
   {
     char ethtag_str[20];
@@ -60,7 +60,7 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
 gboolean
 zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gchar * rd, const gchar * prefix, const gint32 prefixlen, 
                                            const gchar * nexthop,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, 
-                                           const gint32 l3label, const gint32 l2label)
+                                           const gint32 l3label, const gint32 l2label, const af_afi afi)
 {
   GError *error = NULL;
   gboolean response;
@@ -71,7 +71,7 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
       return FALSE;
   response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, p_type,
                                                          rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress,
-                                                         l3label, l2label, &error);
+                                                         l3label, l2label, afi, &error);
   if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
     {
       char ethtag_str[20];
