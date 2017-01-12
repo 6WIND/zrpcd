@@ -38,6 +38,7 @@ static void zrpc_sigchild (void);
 /* VTY port number and address.  */
 int vty_port = ZRPC_VTY_PORT;
 char *vty_addr = NULL;
+int zrpc_kill_in_progress = 0;
 
 /* Help information display. */
 static void
@@ -91,6 +92,8 @@ static void zrpc_sigchild (void)
     {
       if (p == 0)
         return;
+      if (zrpc_kill_in_progress)
+        return;
       /* Handle the death of pid p */
       zrpc_info ("BGPD terminated (%u)",p);
       zrpc_vpnservice_get_context (&ctxt);
@@ -101,6 +104,7 @@ static void zrpc_sigchild (void)
       if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL)
         /* nothing to be done - BGP config already flushed */
         return;
+      zrpc_kill_in_progress = 1;
       asNumber = zrpc_vpnservice_get_bgp_context(ctxt)->asNumber;
       /* reset Thrift Context */
       zrpc_vpnservice_terminate_bgp_context(ctxt);
@@ -111,6 +115,7 @@ static void zrpc_sigchild (void)
       zrpc_vpnservice_setup_qzc(ctxt);
       if(asNumber)
         zrpc_info ("stopBgp(AS %u) OK", asNumber);
+      zrpc_kill_in_progress = 0;
     }
 }
 

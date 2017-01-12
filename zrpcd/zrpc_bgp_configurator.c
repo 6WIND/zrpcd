@@ -1363,6 +1363,9 @@ instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _re
       *_return = BGP_ERR_FAILED;
       return FALSE;
     }
+  if (zrpc_kill_in_progress)
+    return TRUE;
+  zrpc_kill_in_progress = 1;
   /* kill BGP Daemon */
   zrpc_vpnservice_terminate_qzc(ctxt);
   zrpc_vpnservice_terminate_bgpvrf_cache(ctxt);
@@ -1372,6 +1375,7 @@ instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _re
   zrpc_vpnservice_setup_qzc(ctxt);
   if(IS_ZRPC_DEBUG)
     zrpc_info ("stopBgp(AS %u) OK", asNumber);
+  zrpc_kill_in_progress = 0;
   return TRUE;
 }
 
