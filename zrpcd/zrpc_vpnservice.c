@@ -190,6 +190,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       int zrpc_invalid_rd = 0;
       struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
       afi_t afi_out;
+      protocol_type p_type;
 
       memset (&null_rd, 0, sizeof (struct zrpc_rd_prefix));
       if(s->esi)
@@ -211,7 +212,12 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         afi_out = AF_AFI_AFI_IPV6;
       else
         afi_out = AF_AFI_AFI_IP; /* only L2VPN -> IPv6 */
-
+      if (s->esi)
+        p_type  = PROTOCOL_TYPE_PROTOCOL_EVPN;
+      else if (zrpc_invalid_rd)
+        p_type = PROTOCOL_TYPE_PROTOCOL_LU;
+      else
+        p_type = PROTOCOL_TYPE_PROTOCOL_L3VPN;
       if (announce == TRUE)
         {
           char pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
@@ -251,7 +257,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                 }
               macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_macip.mac);
             }
-          zrpc_bgp_updater_on_update_push_route(s->esi?PROTOCOL_TYPE_PROTOCOL_EVPN:PROTOCOL_TYPE_PROTOCOL_L3VPN,
+          zrpc_bgp_updater_on_update_push_route(p_type,
                                                 (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                 (const gint32)ipprefixlen, nexthop,
                                                 s->ethtag, esi, macaddress, s->label, s->l2label,
@@ -291,7 +297,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                   ipprefixlen = 0;
                 }
             }
-          zrpc_bgp_updater_on_update_withdraw_route (s->esi?PROTOCOL_TYPE_PROTOCOL_EVPN:PROTOCOL_TYPE_PROTOCOL_L3VPN,
+          zrpc_bgp_updater_on_update_withdraw_route (p_type,
                                                      (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                      (const gint32)ipprefixlen, nexthop,
                                                      s->ethtag, esi, macaddress, s->label, s->l2label,
