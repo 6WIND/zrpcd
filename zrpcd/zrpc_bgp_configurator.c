@@ -1399,6 +1399,7 @@ instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _re
   /* creation of capnproto context */
   zrpc_vpnservice_setup_bgp_cache(ctxt);
   zrpc_vpnservice_setup_qzc(ctxt);
+  zrpc_vpnservice_setup_bgp_context(ctxt);
   if(IS_ZRPC_DEBUG)
     zrpc_info ("stopBgp(AS %u) OK", asNumber);
   zrpc_kill_in_progress = 0;
@@ -2198,7 +2199,8 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
       do_not_parse_vrf = 1;
     }
   zrpc_vpnservice_get_context (&ctxt);
-  if(!ctxt)
+  if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL
+     || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
     {
       (*_return)->errcode = BGP_ERR_FAILED;
       (*_return)->__isset_errcode = TRUE;

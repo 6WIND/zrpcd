@@ -113,6 +113,7 @@ static void zrpc_sigchild (void)
       /* creation of capnproto context */
       zrpc_vpnservice_setup_bgp_cache(ctxt);
       zrpc_vpnservice_setup_qzc(ctxt);
+      zrpc_vpnservice_setup_bgp_context(ctxt);
       if(asNumber)
         zrpc_info ("stopBgp(AS %u) OK", asNumber);
       zrpc_kill_in_progress = 0;
