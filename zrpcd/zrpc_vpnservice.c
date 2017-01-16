@@ -23,6 +23,7 @@
 #include "zrpcd/zrpc_bgp_capnp.h"
 #include "zrpcd/qzcclient.capnp.h"
 #include "zrpcd/zrpc_debug.h"
+#include "zrpcd/vpnservice_types.h"
 
 static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *msg);
 
@@ -426,6 +427,28 @@ void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup)
   zrpc_debug_set_log_file_with_level(setup->bgp_context->logFile, setup->bgp_context->logLevel);
   if (zrpc_disable_stdout)
     zrpc_debug_configure_stdout (0);
+}
+
+#define ERROR_BGP_MULTIPATH_NOT_SET g_error_new(1, 7, "BGP multipath already configured for afi/safi");
+
+gboolean zrpc_vpnservice_set_bgp_context_multipath (struct zrpc_vpnservice_bgp_context *bgp,
+                                                    address_family_t afi, subsequent_address_family_t safi,
+                                                    uint8_t on, gint32* _return, GError **error)
+{
+  if (on && bgp->multipath_on[afi][safi])
+    {
+      *_return = BGP_ERR_ACTIVE;
+      *error = ERROR_BGP_MULTIPATH_NOT_SET;
+      return FALSE;
+    }
+  if ((on == 0) && bgp->multipath_on[afi][safi] == 0)
+    {
+      *_return = BGP_ERR_INACTIVE;
+      *error = ERROR_BGP_MULTIPATH_NOT_SET;
+      return FALSE;
+    }
+  bgp->multipath_on[afi][safi] = 1;
+  return TRUE;
 }
 
 struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_vpnservice *setup)

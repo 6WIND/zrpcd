@@ -130,6 +130,14 @@ zrpc_bgp_set_log_config(struct zrpc_vpnservice *ctxt,
                            struct zrpc_vpnservice_bgp_context *bgp_ctxt,
                            gint32* _return,  GError **error);
 
+static gboolean
+zrpc_bgp_set_multipath_internal(struct zrpc_vpnservice *ctxt,  gint32* _return,
+                                address_family_t af, subsequent_address_family_t saf,
+                                const gint32 enable, GError **error);
+
+static af_afi zrpc_afi_value (address_family_t afi);
+static af_safi zrpc_safi_value (subsequent_address_family_t safi);
+
 
 /* The implementation of InstanceBgpConfiguratorHandler follows. */
 
@@ -235,6 +243,28 @@ zrpc_af_flag2str(guint32 af_flag)
         i++;
     }
   return af_flag_str[i];
+}
+
+static af_afi zrpc_afi_value (address_family_t afi)
+{
+  if (afi == ADDRESS_FAMILY_IP)
+    return AF_AFI_AFI_IP;
+  else if (afi == ADDRESS_FAMILY_IPV6)
+    return AF_AFI_AFI_IPV6;
+  else if (afi == ADDRESS_FAMILY_L2VPN)
+    return AF_AFI_AFI_L2VPN;
+  return AF_AFI_AFI_IP;
+}
+
+static af_safi zrpc_safi_value (subsequent_address_family_t safi)
+{
+  if (safi == SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN)
+    return AF_SAFI_SAFI_MPLS_VPN;
+  else if (safi == SUBSEQUENT_ADDRESS_FAMILY_EVPN)
+    return AF_SAFI_SAFI_EVPN;
+  else if (safi == SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST)
+    return AF_SAFI_SAFI_IP_LABELED_UNICAST;
+  return AF_SAFI_SAFI_MPLS_VPN;
 }
 
 /*
@@ -841,6 +871,13 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
         zrpc_info ("startBgp(%u, %s, .., %u, %s) NOK",(uint32_t)asNumber, routerId,
                   stalepathTime, announceFbit == true?"true":"false");
     }
+  {
+    int i, j;
+    for (i = 0; i < ADDRESS_FAMILY_MAX;i++ )
+      for (j = 0; j < SUBSEQUENT_ADDRESS_FAMILY_MAX; j++)
+        if (zrpc_vpnservice_get_bgp_context(ctxt)->multipath_on[i][j])
+          ret = zrpc_bgp_set_multipath_internal (ctxt, _return, i, j, 1, error);
+  }
  return ret;
 }
 
@@ -2564,49 +2601,19 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
 }
 
 /*
- * Enable/disable multipath feature for VPNv4 address family
+ * Enable/disable multipath feature address family
  */
 static gboolean
-zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_afi afi,
-                          const af_safi safi, const gint32 enable, GError **error)
+zrpc_bgp_set_multipath_internal(struct zrpc_vpnservice *ctxt,  gint32* _return,
+                                address_family_t af, subsequent_address_family_t saf,
+                                const gint32 enable, GError **error)
 {
   struct capn rc;
   struct capn_segment *cs;
   struct bgp inst;
   struct QZCGetRep *grep;
-  int af, saf;
   capn_ptr afisafi_ctxt, nctxt;
 
-  if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
-    {
-      *_return = BGP_ERR_FAILED;
-      *error = ERROR_BGP_AS_NOT_STARTED;
-      return FALSE;
-    }
-  if (afi == AF_AFI_AFI_IP)
-    af = ADDRESS_FAMILY_IP;
-  else if (afi == AF_AFI_AFI_IPV6)
-    af = ADDRESS_FAMILY_IPV6;
-  else if (afi == AF_AFI_AFI_L2VPN)
-    af = ADDRESS_FAMILY_L2VPN;
-  else
-    {
-      *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
-      *_return = BGP_ERR_PARAM;
-      return FALSE;
-    }
-  if (safi == AF_SAFI_SAFI_MPLS_VPN)
-    saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
-  else if (safi == AF_SAFI_SAFI_EVPN)
-    saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
-  else if (safi == AF_SAFI_SAFI_IP_LABELED_UNICAST)
-    saf = SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST;
-  else
-    {
-      *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
-      *_return = BGP_ERR_PARAM;
-      return FALSE;
-    }
   /* prepare afisafi context */
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
@@ -2651,14 +2658,77 @@ zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_
     if(IS_ZRPC_DEBUG)
       {
         if(enable)
-          zrpc_info ("enableMultipath for afi:%d safi:%d OK", af, saf);
+          zrpc_info ("enableMultipath for afi:%d safi:%d OK",
+                     zrpc_afi_value (af), zrpc_safi_value(saf));
         else
-          zrpc_info ("disableMultipath for afi:%d safi:%d OK", af, saf);
+          zrpc_info ("disableMultipath for afi:%d safi:%d OK",
+                     zrpc_afi_value (af), zrpc_safi_value(saf));
       }
   }
 
   capn_free(&rc);
   return TRUE;
+}
+
+/*
+ * Enable/disable multipath feature address family
+ */
+static gboolean
+zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_afi afi,
+                       const af_safi safi, const gint32 enable, GError **error)
+{
+  int af, saf;
+  int ret;
+
+  if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+    {
+      *_return = BGP_ERR_FAILED;
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+  if (afi == AF_AFI_AFI_IP)
+    af = ADDRESS_FAMILY_IP;
+  else if (afi == AF_AFI_AFI_IPV6)
+    af = ADDRESS_FAMILY_IPV6;
+  else if (afi == AF_AFI_AFI_L2VPN)
+    af = ADDRESS_FAMILY_L2VPN;
+  else
+    {
+      *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+  if (safi == AF_SAFI_SAFI_MPLS_VPN)
+    saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+  else if (safi == AF_SAFI_SAFI_EVPN)
+    saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+  else if (safi == AF_SAFI_SAFI_IP_LABELED_UNICAST)
+    saf = SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST;
+  else
+    {
+      *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+  ret = zrpc_vpnservice_set_bgp_context_multipath (zrpc_vpnservice_get_bgp_context(ctxt),
+                                                   afi, safi, (uint8_t) enable, _return, error);
+  /* silently leave command if bgp did not start */
+  if((ret == TRUE) && IS_ZRPC_DEBUG)
+    {
+      if(enable)
+        zrpc_info ("enableMultipath config for afi:%d safi:%d OK",
+                   afi, safi);
+      else
+        zrpc_info ("disableMultipath config for afi:%d safi:%d OK",
+                   afi, safi);
+    }
+  if (zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+    {
+      return ret;
+    }
+  ret = zrpc_bgp_set_multipath_internal (ctxt, _return, af, saf,
+                                         enable, error);
+  return ret;
 }
 
 gboolean

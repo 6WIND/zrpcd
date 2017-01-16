@@ -48,6 +48,7 @@ struct zrpc_vpnservice_bgp_context
   gint32 proc;
   char *logFile;
   char *logLevel;
+  uint8_t multipath_on[AFI_MAX][SAFI_MAX];
 };
 
 /* zrpc cache contexts */
@@ -143,4 +144,8 @@ struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_
 void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_terminate_bgp_context(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup);
+gboolean zrpc_vpnservice_set_bgp_context_multipath (struct zrpc_vpnservice_bgp_context *bgp,
+                                                    address_family_t afi, subsequent_address_family_t safi,
+                                                    uint8_t on, gint32* _return, GError **error);
+
 #endif /* _ZRPC_VPNSERVICE_H */
