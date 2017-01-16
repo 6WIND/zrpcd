@@ -138,7 +138,7 @@ struct bgp_api_route
   uint32_t l2label; /* alias information on labeled unicast */
   char *esi;
   char *mac_router;
-  struct in_addr gatewayIp;
+  struct zrpc_prefix gatewayIp;
 };
 
 /* BGP neighbor structure. */

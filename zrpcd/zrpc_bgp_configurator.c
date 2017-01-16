@@ -979,8 +979,15 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
     {
       afi_int = ADDRESS_FAMILY_L2VPN;
       if (gatewayIp)
-        inet_aton (gatewayIp, &inst.gatewayIp);
-
+        {
+          ret = zrpc_util_str2_prefix (gatewayIp, &inst.gatewayIp);
+          if (ret == 0)
+            {
+              *_return = BGP_ERR_PARAM;
+              ret = FALSE;
+              goto error;
+            }
+        }
       inst.ethtag = (uint32_t ) ethtag;
       if( !esi || zrpc_util_str2esi (esi, NULL) == 0)
         {
@@ -2134,8 +2141,11 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
       upd->l3label = inst_multipath->label;
       upd->l2label = inst_multipath->l2label;
       upd->ethtag = inst_multipath->ethtag;
-      if (inst_multipath->gatewayIp.s_addr)
-        upd->gatewayip = g_strdup (inet_ntop(AF_INET, &(inst_multipath->gatewayIp), rdstr, ZRPC_UTIL_RDRT_LEN));
+      if (inst_multipath->gatewayIp.family == AF_INET || inst_multipath->gatewayIp.family == AF_INET6)
+        {
+          zrpc_util_prefix_2str (&(inst_multipath->gatewayIp), nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
+          upd->gatewayip = g_strdup (nh_str);
+        }
       else
         upd->gatewayip = NULL;
       if(inst_multipath->esi)
@@ -2151,8 +2161,11 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
       upd->l3label = inst_route->label;
       upd->l2label = inst_route->l2label;
       upd->ethtag = inst_route->ethtag;
-      if (inst_route->gatewayIp.s_addr)
-        upd->gatewayip = g_strdup (inet_ntop(AF_INET, &(inst_route->gatewayIp), rdstr, ZRPC_UTIL_RDRT_LEN));
+      if (inst_route->gatewayIp.family == AF_INET || inst_route->gatewayIp.family == AF_INET6)
+        {
+          zrpc_util_prefix_2str (&(inst_multipath->gatewayIp), nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
+          upd->gatewayip = g_strdup (nh_str);
+        }
       else
         upd->gatewayip = NULL;
       if(inst_route->esi)
