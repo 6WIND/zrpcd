@@ -36,7 +36,7 @@ static void zrpc_sigpipe (void);
 static void zrpc_sigchild (void);
 
 /* VTY port number and address.  */
-int vty_port = ZRPC_VTY_PORT;
+int vty_port = 0;
 char *vty_addr = NULL;
 int zrpc_kill_in_progress = 0;
 int zrpc_disable_stdout = 0;
@@ -179,6 +179,7 @@ main (int argc, char **argv)
   struct zrpc *zrpc;
   int tmp_port;
   int option = 0;
+  char vtydisplay[20];
 
   /* Set umask before anything for security */
   umask (0027);
@@ -196,8 +197,8 @@ main (int argc, char **argv)
           break;
 	case 'p':
 	  tmp_port = atoi (optarg);
-	  if (tmp_port <= 0 || tmp_port > 0xffff)
-	    tm->zrpc_listen_port = ZRPC_LISTEN_PORT;
+	  if (tmp_port < 0 || tmp_port > 0xffff)
+	    tm->zrpc_listen_port = 0;
 	  else
 	    tm->zrpc_listen_port = tmp_port;
 	  break;
@@ -245,18 +246,24 @@ main (int argc, char **argv)
   zrpc_debug_init ();
 
   /* Create VTY's socket */
-  vty_serv_sock (vty_addr, vty_port, ZRPC_VTYSH_PATH);
-
+  if (vty_port)
+    {
+      sprintf (vtydisplay, "vty@%d,", vty_port);
+      vty_serv_sock (vty_addr, vty_port, ZRPC_VTYSH_PATH);
+    }
+  else
+    sprintf (vtydisplay, "");
   /* Try to return to normal operation. */
   /* create listen context */
   zrpc_create_context (&zrpc);
   tm->zrpc = zrpc;
 
   /* Print banner. */
-  zrpc_log ("zrpcd starting: zrpc@%s:%d pid %d",
-	       (tm->address ? tm->address : "<all>"),
-	       zrpc_vpnservice_get_thrift_bgp_configurator_server_port(zrpc->zrpc_vpnservice),
-	       getpid ());
+  zrpc_log ("zrpcd starting: %s zrpc@%s:%d pid %d",
+            vtydisplay,
+            (tm->address ? tm->address : "<all>"),
+            zrpc_vpnservice_get_thrift_bgp_configurator_server_port(zrpc->zrpc_vpnservice),
+            getpid ());
 
   /* Start finite state machine, here we go! */
   while (thread_fetch (tm->global, &thread))
