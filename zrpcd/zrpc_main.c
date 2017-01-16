@@ -39,6 +39,7 @@ static void zrpc_sigchild (void);
 int vty_port = ZRPC_VTY_PORT;
 char *vty_addr = NULL;
 int zrpc_kill_in_progress = 0;
+int zrpc_disable_stdout = 0;
 
 /* Help information display. */
 static void
@@ -47,6 +48,7 @@ zrpc_usage (int status)
   printf ("Usage : zrpcd [OPTION...]\n\n\
 Daemon which manages rpc configuration/updates from/to quagga\n\n\
 zrpc configuration across thrift defined model : vpnservice.\n\n\
+-D                          Disable default logging to stdout \n\
 -p, --thrift_port           Set thrift's config port number\n\
 -P, --thrift_notif_port     Set thrift's notif update port number\n\
 -N, --thrift_notif_address  Set thrift's notif update specified address\n\
@@ -185,10 +187,13 @@ main (int argc, char **argv)
   zrpc_global_init ();
 
   /* Command line argument treatment. */
-  while ((option = getopt (argc, argv, "A:P:p:N:n:h")) != -1)
+  while ((option = getopt (argc, argv, "A:P:p:N:n:Dh")) != -1)
     {
       switch (option)
 	{
+	case 'D':
+          zrpc_disable_stdout = 1;
+          break;
 	case 'p':
 	  tmp_port = atoi (optarg);
 	  if (tmp_port <= 0 || tmp_port > 0xffff)

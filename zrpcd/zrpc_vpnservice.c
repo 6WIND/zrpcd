@@ -424,7 +424,8 @@ void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup)
   setup->bgp_context->logLevel = strdup (ZRPC_DEFAULT_LOG_LEVEL);
   /* configure log settings to qthrift daemon too */
   zrpc_debug_set_log_file_with_level(setup->bgp_context->logFile, setup->bgp_context->logLevel);
-  zrpc_debug_configure_stdout (0);
+  if (zrpc_disable_stdout)
+    zrpc_debug_configure_stdout (0);
 }
 
 struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_vpnservice *setup)

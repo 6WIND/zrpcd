@@ -38,5 +38,6 @@ extern struct thread_master *global;
 extern struct zrpc_global *tm;
 
 extern int zrpc_kill_in_progress;
+extern int zrpc_disable_stdout;
 
 #endif /* _ZRPC_GLOBAL_H_ */
