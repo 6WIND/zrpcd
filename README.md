@@ -43,10 +43,15 @@ You will also have to patch the source code.
     https://issues.apache.org/jira/browse/THRIFT-3986
     https://issues.apache.org/jira/browse/THRIFT-3987
 
+You will need to install the build dependencies for thrift. The command from
+the [Thrift documentation](https://thrift.apache.org/docs/install/debian) is:
+
+    sudo apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config
+
 Then, pursue the procedure:
 
     autoreconf -i
-    ./configure --without-qt4 --without-qt6 --without-csharp --without-java\
+    ./configure --without-qt4 --without-qt5 --without-csharp --without-java\
     --without-erlang --without-nodejs --without-perl --without-python\
     --without-php --without-php_extension --without-dart --without-ruby\
     --without-haskell --without-go --without-haxe --without-d\
@@ -59,7 +64,7 @@ Then, pursue the procedure:
 You will also need to have ZMQ. Here is compilation procedure for ZMQ.
 
     git clone https://github.com/zeromq/zeromq4-1.git
-    cd zeromq-4.1.4
+    cd zeromq-4.1
     git checkout 56b71af22db3
     autoreconf -i
     ./configure --without-libsodium --prefix=/opt/quagga
