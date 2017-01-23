@@ -29,6 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
+set -eux
 ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
 
 pushd $ZRPCD_BUILD_FOLDER
@@ -37,7 +38,7 @@ pushd $ZRPCD_BUILD_FOLDER
     apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk -y --force-yes 
 
 #Clean the directory
-    rm -rf ccapnproto thrift zeromq4-1 quagga zrpcd
+    rm -rf c-capnproto thrift zeromq4-1 quagga zrpcd
 
 #Install thrift
     git clone https://git-wip-us.apache.org/repos/asf/thrift.git
@@ -82,9 +83,9 @@ pushd $ZRPCD_BUILD_FOLDER
 
     cp capn.h /opt/quagga/include/c-capnproto/.
     cp .libs/libcapn.so.1.0.0 .libs/libcapn_c.so.1.0.0
-    ln -s $ZRPCD_BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so.1.0.0 $ZRPCD_BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so
+    ln -sf $ZRPCD_BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so.1.0.0 $ZRPCD_BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so
     cp .libs/libcapn.so.1.0.0 /opt/quagga/lib/libcapn_c.so.1.0.0
-    ln -s /opt/quagga/lib/libcapn_c.so.1.0.0 /opt/quagga/lib/libcapn_c.so
+    ln -sf /opt/quagga/lib/libcapn_c.so.1.0.0 /opt/quagga/lib/libcapn_c.so
     cd ..
 
 #Install Quagga
