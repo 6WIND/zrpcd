@@ -142,6 +142,8 @@ You will have to enable zeromq and capnproto services. Perform the following:
 
 Note that as other dependencies, GLIB2 and GOBJECT2 are other packages that need to be available on 
 the platform. No description is done about the availability of those packages.
+Also, if you are on a Centos distribution, please check that you have the following packages installed:
+yum install initscripts.x86_64 glib2.x86_64.
 
 To compile zrpc, once the dependencies above resolved, retake the environment settings used to compile
 quagga, and add the followingones:
@@ -184,6 +186,7 @@ To be able to produce deb or rpm packages, you will need to copy some produced f
 
 ### RPM Packaging
 
+RPM packaging applied for suse and centos distribution.
 Create following file system hierarchy, where bin is the folder where all the package files will be present.
 Let's assume the root folder where folders are created, is named package and is at following place : /home/packager/packager/.
 
@@ -402,7 +405,7 @@ A preinst configuration file is necessary to be upgraded in order to benefit fro
 ### Packaging ZRPC
 
 For packaging ZRPC, you will need to host following ZRPC files under bin file system hierarchy as follow.
-Files that build init.d/zrpcd are provided in annex: pkgsrc/zrpcd.ubuntu or zrpcd.suse. 
+Files that build init.d/zrpcd are provided in annex: pkgsrc/zrpcd.ubuntu or zrpcd.suse or zrpcd.centos. 
 dummyzrpc files are empty files. 
 
     ./opt
@@ -423,7 +426,9 @@ dummyzrpc files are empty files.
 
 Some files are not produced by "quagga building instructions". Two files are provided in annex: etc/bgpd.conf and etc/init.d/qthriftd files. .dummy files are empty files.
 
-For rpm production, a rpm.spec file is necessary to be copied in ./bin/SPECS/rpm.spec. Use ./package/rpm.spec file.
+For rpm production, a rpm.spec file is necessary to be copied in ./bin/SPECS/rpm.spec. Use ./package/rpm.spec file. Note that for centos distribution, you should ignore the following dependencies on rpm.spec file by suppressing or adapting the following line. The fact is that the package naming on centos differs.
+
+    Requires: thrift zmq ccapnproto quagga
 
 For deb production, an extra file at ./bin/DEBIAN/control place contains the following.
 
