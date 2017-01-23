@@ -1,3 +1,4 @@
+set -eux
 export BUILD_FOLDER=/tmp
 #/home/mininet/6windQuagga/src/
 
