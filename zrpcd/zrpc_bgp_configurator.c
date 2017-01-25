@@ -1031,8 +1031,8 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
               ret = FALSE;
               goto error;
             }
-          if ((inst.prefix.family == AF_INET && inst.gatewayIp.family == AF_INET)
-              || (inst.prefix.family == AF_INET6 && inst.gatewayIp.family == AF_INET6))
+          if ((inst.prefix.family == AF_INET && inst.gatewayIp.family == AF_INET6)
+              || (inst.prefix.family == AF_INET && inst.gatewayIp.family == AF_INET6))
             {
               *_return = BGP_ERR_PARAM;
               ret = FALSE;
