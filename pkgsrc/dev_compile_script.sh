@@ -35,7 +35,7 @@ ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
 pushd $ZRPCD_BUILD_FOLDER
 
 #Install the required softwares for building quagga
-    apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev -y --force-yes
+    apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
 
 #Clean the directory
     rm -rf c-capnproto thrift zeromq4-1 quagga zrpcd
@@ -48,7 +48,10 @@ pushd $ZRPCD_BUILD_FOLDER
 #https://issues.apache.org/jira/browse/THRIFT-3986
 #https://issues.apache.org/jira/browse/THRIFT-3987
 
-    touch NEWS README AUTHORS ChangeLog
+    wget https://issues.apache.org/jira/secure/attachment/12840512/0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
+    patch -p1 < 0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
+    wget https://issues.apache.org/jira/secure/attachment/12840511/0002-THRIFT-3986-using-autoreconf-i-fails-because-of-miss.patch
+    patch -p1 < 0002-THRIFT-3986-using-autoreconf-i-fails-because-of-miss.patch
 
     autoreconf -i
     ./configure --without-qt4 --without-qt6 --without-csharp --without-java\
