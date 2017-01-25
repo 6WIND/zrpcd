@@ -29,14 +29,16 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-export BUILD_FOLDER=/tmp
-#/home/mininet/6windQuagga/src/
+set -eux
+ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
+
+pushd $ZRPCD_BUILD_FOLDER
 
 #Install the required softwares for building quagga
-    apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk -y --force-yes 
+    apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
 
 #Clean the directory
-    rm -rf ccapnproto thrift zeromq4-1 quagga zrpcd
+    rm -rf c-capnproto thrift zeromq4-1 quagga zrpcd
 
 #Install thrift
     git clone https://git-wip-us.apache.org/repos/asf/thrift.git
@@ -46,7 +48,10 @@ export BUILD_FOLDER=/tmp
 #https://issues.apache.org/jira/browse/THRIFT-3986
 #https://issues.apache.org/jira/browse/THRIFT-3987
 
-    touch NEWS README AUTHORS ChangeLog
+    wget https://issues.apache.org/jira/secure/attachment/12840512/0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
+    patch -p1 < 0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
+    wget https://issues.apache.org/jira/secure/attachment/12840511/0002-THRIFT-3986-using-autoreconf-i-fails-because-of-miss.patch
+    patch -p1 < 0002-THRIFT-3986-using-autoreconf-i-fails-because-of-miss.patch
 
     autoreconf -i
     ./configure --without-qt4 --without-qt6 --without-csharp --without-java\
@@ -81,21 +86,21 @@ export BUILD_FOLDER=/tmp
 
     cp capn.h /opt/quagga/include/c-capnproto/.
     cp .libs/libcapn.so.1.0.0 .libs/libcapn_c.so.1.0.0
-    ln -s $BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so.1.0.0 $BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so
+    ln -sf $ZRPCD_BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so.1.0.0 $ZRPCD_BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so
     cp .libs/libcapn.so.1.0.0 /opt/quagga/lib/libcapn_c.so.1.0.0
-    ln -s /opt/quagga/lib/libcapn_c.so.1.0.0 /opt/quagga/lib/libcapn_c.so
+    ln -sf /opt/quagga/lib/libcapn_c.so.1.0.0 /opt/quagga/lib/libcapn_c.so
     cd ..
 
 #Install Quagga
     git clone https://github.com/6WIND/quagga.git
     cd quagga
     git checkout quagga_110_mpbgp_capnp
-    export ZEROMQ_CFLAGS="-I"$BUILD_FOLDER"/zeromq4-1/include"
-    export ZEROMQ_LIBS="-L"$BUILD_FOLDER"/zeromq4-1/.libs/ -lzmq"
-    export CAPN_C_CFLAGS='-I'$BUILD_FOLDER'/c-capnproto/ -I'$BUILD_FOLDER'/'
-    export CAPN_C_LIBS='-L'$BUILD_FOLDER'/c-capnproto/.libs/ -lcapn_c'
+    export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
+    export ZEROMQ_LIBS="-L"$ZRPCD_BUILD_FOLDER"/zeromq4-1/.libs/ -lzmq"
+    export CAPN_C_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/c-capnproto/ -I'$ZRPCD_BUILD_FOLDER'/'
+    export CAPN_C_LIBS='-L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapn_c'
     autoreconf -i
-    LIBS='-L'$BUILD_FOLDER'/zeromq4-1/.libs/ -L'$BUILD_FOLDER'/c-capnproto/.libs/' \
+    LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/' \
     ./configure --with-zeromq --with-ccapnproto --prefix=/opt/quagga --enable-user=quagga \
     --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga \
     --disable-doc --enable-multipath=64
@@ -117,16 +122,16 @@ export BUILD_FOLDER=/tmp
  
 #Install ZRPC.
 # in addition to above flags, ensure to add below flags
-    export QUAGGA_CFLAGS='-I'$BUILD_FOLDER'/quagga/lib/'
-    export QUAGGA_LIBS='-L'$BUILD_FOLDER'/quagga/lib/.libs/. -lzebra'
-    export THRIFT_CFLAGS="-I"$BUILD_FOLDER"/thrift/lib/c_glib/src/thrift/c_glib/ -I"$BUILD_FOLDER"/thrift/lib/c_glib/src"
-    export THRIFT_LIBS="-L'$BUILD_FOLDER'/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
+    export QUAGGA_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/quagga/lib/'
+    export QUAGGA_LIBS='-L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/. -lzebra'
+    export THRIFT_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src/thrift/c_glib/ -I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src"
+    export THRIFT_LIBS="-L'$ZRPCD_BUILD_FOLDER'/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
 
     git clone https://github.com/6WIND/zrpcd.git
     cd zrpcd
     touch NEWS README
     autoreconf -i
-    LIBS='-L'$BUILD_FOLDER'/zeromq4-1/.libs/ -L'$BUILD_FOLDER'/c-capnproto/.libs/ -L'$BUILD_FOLDER'/quagga/lib/.libs/' \
+    LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' \
 	./configure --enable-zrpcd --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
     --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga
     make
@@ -145,3 +150,5 @@ export BUILD_FOLDER=/tmp
      echo "debug bgp updates" >> /opt/quagga/etc/bgpd.conf
      echo "debug bgp events" >> /opt/quagga/etc/bgpd.conf
      echo "debug bgp fsm" >> /opt/quagga/etc/bgpd.conf
+
+popd
