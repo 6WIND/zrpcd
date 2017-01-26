@@ -123,7 +123,7 @@ struct zrpc_macipaddr {
     struct in_addr in4;             /* AF_INET */
     struct in6_addr in6;            /* AF_INET6 */
   } ip __attribute__ ((packed));
-};
+}__attribute__ ((packed));
 
 struct zrpc_prefix
 {
