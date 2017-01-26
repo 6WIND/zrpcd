@@ -641,7 +641,7 @@ void qcapn_VRFTableIter_write(const struct zrpc_prefix *s, capn_ptr p)
     }
     else if (s->family == AF_L2VPN)
     {
-        capn_ptr tempptr = capn_new_struct(p.seg, 17, 0);
+        capn_ptr tempptr = capn_new_struct(p.seg, 30, 0);
         capn_write8(tempptr, 0, s->family);
         capn_write8(tempptr, 1, s->prefixlen);
 
