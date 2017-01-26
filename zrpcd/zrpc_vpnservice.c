@@ -211,8 +211,16 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         afi_out = AF_AFI_AFI_IP;
       else if (p->family == AF_INET6)
         afi_out = AF_AFI_AFI_IPV6;
-      else
-        afi_out = AF_AFI_AFI_IP; /* only L2VPN -> IPv6 */
+      else if (p->family == AF_L2VPN)
+        {
+          struct zrpc_macipaddr *m = &(p->u.prefix_macip);
+          if (m->ip_len == 128)
+            afi_out = AF_AFI_AFI_IPV6; /* only L2VPN -> IPv6 */
+          else
+            afi_out = AF_AFI_AFI_IP; /* only L2VPN -> IPv6 */
+        }
+        else
+          afi_out = AF_AFI_AFI_IP; /* only L2VPN -> IPv6 */
       if (s->esi)
         p_type  = PROTOCOL_TYPE_PROTOCOL_EVPN;
       else if (zrpc_invalid_rd)
