@@ -1199,12 +1199,12 @@ inst_filled:
     {
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
         zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, l3label %d, l2label %d,"
-                    " esi %s, ethtag %d, routermac %s, macaddress %s, enc_type %d) OK",
+                    " esi %s, ethtag %d, routermac %s, macaddress %s, enc_type %d) %s",
                     prefix, nexthop, rd==NULL?"<none>":rd, l3label, l2label, esi, ethtag,
-                    routermac, macaddress, enc_type);
+                   routermac, macaddress, enc_type, (ret==FALSE)?"NOK":"OK");
       else
-        zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) OK",
-                  prefix, nexthop, rd==NULL?"<none>":rd, l3label);
+        zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) %s",
+                   prefix, nexthop, rd==NULL?"<none>":rd, l3label, (ret==FALSE)?"NOK":"OK");
     }
   if (inst.esi)
     free(inst.esi);
@@ -1415,10 +1415,12 @@ error:
     {
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
         zrpc_info ("withdrawRoute(prefix %s, rd %s,"
-        " esi %s, ethtag %d, macaddress %s) OK",
-        prefix, rd==NULL?"<none>":rd, esi, ethtag, macaddress);
+        " esi %s, ethtag %d, macaddress %s) %s",
+        prefix, rd==NULL?"<none>":rd, esi, ethtag, macaddress,
+        (ret==FALSE)?"NOK":"OK");
       else
-        zrpc_info ("withdrawRoute(prefix %s, rd %s) OK", prefix, rd);
+        zrpc_info ("withdrawRoute(prefix %s, rd %s) %s", prefix, rd,
+                   (ret==FALSE)?"NOK":"OK");
     }
   free(inst.esi);
   return ret;
