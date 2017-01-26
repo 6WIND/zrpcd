@@ -404,12 +404,7 @@ void qcapn_prefix_macip_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index
     *index = *index + 1;
     pfx->u.prefix_macip.ip_len = capn_read8(p, *index);
     *index = *index + 1;
-    if (pfx->u.prefix_macip.ip_len == 32)
-      {
-        pfx->u.prefix_macip.ip.in4.s_addr = ntohl(capn_read32(p, *index));
-        *index = *index + 4;
-      }
-      else if (pfx->u.prefix_macip.ip_len == 128)
+    if (pfx->u.prefix_macip.ip_len == 128)
       {
         uint32_t *in6;
         for(i=0; i < 4; i++)
@@ -419,6 +414,11 @@ void qcapn_prefix_macip_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index
             *in6 = ntohl(capn_read32(p, *index));
             *index = *index + 4;
           }
+      }
+    else /* assuming 0 or 32 */
+      {
+        pfx->u.prefix_macip.ip.in4.s_addr = ntohl(capn_read32(p, *index));
+        *index = *index + 4;
       }
 }
 
@@ -435,12 +435,7 @@ void qcapn_prefix_macip_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t
     *index = *index + 1;
     capn_write8(p, *index, pfx->u.prefix_macip.ip_len);
     *index = *index + 1;
-    if (pfx->u.prefix_macip.ip_len == 32)
-      {
-        capn_write32(p, *index, ntohl(pfx->u.prefix_macip.ip.in4.s_addr));
-        *index = *index + 4;
-      }
-      else if (pfx->u.prefix_macip.ip_len == 128)
+    if (pfx->u.prefix_macip.ip_len == 128)
       {
         for(i=0; i < 4; i++)
           {
@@ -450,6 +445,11 @@ void qcapn_prefix_macip_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t
             capn_write32(p, *index, ntohl(*(in6)));
             *index = *index + 4;
           }
+      }
+    else /* assuming 0 or 32 */
+      {
+        capn_write32(p, *index, ntohl(pfx->u.prefix_macip.ip.in4.s_addr));
+        *index = *index + 4;
       }
 }
 
