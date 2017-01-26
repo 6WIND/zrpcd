@@ -1083,7 +1083,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           inst.prefix.prefixlen = ZRPC_L2VPN_IPV4_PREFIX_LEN;
           m->eth_tag_id = ethtag;
           zrpc_util_str2mac(macaddress, (char*) &m->mac);
-          if (strncmp(prefix, "0.0.0.0/0", 9))
+          if (strncmp(prefix, "0.0.0.0/0", 9) && strncmp (prefix, "0::0/0", 6))
             {
               struct zrpc_prefix dummy;
 
@@ -1313,13 +1313,29 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           inst.prefix.prefixlen = ZRPC_L2VPN_IPV4_PREFIX_LEN;
           m->eth_tag_id = ethtag;
           zrpc_util_str2mac(macaddress, (char*) &m->mac);
-          if (strncmp(prefix, "0.0.0.0/0", 9))
+          if (strncmp(prefix, "0.0.0.0/0", 9) && strncmp (prefix, "0::0/0", 6))
             {
-              struct zrpc_ipv4_prefix dummy;
+              struct zrpc_prefix dummy;
 
-              zrpc_util_str2ipv4_prefix(prefix,&dummy);
-              memcpy(&m->ip.in4, &dummy.prefix, sizeof(struct in_addr));
-              m->ip_len = 32;
+              zrpc_util_str2_prefix(prefix, &dummy);
+              if (dummy.prefixlen != 0 && dummy.prefixlen != 32 && dummy.prefixlen != 128)
+                {
+                  *_return = BGP_ERR_PARAM;
+                   ret = FALSE;
+                   goto error;
+                }
+              if (dummy.family == AF_INET)
+                {
+                  memcpy(&m->ip.in4, &dummy.u.prefix, sizeof(struct in_addr));
+                  m->ip_len = 32;
+                  inst.prefix.prefixlen = ZRPC_L2VPN_IPV4_PREFIX_LEN;
+                }
+              else if (dummy.family == AF_INET6)
+                {
+                  memcpy(&m->ip.in6, &dummy.u.prefix, sizeof(struct in6_addr));
+                  m->ip_len = 128;
+                  inst.prefix.prefixlen = ZRPC_L2VPN_IPV6_PREFIX_LEN;
+                }
             }
           else
             m->ip_len = 0;
