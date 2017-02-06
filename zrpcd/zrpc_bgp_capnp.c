@@ -8,7 +8,7 @@
  */
 
 #include <stdbool.h>
-#include "c-capnproto/capn.h"
+#include "capnp_c.h"
 #include "zrpcd/zrpc_bgp_capnp.h"
 
 static const capn_text capn_val0 = {0, ""};

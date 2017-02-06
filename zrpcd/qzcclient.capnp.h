@@ -1,10 +1,10 @@
 #ifndef CAPN_C7BBE66A583460D4
 #define CAPN_C7BBE66A583460D4
 /* AUTO GENERATED - DO NOT EDIT */
-#include <c-capnproto/capn.h>
+#include <capnp_c.h>
 
 #if CAPN_VERSION != 1
-#error "version mismatch between capn.h and generated code"
+#error "version mismatch between capnp_c.h and generated code"
 #endif
 
 
