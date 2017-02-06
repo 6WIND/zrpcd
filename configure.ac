@@ -727,11 +727,44 @@ dnl -----------
 if test "${with_zrpcd}" != "no";then
   PKG_CHECK_MODULES(THRIFT, [thrift_c_glib >= 0.9.3], [
     AC_DEFINE(HAVE_THRIFT, 1, [Enable Thrift support])
+    AC_CHECK_PROG([THRIFT_PRG],[thrift],[thrift],[not-in-PATH])
+    if test "x$THRIFT_PRG" = "xnot-in-PATH" ; then
+	AC_MSG_ERROR([Apache Thrift is required for thrift support.])
+    fi
     THRIFT=true
   ], [
     AC_MSG_ERROR([zrpcd requires thrift, but thrift not found or too old (0.9.3 or higher required)])
   ])
 fi
+
+# version 1 = L3VPN - default
+# version 2 = EVPN + L3VPN 
+AC_ARG_WITH(thrift-version,
+[  --with-thrift-version           Set thrift version for use in zrpcd.])
+if test "x$with_thrift_version" != "x" ; then
+  THRIFTVERSION="$with_thrift_version" ;
+else
+  THRIFTVERSION="1" ;
+fi
+
+dnl -----------------------------------
+dnl Add extra version string to package
+dnl name, string and version fields.
+dnl -----------------------------------
+if test "x${THRIFTVERSION}" = "x1" ; then
+  THRIFT_VERSION="1"
+  AM_CONDITIONAL([HAVE_THRIFT_V1], [test xtrue = xtrue])
+  AC_DEFINE(HAVE_THRIFT_V1, [1], [Version for Thrift])
+else
+  AM_CONDITIONAL([HAVE_THRIFT_V1], [test x = xtrue])
+fi
+if test "x${THRIFTVERSION}" = "x2" ; then
+  AM_CONDITIONAL([HAVE_THRIFT_V2], [test xtrue = xtrue])
+  AC_DEFINE(HAVE_THRIFT_V2, [1], [Version for Thrift])
+else
+  AM_CONDITIONAL([HAVE_THRIFT_V2], [test x = xtrue])
+fi
+
 
 dnl -----------
 dnl GLIB2

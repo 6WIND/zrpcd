@@ -12,11 +12,14 @@ noinst_LIBRARIES = libzrpc.a
 sbin_PROGRAMS = zrpcd
 
 libzrpc_a_SOURCES = \
-	zrpcd.c zrpc_vpnservice.c zrpc_network.c \
-	bgp_configurator.c bgp_updater.c vpnservice_types.c \
+	bgp_configurator.c zrpcd.c zrpc_vpnservice.c zrpc_network.c \
+	bgp_updater.c vpnservice_types.c \
 	zrpc_debug.c zrpc_bgp_configurator.c zrpc_bgp_updater.c \
 	qzmqclient.c qzcclient.capnp.c qzcclient.c zrpc_util.c \
 	zrpc_bgp_capnp.c
+
+BUILT_SOURCES = bgp_configurator.c bgp_updater.c vpnservice_types.c \
+	bgp_configurator.h bgp_updater.h vpnservice_types.h
 
 noinst_HEADERS = \
 	bgp_configurator.h bgp_updater.h vpnservice_types.h zrpc_bgp_updater.h \
@@ -29,6 +32,22 @@ zrpcd_SOURCES = \
 	zrpc_main.c $(libzrpc_a_SOURCES)
 
 zrpcd_LDADD = @QUAGGA_LIBS@ @CAPN_C_LIBS@ @THRIFT_LIBS@ @GLIB2_LIBS@ @GOBJECT2_LIBS@ @ZEROMQ_LIBS@
+
+bgp_configurator.c : vpnservice.thrift
+
+
+if HAVE_THRIFT_V1
+vpnservice.thrift: vpnservice.l3vpn.thrift
+	cp vpnservice.l3vpn.thrift vpnservice.thrift
+	($(THRIFT_PRG) -out . --gen c_glib $(srcdir)/vpnservice.thrift)
+	rm vpnservice.thrift
+endif
+if HAVE_THRIFT_V2
+vpnservice.thrift: vpnservice.evpn.thrift
+	cp vpnservice.evpn.thrift vpnservice.thrift
+	($(THRIFT_PRG) -out . --gen c_glib $(srcdir)/vpnservice.thrift)
+	rm vpnservice.thrift
+endif
 
 examplesdir = $(exampledir)
 dist_examples_DATA = 
