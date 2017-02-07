@@ -47,8 +47,7 @@ zrpc configuration across thrift defined model : vpnservice.\n\n\
 -P, --thrift_notif_port     Set thrift's notif update port number\n\
 -N, --thrift_notif_address  Set thrift's notif update specified address\n\
 -h, --help                  Display this help and exit\n\n");
-  if (status)
-    exit (status);
+  exit (status);
 }
 
 static void  zrpc_sigpipe (void)
