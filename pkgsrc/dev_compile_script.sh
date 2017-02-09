@@ -34,7 +34,35 @@ ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
 
 pushd $ZRPCD_BUILD_FOLDER
 
-#Install the required softwares for building quagga
+display_usage ()
+{
+cat << EOF
+OPTIONS:
+  -b/--build
+  -d/--install-deps
+  -h help, prints this help text
+
+EOF
+}
+
+export_variables (){
+    #these are required by quagga
+    export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
+    export ZEROMQ_LIBS="-L"$ZRPCD_BUILD_FOLDER"/zeromq4-1/.libs/ -lzmq"
+    export CAPN_C_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/c-capnproto/ -I'$ZRPCD_BUILD_FOLDER'/'
+    export CAPN_C_LIBS='-L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapn_c'
+
+    #In addition to the above, zrpcd requires these flags too.
+    export QUAGGA_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/quagga/lib/'
+    export QUAGGA_LIBS='-L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/. -lzebra'
+    export THRIFT_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src/thrift/c_glib/ -I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src"
+    export THRIFT_LIBS="-L'$ZRPCD_BUILD_FOLDER'/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
+
+}
+
+install_deps() {
+    export_variables
+#Install the required software for building quagga
     apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
 
 #Clean the directory
@@ -43,10 +71,6 @@ pushd $ZRPCD_BUILD_FOLDER
 #Install thrift
     git clone https://git-wip-us.apache.org/repos/asf/thrift.git
     cd thrift
-
-# Not sure how to apply this patch
-#https://issues.apache.org/jira/browse/THRIFT-3986
-#https://issues.apache.org/jira/browse/THRIFT-3987
 
     wget https://issues.apache.org/jira/secure/attachment/12840512/0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
     patch -p1 < 0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
@@ -95,10 +119,6 @@ pushd $ZRPCD_BUILD_FOLDER
     git clone https://github.com/6WIND/quagga.git
     cd quagga
     git checkout quagga_110_mpbgp_capnp
-    export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
-    export ZEROMQ_LIBS="-L"$ZRPCD_BUILD_FOLDER"/zeromq4-1/.libs/ -lzmq"
-    export CAPN_C_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/c-capnproto/ -I'$ZRPCD_BUILD_FOLDER'/'
-    export CAPN_C_LIBS='-L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapn_c'
     autoreconf -i
     LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/' \
     ./configure --with-zeromq --with-ccapnproto --prefix=/opt/quagga --enable-user=quagga \
@@ -119,13 +139,11 @@ pushd $ZRPCD_BUILD_FOLDER
     chown -R quagga:quagga /opt/quagga/var/log/quagga
 
     cd ..
- 
+}
+
+build_zrpcd (){
 #Install ZRPC.
-# in addition to above flags, ensure to add below flags
-    export QUAGGA_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/quagga/lib/'
-    export QUAGGA_LIBS='-L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/. -lzebra'
-    export THRIFT_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src/thrift/c_glib/ -I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src"
-    export THRIFT_LIBS="-L'$ZRPCD_BUILD_FOLDER'/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
+    export_variables
 
     git clone https://github.com/6WIND/zrpcd.git
     cd zrpcd
@@ -139,7 +157,7 @@ pushd $ZRPCD_BUILD_FOLDER
     mkdir /opt/quagga/etc/init.d -p
     cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
     chmod +x /opt/quagga/etc/init.d/zrpcd
- 
+
      echo "hostname bgpd" >> /opt/quagga/etc/bgpd.conf
      echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
      echo "service advanced-vty" >> /opt/quagga/etc/bgpd.conf
@@ -150,5 +168,32 @@ pushd $ZRPCD_BUILD_FOLDER
      echo "debug bgp updates" >> /opt/quagga/etc/bgpd.conf
      echo "debug bgp events" >> /opt/quagga/etc/bgpd.conf
      echo "debug bgp fsm" >> /opt/quagga/etc/bgpd.conf
+}
+
+parse_cmdline() {
+    while [ $# -gt 0 ]
+    do
+        case "$1" in
+            -h|--help)
+                display_usage
+                exit 0
+                ;;
+            -b|--build)
+                build_zrpcd
+                shift
+                ;;
+            -d|--install-deps)
+                install_deps
+                shift
+                ;;
+            *)
+                display_usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
+parse_cmdline $@
 
 popd
