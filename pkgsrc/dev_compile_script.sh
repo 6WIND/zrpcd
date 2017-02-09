@@ -30,21 +30,8 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set -eux
+
 ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
-
-pushd $ZRPCD_BUILD_FOLDER
-
-display_usage ()
-{
-cat << EOF
-OPTIONS:
-  -b/--build
-  -d/--install-deps
-  -h help, prints this help text
-
-EOF
-}
-
 export_variables (){
     #these are required by quagga
     export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
@@ -61,6 +48,8 @@ export_variables (){
 }
 
 install_deps() {
+
+    pushd $ZRPCD_BUILD_FOLDER
     export_variables
 #Install the required software for building quagga
     apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
@@ -139,14 +128,33 @@ install_deps() {
     chown -R quagga:quagga /opt/quagga/var/log/quagga
 
     cd ..
+    popd
 }
 
 build_zrpcd (){
 #Install ZRPC.
     export_variables
 
-    git clone https://github.com/6WIND/zrpcd.git
-    cd zrpcd
+    if [ -z "${BUILD_FROM_DIST}" ]; then
+        pushd $ZRPCD_BUILD_FOLDER
+        git clone https://github.com/6WIND/zrpcd.git
+        cd zrpcd
+    elif [ -n "${DIST_ARCHIVE}" ]; then
+        tar zxvf $DIST_ARCHIVE
+        cd "${DIST_ARCHIVE%.tar.gz}"
+    else
+        # prepate the dist archive
+        touch NEWS README
+        autoreconf -i
+        LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' \
+        ./configure --enable-zrpcd --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
+        --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga
+        make dist
+        DIST_ARCHIVE=$(ls *.tar.gz)
+        tar zxvf $DIST_ARCHIVE
+        cd "${DIST_ARCHIVE%.tar.gz}"
+    fi
+
     touch NEWS README
     autoreconf -i
     LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' \
@@ -154,9 +162,16 @@ build_zrpcd (){
     --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga
     make
     make install
-    mkdir /opt/quagga/etc/init.d -p
-    cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
-    chmod +x /opt/quagga/etc/init.d/zrpcd
+    # Temporarily disable this when using the dist method
+    if [ -z "$BUILD_FROM_DIST" ]; then
+        mkdir /opt/quagga/etc/init.d -p
+        cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+        chmod +x /opt/quagga/etc/init.d/zrpcd
+    fi
+
+    if [ -z "${BUILD_FROM_DIST}" ]; then
+        popd
+    fi
 
      echo "hostname bgpd" >> /opt/quagga/etc/bgpd.conf
      echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
@@ -170,6 +185,27 @@ build_zrpcd (){
      echo "debug bgp fsm" >> /opt/quagga/etc/bgpd.conf
 }
 
+display_usage ()
+{
+cat << EOF
+OPTIONS:
+  -b/--build, build zrpcd. By default clones the master of the upstream repository and \
+      builds that.
+  -t/--from-dist-archive, package zrpcd using make dist and build the sources in the archive. \
+      If --build is not used, the flag is ignored.
+  -a/--archive [path to archive.tar.gz], give explicitly the source archive to be used instead \
+      of producing one with make dist.
+  -d/--install-deps, compile and install zrpcd's dependecies.
+  -h help, prints this help text
+
+EOF
+}
+
+
+INSTALL_DEPS=""
+BUILD_ZRPCD=""
+BUILD_FROM_DIST=""
+DIST_ARCHIVE=""
 parse_cmdline() {
     while [ $# -gt 0 ]
     do
@@ -179,12 +215,20 @@ parse_cmdline() {
                 exit 0
                 ;;
             -b|--build)
-                build_zrpcd
+                BUILD_ZRPCD="true"
                 shift
                 ;;
             -d|--install-deps)
-                install_deps
+                INSTALL_DEPS="true"
                 shift
+                ;;
+            -t|--from-dist-archive)
+                BUILD_FROM_DIST="true"
+                shift
+                ;;
+            -a|--archive)
+                DIST_ARCHIVE=${2}
+                shift 2
                 ;;
             *)
                 display_usage
@@ -196,4 +240,10 @@ parse_cmdline() {
 
 parse_cmdline $@
 
-popd
+if [ -n "$INSTALL_DEPS" ]; then
+    install_deps
+fi
+
+if [ -n "$BUILD_ZRPCD" ]; then
+    build_zrpcd
+fi
