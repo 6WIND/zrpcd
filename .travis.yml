@@ -1,0 +1,8 @@
+language: c
+sudo: required
+dist: trusty
+matrix:
+  # Don't wait for jobs that are allowed to fail
+  fast_finish: true
+script:
+  sudo bash pkgsrc/dev_compile_script.sh -d -b -t
