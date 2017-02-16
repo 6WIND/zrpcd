@@ -44,21 +44,39 @@ instance_bgp_configurator_handler_set_ebgp_multihop(BgpConfiguratorIf *iface, gi
 gboolean
 instance_bgp_configurator_handler_unset_ebgp_multihop(BgpConfiguratorIf *iface, gint32* _return,
                                                       const gchar * peerIp, GError **error);
+#if defined(HAVE_THRIFT_V1)
+gboolean
+instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _return, const gchar * prefix,
+                                             const gchar * nexthop, const gchar * rd, const gint32 l3label, GError **error);
+#else
 gboolean
 instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
                                              const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi,
                                              const gchar * macaddress, const gint32 l3label, const gint32 l2label,
                                              const encap_type enc_type, const gchar * routermac, const char *gatewayIp, const af_afi afi, GError **error);
+#endif /* HAVE_THRIFT_V1 */
+#if defined(HAVE_THRIFT_V1)
+gboolean
+instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint32* _return, const gchar * prefix,
+                                                 const gchar * rd,  GError **error);
+#else
 gboolean
 instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
                                                  const gchar * rd,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, const af_afi afi, GError **error);
+#endif /* HAVE_THRIFT_V1 */
 gboolean
 instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint64 asNumber, GError **error);
 gboolean
 instance_bgp_configurator_handler_delete_peer(BgpConfiguratorIf *iface, gint32* _return, const gchar * ipAddress, GError **error);
+#ifdef HAVE_THRIFT_V1
+gboolean
+instance_bgp_configurator_handler_add_vrf(BgpConfiguratorIf *iface, gint32* _return, const gchar * rd,
+                                          const GPtrArray * irts, const GPtrArray * erts, GError **error);
+#else
 gboolean
 instance_bgp_configurator_handler_add_vrf(BgpConfiguratorIf *iface, gint32* _return, const layer_type l_type, const gchar * rd,
                                           const GPtrArray * irts, const GPtrArray * erts, GError **error);
+#endif /* HAVE_THRIFT_V1 */
 gboolean
 instance_bgp_configurator_handler_del_vrf(BgpConfiguratorIf *iface, gint32* _return, const gchar * rd, GError **error);
 gboolean
@@ -87,11 +105,17 @@ instance_bgp_configurator_handler_enable_default_originate(BgpConfiguratorIf *if
 gboolean
 instance_bgp_configurator_handler_disable_default_originate(BgpConfiguratorIf *iface, gint32* _return, const gchar * peerIp,
                                                             const af_afi afi, const af_safi safi, GError **error);
+#if defined (HAVE_THRIFT_V1)
+gboolean
+instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes ** _return,
+                                              const gint32 optype, const gint32 winSize,
+                                              GError **error);
+#else
 gboolean
 instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes ** _return, const protocol_type p_type, 
                                               const gint32 optype, const gint32 winSize,
                                               const af_afi afi, GError **error);
-
+#endif /* HAVE_THRIFT_V1 */
 gboolean
 instance_bgp_configurator_handler_enable_multipath(BgpConfiguratorIf *iface, gint32* _return,
                                                    const af_afi afi, const af_safi safi, GError **error);
@@ -249,10 +273,12 @@ static af_afi zrpc_afi_value (address_family_t afi)
 {
   if (afi == ADDRESS_FAMILY_IP)
     return AF_AFI_AFI_IP;
+#if !defined(HAVE_THRIFT_V1)
   else if (afi == ADDRESS_FAMILY_IPV6)
     return AF_AFI_AFI_IPV6;
   else if (afi == ADDRESS_FAMILY_L2VPN)
     return AF_AFI_AFI_L2VPN;
+#endif /* !HAVE_THRIFT_V1 */
   return AF_AFI_AFI_IP;
 }
 
@@ -260,11 +286,15 @@ static af_safi zrpc_safi_value (subsequent_address_family_t safi)
 {
   if (safi == SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN)
     return AF_SAFI_SAFI_MPLS_VPN;
+#if !defined(HAVE_THRIFT_V1)
   else if (safi == SUBSEQUENT_ADDRESS_FAMILY_EVPN)
     return AF_SAFI_SAFI_EVPN;
   else if (safi == SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST)
     return AF_SAFI_SAFI_IP_LABELED_UNICAST;
   return AF_SAFI_SAFI_MPLS_VPN;
+#else
+  return AF_SAFI_SAFI_MPLS_VPN;
+#endif /* !HAVE_THRIFT_V1 */
 }
 
 /*
@@ -362,10 +392,12 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
     }
   if (afi == AF_AFI_AFI_IP)
     af = ADDRESS_FAMILY_IP;
+#if !defined(HAVE_THRIFT_V1)
   else   if (afi == AF_AFI_AFI_IPV6)
     af = ADDRESS_FAMILY_IPV6;
   else if (afi == AF_AFI_AFI_L2VPN)
     af = ADDRESS_FAMILY_L2VPN;
+#endif /* !HAVE_THRIFT_V1 */
   else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
@@ -374,10 +406,12 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
     }
   if (safi == AF_SAFI_SAFI_MPLS_VPN)
     saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+#if !defined(HAVE_THRIFT_V1)
   else if (safi == AF_SAFI_SAFI_EVPN)
     saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
   else if (safi == AF_SAFI_SAFI_IP_LABELED_UNICAST)
     saf = SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST;
+#endif /* HAVE_THRIFT_V1 */
   else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
@@ -487,10 +521,12 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
     }
   if (afi == AF_AFI_AFI_IP)
     af = ADDRESS_FAMILY_IP;
+#if !defined(HAVE_THRIFT_V1)
   else if (afi == AF_AFI_AFI_IPV6)
     af = ADDRESS_FAMILY_IPV6;
   else if (afi == AF_AFI_AFI_L2VPN)
     af = ADDRESS_FAMILY_L2VPN;
+#endif /* !HAVE_THRIFT_V1 */
   else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
@@ -499,10 +535,12 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
     }
   if (safi == AF_SAFI_SAFI_MPLS_VPN)
     saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+#if !defined(HAVE_THRIFT_V1)
   else if (safi == AF_SAFI_SAFI_EVPN)
     saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
   else if (safi == AF_SAFI_SAFI_IP_LABELED_UNICAST)
     saf = SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST;
+#endif /* !HAVE_THRIFT_V1 */
   else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
@@ -929,11 +967,17 @@ instance_bgp_configurator_handler_unset_ebgp_multihop(BgpConfiguratorIf *iface, 
  * If no VRF has been found matching the route distinguisher, then
  * an error is returned
  */
+#if defined(HAVE_THRIFT_V1)
+gboolean
+instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _return, const gchar * prefix,
+                                             const gchar * nexthop, const gchar * rd, const gint32 l3label, GError **error)
+#else
 gboolean
 instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
                                              const gchar * nexthop, const gchar * rd, const gint64 ethtag, const gchar * esi,
                                              const gchar * macaddress, const gint32 l3label, const gint32 l2label, 
                                              const encap_type enc_type, const gchar * routermac, const char *gatewayIp, const af_afi afi, GError **error)
+#endif /* HAVE_THRIFT_V1 */
 {
   struct zrpc_vpnservice *ctxt = NULL;
   struct bgp_api_route inst;
@@ -972,22 +1016,28 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           return FALSE;
         }
     }
+#if !defined(HAVE_THRIFT_V1)
   else if (PROTOCOL_TYPE_PROTOCOL_LU != p_type)
     {
       *error = ERROR_BGP_RD_NOTFOUND;
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
+#endif /* !HAVE_THRIFT_V1 */
   /* prepare route entry */
   memset(&inst, 0, sizeof(struct bgp_api_route));
   inst.label = l3label;
+#if !defined(HAVE_THRIFT_V1)
   inst.l2label = l2label;
+#endif /* !HAVE_THRIFT_V1 */
   inst.prefix.family = AF_INET;
 
+#if !defined(HAVE_THRIFT_V1)
   /* detect Auto Discovery and then check parameters coherency */
   is_auto_discovery = (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
                       && (prefix == NULL)
                       && (enc_type == ENCAP_TYPE_VXLAN);
+#endif /* !HAVE_THRIFT_V1 */
   if (!is_auto_discovery && !prefix)
     {
       *_return = BGP_ERR_PARAM;
@@ -1012,6 +1062,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
       goto error;
     }
 
+#if !defined(HAVE_THRIFT_V1)
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
       afi_int = ADDRESS_FAMILY_L2VPN;
@@ -1130,6 +1181,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
         }
     }
   else
+#endif /* !defined(HAVE_THRIFT_V1) */
     {
       ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
       if (ret == 0)
@@ -1138,6 +1190,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           ret = FALSE;
           goto error;
         }
+#if !defined(HAVE_THRIFT_V1)
       if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
           (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
         {
@@ -1145,18 +1198,23 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           ret = FALSE;
           goto error;
         }
+#endif /* !HAVE_THRIFT_V1 */
       if (inst.prefix.family == AF_INET)
         afi_int = ADDRESS_FAMILY_IP;
       else if (inst.prefix.family == AF_INET6)
         afi_int = ADDRESS_FAMILY_IPV6;
+#if !defined(HAVE_THRIFT_V1)
       /* reuse l2label to carry safi information for */
       if (PROTOCOL_TYPE_PROTOCOL_LU == p_type)
         {
           inst.l2label = SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST;
         }
+#endif /* !HAVE_THRIFT_V1 */
     }
 
+#if !defined(HAVE_THRIFT_V1)
 inst_filled:
+#endif /* !HAVE_THRIFT_V1 */
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
@@ -1197,12 +1255,14 @@ inst_filled:
  error:
   if(IS_ZRPC_DEBUG)
     {
+#if !defined(HAVE_THRIFT_V1)
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
         zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, l3label %d, l2label %d,"
                     " esi %s, ethtag %d, routermac %s, macaddress %s, enc_type %d) %s",
                     prefix, nexthop, rd==NULL?"<none>":rd, l3label, l2label, esi, ethtag,
                    routermac, macaddress, enc_type, (ret==FALSE)?"NOK":"OK");
       else
+#endif /* !HAVE_THRIFT_V1 */
         zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) %s",
                    prefix, nexthop, rd==NULL?"<none>":rd, l3label, (ret==FALSE)?"NOK":"OK");
     }
@@ -1218,9 +1278,15 @@ inst_filled:
  * If no VRF has been found matching the route distinguisher, then
  * an error is returned
  */
+#if defined(HAVE_THRIFT_V1)
+gboolean
+instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint32* _return, const gchar * prefix,
+                                                 const gchar * rd,  GError **error)
+#else
 gboolean
 instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint32* _return, const protocol_type p_type, const gchar * prefix,
                                                  const gchar * rd,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, const af_afi afi, GError **error)
+#endif /* HAVE_THRIFT_V1 */
 {
   struct zrpc_vpnservice *ctxt = NULL;
   struct bgp_api_route inst;
@@ -1257,18 +1323,22 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           return FALSE;
         }
     }
+#if !defined(HAVE_THRIFT_V1)
   else if (PROTOCOL_TYPE_PROTOCOL_LU != p_type)
     {
       *error = ERROR_BGP_RD_NOTFOUND;
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
+#endif /* !HAVE_THRIFT_V1 */
   /* prepare route entry for AFI=IP */
   memset(&inst, 0, sizeof(struct bgp_api_route));
   inst.prefix.family = AF_INET;
 
+#if !defined(HAVE_THRIFT_V1)
   /* detect Auto Discovery and then check parameters coherency */
   is_auto_discovery = (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN) && (prefix == NULL);
+#endif /* !HAVE_THRIFT_V1 */
   if (!is_auto_discovery && !prefix)
   {
     *_return = BGP_ERR_PARAM;
@@ -1276,6 +1346,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
     goto error;
   }
 
+#if !defined(HAVE_THRIFT_V1)
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
       afi_int = ADDRESS_FAMILY_L2VPN;
@@ -1360,6 +1431,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
         }
     }
   else
+#endif /* !HAVE_THRIFT_V1 */
     {
       ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
       if (ret == 0)
@@ -1368,6 +1440,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           ret = FALSE;
           goto error;
         }
+#if !defined(HAVE_THRIFT_V1)
       if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
           (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
         {
@@ -1375,18 +1448,23 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           ret = FALSE;
           goto error;
         }
+#endif /* !HAVE_THRIFT_V1 */
       if (inst.prefix.family == AF_INET)
         afi_int = ADDRESS_FAMILY_IP;
       else if (inst.prefix.family == AF_INET6)
         afi_int = ADDRESS_FAMILY_IPV6;
+#if !defined(HAVE_THRIFT_V1)
       /* reuse l2label to carry safi information for */
       if (PROTOCOL_TYPE_PROTOCOL_LU == p_type)
         {
           inst.l2label = SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST;
         }
+#endif /* !HAVE_THRIFT_V1 */
     }
 
+#if !defined(HAVE_THRIFT_V1)
 inst_filled:
+#endif /* !HAVE_THRIFT_V1 */
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
   bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
@@ -1429,12 +1507,14 @@ inst_filled:
 error:
   if(IS_ZRPC_DEBUG)
     {
+#if !defined(HAVE_THRIFT_V1)
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
         zrpc_info ("withdrawRoute(prefix %s, rd %s,"
         " esi %s, ethtag %d, macaddress %s) %s",
         prefix, rd==NULL?"<none>":rd, esi, ethtag, macaddress,
         (ret==FALSE)?"NOK":"OK");
       else
+#endif /* !HAVE_THRIFT_V1 */
         zrpc_info ("withdrawRoute(prefix %s, rd %s) %s", prefix, rd,
                    (ret==FALSE)?"NOK":"OK");
     }
@@ -1562,6 +1642,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
   /* set aficfg */
    ret = zrpc_bgp_afi_config(ctxt, _return, routerId,                 \
                              AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN, TRUE, error);
+#if !defined(HAVE_THRIFT_V1)
    if(entry->enableAddressFamily[ADDRESS_FAMILY_L2VPN][SUBSEQUENT_ADDRESS_FAMILY_EVPN])
      {
        ret = zrpc_bgp_afi_config(ctxt, _return, routerId,             \
@@ -1582,11 +1663,13 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
        ret = zrpc_bgp_afi_config(ctxt, _return, routerId,             \
                                  AF_AFI_AFI_IP, AF_SAFI_SAFI_IP_LABELED_UNICAST, TRUE, error);
      }
+#endif /* !HAVE_THRIFT_V1 */
    ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId,        \
                                       AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN,
                                       PEER_FLAG_NEXTHOP_UNCHANGED, TRUE,
                                       error);
 
+#if !defined(HAVE_THRIFT_V1)
    if(entry->enableAddressFamily[ADDRESS_FAMILY_L2VPN][SUBSEQUENT_ADDRESS_FAMILY_EVPN])
      {
        ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId,    \
@@ -1620,6 +1703,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
                                           PEER_FLAG_NEXTHOP_UNCHANGED, TRUE,
                                           error);
      }
+#endif /* !HAVE_THRIFT_V1 */
    return ret;
  }
 
@@ -1695,9 +1779,15 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
   * An error is returned if VRF entry already exists.
   * VRF must be removed before being updated
   */
+#ifdef HAVE_THRIFT_V1
+ gboolean
+ instance_bgp_configurator_handler_add_vrf(BgpConfiguratorIf *iface, gint32* _return, const gchar * rd,
+                                           const GPtrArray * irts, const GPtrArray * erts, GError **error)
+#else
  gboolean
  instance_bgp_configurator_handler_add_vrf(BgpConfiguratorIf *iface, gint32* _return, const layer_type l_type, const gchar * rd, 
                                            const GPtrArray * irts, const GPtrArray * erts, GError **error)
+#endif /* HAVE_THRIFT_V1 */
  {
    struct zrpc_vpnservice *ctxt = NULL;
    struct bgp_vrf instvrf, *bgpvrf_ptr;
@@ -1734,9 +1824,12 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
    memset(&instvrf, 0, sizeof(struct bgp_vrf));
    /* get route distinguisher internal representation */
    zrpc_util_str2rd_prefix((char *)rd, &instvrf.outbound_rd);
+#ifdef HAVE_THRIFT_V1
+   instvrf.ltype = ZRPC_BGP_LAYER_TYPE_3;
+#else
    instvrf.ltype = (l_type == LAYER_TYPE_LAYER_2) ? 
      ZRPC_BGP_LAYER_TYPE_2 : ZRPC_BGP_LAYER_TYPE_3;
-
+#endif /* HAVE_THRIFT_V1 */
    /* retrive bgpvrf context or create new bgpvrf context */
    bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &instvrf.outbound_rd, _return);
    if(bgpvrf_nid == 0)
@@ -2016,6 +2109,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
        return FALSE;
      }
    ret = zrpc_bgp_afi_config(ctxt, _return, peerIp, afi, safi, TRUE, error);
+#if !defined(HAVE_THRIFT_V1)
    if(ret == TRUE && 
       ((afi == AF_AFI_AFI_L2VPN && safi == AF_SAFI_SAFI_EVPN) ||
        (afi == AF_AFI_AFI_IPV6 && safi == AF_SAFI_SAFI_MPLS_VPN) ||
@@ -2035,6 +2129,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
                                     PEER_FLAG_SOFT_RECONFIG, TRUE,
                                     error);
      }
+#endif /* !HAVE_THRIFT_V1 */
   return ret;
 }
 
@@ -2182,7 +2277,9 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
   char rdstr[ZRPC_UTIL_RDRT_LEN];
 
   upd->type = BGP_RT_ADD;
+#if !defined(HAVE_THRIFT_V1)
   upd->macaddress = NULL;
+#endif /* !HAVE_THRIFT_V1 */
   if (inst_route->prefix.family == AF_INET)
     {
       upd->prefix = g_strdup(inet_ntop(AF_INET, &inst_route->prefix.u.prefix4, rdstr, ZRPC_UTIL_RDRT_LEN));
@@ -2210,13 +2307,16 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
           upd->prefix = NULL;
           upd->prefixlen = 0;
         }
+#if !defined(HAVE_THRIFT_V1)
       upd->macaddress = g_strdup(zrpc_util_mac2str((char*) &inst_route->prefix.u.prefix_macip.mac));
+#endif /* !HAVE_THRIFT_V1 */
     }
   if(inst_multipath)
     {
       char nh_str[ZRPC_UTIL_IPV6_LEN_MAX];
       zrpc_util_prefix_2str (&(inst_multipath->nexthop), nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       upd->nexthop = g_strdup(nh_str);
+#if !defined(HAVE_THRIFT_V1)
       upd->l3label = inst_multipath->label;
       upd->l2label = inst_multipath->l2label;
       upd->ethtag = inst_multipath->ethtag;
@@ -2231,12 +2331,16 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
         upd->esi = g_strdup(inst_multipath->esi);
       if(inst_multipath->mac_router)
         upd->routermac = g_strdup(inst_multipath->mac_router);
+#else
+      upd->label = inst_multipath->label;
+#endif /* HAVE_THRIFT_V1 */
     }
   else
     {
       char nh_str[ZRPC_UTIL_IPV6_LEN_MAX];
       zrpc_util_prefix_2str (&(inst_route->nexthop), nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       upd->nexthop = g_strdup(nh_str);
+#if !defined(HAVE_THRIFT_V1)
       upd->l3label = inst_route->label;
       upd->l2label = inst_route->l2label;
       upd->ethtag = inst_route->ethtag;
@@ -2251,7 +2355,9 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
         upd->esi = g_strdup(inst_route->esi);
       if(inst_route->mac_router)
         upd->routermac = g_strdup(inst_route->mac_router);
-
+#else
+      upd->label = inst_route->label;
+#endif /* HAVE_THRIFT_V1 */
     }
   return;
 }
@@ -2265,10 +2371,17 @@ instance_bgp_configurator_handler_disable_graceful_restart (BgpConfiguratorIf *i
 
 struct zrpc_prefix *prev_iter_table_ptr = NULL;
 struct zrpc_prefix prev_iter_table_entry;
+#if defined (HAVE_THRIFT_V1)
+gboolean
+instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes ** _return,
+                                              const gint32 optype, const gint32 winSize,
+                                              GError **error)
+#else
 gboolean
 instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes ** _return, const protocol_type p_type, 
                                               const gint32 optype, const gint32 winSize, 
                                               const af_afi afi, GError **error)
+#endif /* HAVE_THRIFT_V1 */
 {
   struct capn_ptr afikey, iter_table, *iter_table_ptr = NULL;
   struct capn rc;
@@ -2284,12 +2397,14 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
   Update *upd;
   int do_not_parse_vrf = 0;
 
+#if !defined(HAVE_THRIFT_V1)
   if (afi == AF_AFI_AFI_IPV6)
     afi_int = ADDRESS_FAMILY_IPV6;
   if (p_type == PROTOCOL_TYPE_PROTOCOL_LU)
     {
       do_not_parse_vrf = 1;
     }
+#endif /* !HAVE_THRIFT_V1 */
   zrpc_vpnservice_get_context (&ctxt);
   if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL
      || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
@@ -2716,10 +2831,12 @@ zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_
     }
   if (afi == AF_AFI_AFI_IP)
     af = ADDRESS_FAMILY_IP;
+#if !defined(HAVE_THRIFT_V1)
   else if (afi == AF_AFI_AFI_IPV6)
     af = ADDRESS_FAMILY_IPV6;
   else if (afi == AF_AFI_AFI_L2VPN)
     af = ADDRESS_FAMILY_L2VPN;
+#endif /* !HAVE_THRIFT_V1 */
   else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
@@ -2728,10 +2845,12 @@ zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_
     }
   if (safi == AF_SAFI_SAFI_MPLS_VPN)
     saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+#if !defined(HAVE_THRIFT_V1)
   else if (safi == AF_SAFI_SAFI_EVPN)
     saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
   else if (safi == AF_SAFI_SAFI_IP_LABELED_UNICAST)
     saf = SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST;
+#endif /* !HAVE_THRIFT_V1 */
   else
     {
       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;

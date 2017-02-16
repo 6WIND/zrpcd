@@ -6,7 +6,7 @@
  * See the LICENSE file.
  */
 #include "thread.h"
-
+#include "config.h"
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_thrift_wrapper.h"
 #include "zrpcd/bgp_configurator.h"
@@ -191,8 +191,9 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       int zrpc_invalid_rd = 0;
       struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
       afi_t afi_out;
+#if !defined(HAVE_THRIFT_V1)
       protocol_type p_type;
-
+#endif /* !HAVE_THRIFT_V1 */
       memset (&null_rd, 0, sizeof (struct zrpc_rd_prefix));
       if(s->esi)
         {
@@ -209,6 +210,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         zrpc_invalid_rd = 1;
       if (p->family == AF_INET)
         afi_out = AF_AFI_AFI_IP;
+#if !defined(HAVE_THRIFT_V1)
       else if (p->family == AF_INET6)
         afi_out = AF_AFI_AFI_IPV6;
       else if (p->family == AF_L2VPN)
@@ -227,6 +229,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         p_type = PROTOCOL_TYPE_PROTOCOL_LU;
       else
         p_type = PROTOCOL_TYPE_PROTOCOL_L3VPN;
+#endif /* !HAVE_THRIFT_V1 */
       if (announce == TRUE)
         {
           char pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
@@ -266,7 +269,11 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                 }
               macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_macip.mac);
             }
+#if defined(HAVE_THRIFT_V1)
+          zrpc_bgp_updater_on_update_push_route(
+#else
           zrpc_bgp_updater_on_update_push_route(p_type,
+#endif /* HAVE_THRIFT_V1 */
                                                 (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                 (const gint32)ipprefixlen, nexthop,
                                                 s->ethtag, esi, macaddress, s->label, s->l2label,
@@ -306,7 +313,11 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                   ipprefixlen = 0;
                 }
             }
+#if defined(HAVE_THRIFT_V1)
+          zrpc_bgp_updater_on_update_withdraw_route (
+#else
           zrpc_bgp_updater_on_update_withdraw_route (p_type,
+#endif /* HAVE_THRIFT_V1 */
                                                      (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                      (const gint32)ipprefixlen, nexthop,
                                                      s->ethtag, esi, macaddress, s->label, s->l2label,

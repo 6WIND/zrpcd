@@ -7,6 +7,7 @@
  */
 
 #include <stdio.h>
+#include "config.h"
 
 #include "zrpcd/zrpc_thrift_wrapper.h"
 #include "zrpcd/bgp_updater.h"
@@ -21,7 +22,11 @@
  * sent when a vpnv4 route is pushed
  */
 gboolean
+#if defined(HAVE_THRIFT_V1)
+zrpc_bgp_updater_on_update_push_route (const gchar * rd, const gchar * prefix, const gint32 prefixlen,
+#else
 zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar * rd, const gchar * prefix, const gint32 prefixlen, 
+#endif /* HAVE_THRIFT_V1 */
                                        const gchar * nexthop, const gint64 ethtag, const gchar * esi, const gchar * macaddress,
                                        const gint32 l3label, const gint32 l2label, const gchar * routermac,
                                        const gchar * gatewayIp, const af_afi afi)
@@ -33,9 +38,15 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
+#if defined(HAVE_THRIFT_V1)
+  response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, rd, prefix, prefixlen, nexthop,
+                                                          l3label, &error);
+#else
   response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, p_type,
                                                           rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress, 
                                                           l3label, l2label, routermac, gatewayIp, afi, &error);
+#endif /* HAVE_THRIFT_V1 */
+
   if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
   {
     char ethtag_str[20];
@@ -58,7 +69,13 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
  * sent when a vpnv4 route is withdrawn
  */
 gboolean
+#if defined(HAVE_THRIFT_V1)
+zrpc_bgp_updater_on_update_withdraw_route (const gchar * rd, const gchar * prefix, const gint32 prefixlen,
+#else
 zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gchar * rd, const gchar * prefix, const gint32 prefixlen, 
+#endif /* HAVE_THRIFT_V1 */
+
+
                                            const gchar * nexthop,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, 
                                            const gint32 l3label, const gint32 l2label, const af_afi afi)
 {
@@ -69,9 +86,13 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
+#if defined(HAVE_THRIFT_V1)
+  response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, rd, prefix, prefixlen, nexthop, l3label, &error);
+#else
   response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, p_type,
                                                          rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress,
                                                          l3label, l2label, afi, &error);
+#endif /* HAVE_THRIFT_V1 */
   if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
     {
       char ethtag_str[20];
