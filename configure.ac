@@ -739,6 +739,7 @@ fi
 
 # version 1 = L3VPN - default
 # version 2 = EVPN + L3VPN 
+# version 3 = IPv6 + EVPN + L3VPN
 AC_ARG_WITH(thrift-version,
 [  --with-thrift-version           Set thrift version for use in zrpcd.])
 if test "x$with_thrift_version" != "x" ; then
@@ -764,7 +765,12 @@ if test "x${THRIFTVERSION}" = "x2" ; then
 else
   AM_CONDITIONAL([HAVE_THRIFT_V2], [test x = xtrue])
 fi
-
+if test "x${THRIFTVERSION}" = "x3" ; then
+  AM_CONDITIONAL([HAVE_THRIFT_V3], [test xtrue = xtrue])
+  AC_DEFINE(HAVE_THRIFT_V3, [1], [Version for Thrift])
+else
+  AM_CONDITIONAL([HAVE_THRIFT_V3], [test x = xtrue])
+fi
 
 dnl -----------
 dnl GLIB2

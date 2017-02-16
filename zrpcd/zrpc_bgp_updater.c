@@ -50,7 +50,6 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
                                                           l3label, l2label, routermac, gatewayIp, afi, &error);
 #endif /* HAVE_THRIFT_V2 */
 #endif /* HAVE_THRIFT_V1 */
-
   if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
   {
     char ethtag_str[20];

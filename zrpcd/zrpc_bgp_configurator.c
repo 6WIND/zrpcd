@@ -33,6 +33,7 @@ static gboolean
 instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface,
                                               gint32* ret, const gchar *routerId,
                                               const gint64 asNumber, GError **error);
+
 static gboolean
 instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint64 asNumber,
                                             const gchar * routerId, const gint32 port, const gint32 holdTime,
@@ -1198,7 +1199,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
               ret = FALSE;
               goto error;
             }
-#if !defined(HAVE_THRIFT_V2)
+#if defined(HAVE_THRIFT_V3)
           if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
               (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
             {
@@ -1206,7 +1207,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
               ret = FALSE;
               goto error;
             }
-#endif /* HAVE_THRIFT_V2 */
+#endif /* HAVE_THRIFT_V3  */
         }
     }
   else
@@ -1454,7 +1455,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
               ret = FALSE;
               goto error;
             }
-#if !defined(HAVE_THRIFT_V2)
+#if defined(HAVE_THRIFT_V3)
           if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
               (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
             {
@@ -1462,7 +1463,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
               ret = FALSE;
               goto error;
             }
-#endif /* HAVE_THRIFT_V2 */
+#endif /* HAVE_THRIFT_V3 */
         }
     }
   else
@@ -1562,8 +1563,7 @@ error:
  * If BGP is already stopped, or give AS is not present, an error is returned
  */
 gboolean
-instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return,
-                                           const gint64 asNumber, GError **error)
+instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint64 asNumber, GError **error)
 {
   struct zrpc_vpnservice *ctxt = NULL;
 
@@ -2609,6 +2609,8 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
 #if defined(HAVE_THRIFT_V3)
   if (afi == AF_AFI_AFI_IPV6)
     afi_int = ADDRESS_FAMILY_IPV6;
+#endif /* HAVE_THRIFT_V3 */
+#if defined(HAVE_THRIFT_V3)
   if (p_type == PROTOCOL_TYPE_PROTOCOL_LU)
     {
       do_not_parse_vrf = 1;
@@ -3285,7 +3287,6 @@ instance_bgp_configurator_handler_class_init (InstanceBgpConfiguratorHandlerClas
 
  bgp_configurator_handler_class->disable_multipath =
    instance_bgp_configurator_handler_disable_multipath;
-
  bgp_configurator_handler_class->multipaths =
    instance_bgp_configurator_handler_multipaths;
 }
