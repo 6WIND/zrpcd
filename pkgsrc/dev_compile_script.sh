@@ -30,11 +30,28 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set -eux
+
 ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
+export_variables (){
+    #these are required by quagga
+    export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
+    export ZEROMQ_LIBS="-L"$ZRPCD_BUILD_FOLDER"/zeromq4-1/.libs/ -lzmq"
+    export CAPN_C_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/c-capnproto/ -I'$ZRPCD_BUILD_FOLDER'/'
+    export CAPN_C_LIBS='-L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapn_c'
 
-pushd $ZRPCD_BUILD_FOLDER
+    #In addition to the above, zrpcd requires these flags too.
+    export QUAGGA_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/quagga/lib/'
+    export QUAGGA_LIBS='-L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/. -lzebra'
+    export THRIFT_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src/thrift/c_glib/ -I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src"
+    export THRIFT_LIBS="-L'$ZRPCD_BUILD_FOLDER'/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
 
-#Install the required softwares for building quagga
+}
+
+install_deps() {
+
+    pushd $ZRPCD_BUILD_FOLDER
+    export_variables
+#Install the required software for building quagga
     apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
 
 #Clean the directory
@@ -43,10 +60,6 @@ pushd $ZRPCD_BUILD_FOLDER
 #Install thrift
     git clone https://git-wip-us.apache.org/repos/asf/thrift.git
     cd thrift
-
-# Not sure how to apply this patch
-#https://issues.apache.org/jira/browse/THRIFT-3986
-#https://issues.apache.org/jira/browse/THRIFT-3987
 
     wget https://issues.apache.org/jira/secure/attachment/12840512/0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
     patch -p1 < 0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
@@ -95,10 +108,6 @@ pushd $ZRPCD_BUILD_FOLDER
     git clone https://github.com/6WIND/quagga.git
     cd quagga
     git checkout quagga_110_mpbgp_capnp
-    export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
-    export ZEROMQ_LIBS="-L"$ZRPCD_BUILD_FOLDER"/zeromq4-1/.libs/ -lzmq"
-    export CAPN_C_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/c-capnproto/ -I'$ZRPCD_BUILD_FOLDER'/'
-    export CAPN_C_LIBS='-L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapn_c'
     autoreconf -i
     LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/' \
     ./configure --with-zeromq --with-ccapnproto --prefix=/opt/quagga --enable-user=quagga \
@@ -119,16 +128,33 @@ pushd $ZRPCD_BUILD_FOLDER
     chown -R quagga:quagga /opt/quagga/var/log/quagga
 
     cd ..
- 
-#Install ZRPC.
-# in addition to above flags, ensure to add below flags
-    export QUAGGA_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/quagga/lib/'
-    export QUAGGA_LIBS='-L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/. -lzebra'
-    export THRIFT_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src/thrift/c_glib/ -I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src"
-    export THRIFT_LIBS="-L'$ZRPCD_BUILD_FOLDER'/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
+    popd
+}
 
-    git clone https://github.com/6WIND/zrpcd.git
-    cd zrpcd
+build_zrpcd (){
+#Install ZRPC.
+    export_variables
+
+    if [ -z "${BUILD_FROM_DIST}" ]; then
+        pushd $ZRPCD_BUILD_FOLDER
+        git clone https://github.com/6WIND/zrpcd.git
+        cd zrpcd
+    elif [ -n "${DIST_ARCHIVE}" ]; then
+        tar zxvf $DIST_ARCHIVE
+        cd "${DIST_ARCHIVE%.tar.gz}"
+    else
+        # prepate the dist archive
+        touch NEWS README
+        autoreconf -i
+        LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' \
+        ./configure --enable-zrpcd --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
+        --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga
+        make dist
+        DIST_ARCHIVE=$(ls *.tar.gz)
+        tar zxvf $DIST_ARCHIVE
+        cd "${DIST_ARCHIVE%.tar.gz}"
+    fi
+
     touch NEWS README
     autoreconf -i
     LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' \
@@ -136,10 +162,17 @@ pushd $ZRPCD_BUILD_FOLDER
     --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga
     make
     make install
-    mkdir /opt/quagga/etc/init.d -p
-    cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
-    chmod +x /opt/quagga/etc/init.d/zrpcd
- 
+    # Temporarily disable this when using the dist method
+    if [ -z "$BUILD_FROM_DIST" ]; then
+        mkdir /opt/quagga/etc/init.d -p
+        cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+        chmod +x /opt/quagga/etc/init.d/zrpcd
+    fi
+
+    if [ -z "${BUILD_FROM_DIST}" ]; then
+        popd
+    fi
+
      echo "hostname bgpd" >> /opt/quagga/etc/bgpd.conf
      echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
      echo "service advanced-vty" >> /opt/quagga/etc/bgpd.conf
@@ -150,5 +183,67 @@ pushd $ZRPCD_BUILD_FOLDER
      echo "debug bgp updates" >> /opt/quagga/etc/bgpd.conf
      echo "debug bgp events" >> /opt/quagga/etc/bgpd.conf
      echo "debug bgp fsm" >> /opt/quagga/etc/bgpd.conf
+}
 
-popd
+display_usage ()
+{
+cat << EOF
+OPTIONS:
+  -b/--build, build zrpcd. By default clones the master of the upstream repository and \
+      builds that.
+  -t/--from-dist-archive, package zrpcd using make dist and build the sources in the archive. \
+      If --build is not used, the flag is ignored.
+  -a/--archive [path to archive.tar.gz], give explicitly the source archive to be used instead \
+      of producing one with make dist.
+  -d/--install-deps, compile and install zrpcd's dependecies.
+  -h help, prints this help text
+
+EOF
+}
+
+
+INSTALL_DEPS=""
+BUILD_ZRPCD=""
+BUILD_FROM_DIST=""
+DIST_ARCHIVE=""
+parse_cmdline() {
+    while [ $# -gt 0 ]
+    do
+        case "$1" in
+            -h|--help)
+                display_usage
+                exit 0
+                ;;
+            -b|--build)
+                BUILD_ZRPCD="true"
+                shift
+                ;;
+            -d|--install-deps)
+                INSTALL_DEPS="true"
+                shift
+                ;;
+            -t|--from-dist-archive)
+                BUILD_FROM_DIST="true"
+                shift
+                ;;
+            -a|--archive)
+                DIST_ARCHIVE=${2}
+                shift 2
+                ;;
+            *)
+                display_usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
+parse_cmdline $@
+
+if [ -n "$INSTALL_DEPS" ]; then
+    install_deps
+fi
+
+if [ -n "$BUILD_ZRPCD" ]; then
+    build_zrpcd
+fi

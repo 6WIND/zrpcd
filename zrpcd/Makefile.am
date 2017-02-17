@@ -23,7 +23,7 @@ noinst_HEADERS = \
 	zrpc_bgp_configurator.h zrpc_bgp_updater.h zrpc_debug.h zrpc_memory.h \
 	zrpcd.h zrpc_network.h zrpc_thrift_wrapper.h zrpc_vpnservice.h \
 	qzmqclient.h qzcclient.capnp.h qzcclient.h zrpc_util.h \
-	zrpc_bgp_capnp.h
+	zrpc_bgp_capnp.h zrpc_os_wrapper.h zrpc_global.h
 
 zrpcd_SOURCES = \
 	zrpc_main.c $(libzrpc_a_SOURCES)
