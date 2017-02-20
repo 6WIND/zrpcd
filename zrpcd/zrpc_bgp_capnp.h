@@ -169,6 +169,7 @@ struct peer
 #define PEER_FLAG_DISABLE_CONNECTED_CHECK   (1 << 6) /* disable-connected-check */
 #define PEER_FLAG_LOCAL_AS_NO_PREPEND       (1 << 7) /* local-as no-prepend */
 #define PEER_FLAG_LOCAL_AS_REPLACE_AS       (1 << 8) /* local-as no-prepend replace-as */
+#define PEER_FLAG_USE_CONFIGURED_SOURCE     (1 << 9) /* use configured source-only */
 
   int ttl;			/* TTL of TCP connection to the peer. */
 
