@@ -226,6 +226,40 @@ int zrpc_util_str2ipv4_prefix (const char *buf, struct zrpc_ipv4_prefix *ipv4_p)
   return  ret;
 }
 
+int zrpc_util_convert_ipv6mappedtoipv4 (struct zrpc_prefix *pfx)
+{
+  struct in_addr pfx_ipv4;
+
+  if (pfx->family != AF_INET6)
+    return -1;
+  memset (&pfx_ipv4, 0, sizeof(struct in_addr));
+  char *ptr = (char *)&(pfx->u.prefix6.s6_addr);
+  ptr+=12;
+  memcpy (&pfx_ipv4, ptr, sizeof (struct in_addr));
+  pfx->family = AF_INET;
+  pfx->prefixlen = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+  memcpy(&(pfx->u.prefix), &pfx_ipv4, sizeof(struct in_addr));
+  return 0;
+}
+
+int zrpc_util_convert_ipv4toipv6mapped (struct zrpc_prefix *pfx)
+{
+  struct in6_addr pfx_ipv6;
+
+  if (pfx->family != AF_INET)
+    return -1;
+  memset (&pfx_ipv6, 0, sizeof(struct in6_addr));
+  char *ptr = (char *)&(pfx_ipv6.s6_addr);
+  ptr+=10;
+  *ptr++=0xff;
+  *ptr++=0xff;
+  memcpy (ptr, &(pfx->u.prefix), sizeof (struct in_addr));
+  pfx->family = AF_INET6;
+  pfx->prefixlen = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
+  memcpy(&(pfx->u.prefix), &pfx_ipv6, sizeof(struct in6_addr));
+  return 0;
+}
+
 /* assuming input buffer is on format A.B.C.D/xx 
  * return 0 if error */
 int zrpc_util_str2ipv6_prefix (const char *buf, struct zrpc_ipv6_prefix *ipv6_p)

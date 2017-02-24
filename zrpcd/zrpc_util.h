@@ -148,6 +148,16 @@ struct zrpc_prefix
 #define ZRPC_L2VPN_PREFIX_ETHTAGLEN (8 * sizeof(u_int32_t))
 #define ZRPC_L2VPN_PREFIX_AD (8 * sizeof (struct zrpc_eth_segment_id) + ZRPC_L2VPN_PREFIX_ETHTAGLEN)
 
+#ifndef IN6_IS_ADDR_V4MAPPED
+#define IN6_IS_ADDR_V4MAPPED(a) \
+  ((((a)->in6_u.u6_addr16[0]) == 0) && \
+  (((a)->in6_u.u6_addr16[1]) == 0) && \
+  (((a)->in6_u.u6_addr16[2]) == 0) && \
+  (((a)->in6_u.u6_addr16[3]) == 0) && \
+  (((a)->in6_u.u6_addr16[4]) == 0) && \
+   (((a)->in6_u.u6_addr16[5]) == 0xFFFF))
+#endif
+
 extern struct zrpc_rdrt *zrpc_util_append_rdrt_to_list (u_char *, struct zrpc_rdrt *); 
 extern int zrpc_util_str2rd_prefix (char *buf, struct zrpc_rd_prefix *rd_p);
 extern int zrpc_util_str2ipv4_prefix (const char *buf, struct zrpc_ipv4_prefix *ipv4_p);
@@ -174,5 +184,7 @@ extern int zrpc_util_str2mac (const char *str, char *mac);
 extern char *zrpc_util_esi2str (struct zrpc_eth_segment_id *id);
 extern char *zrpc_util_mac2str (char *mac);
 extern char *zrpc_util_ecom_mac2str(char *ecom_mac);
+extern int zrpc_util_convert_ipv4toipv6mapped (struct zrpc_prefix *pfx);
+extern int zrpc_util_convert_ipv6mappedtoipv4 (struct zrpc_prefix *pfx);
 
 #endif /* _QUAGGA_ZRPC_UTIL_H */

@@ -202,14 +202,22 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       else
         esi = NULL;
       announce = (s->announce & BGP_EVENT_MASK_ANNOUNCE)?TRUE:FALSE;
-      zrpc_util_prefix_2str (&s->nexthop, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
-      nexthop = nh_str;
       if (memcmp (&s->outbound_rd, &null_rd, sizeof(struct zrpc_rd_prefix)))
         zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
       else
         zrpc_invalid_rd = 1;
       if (p->family == AF_INET)
         afi_out = AF_AFI_AFI_IP;
+#if defined(HAVE_THRIFT_V4)
+      else if (p->family == AF_INET6)
+        afi_out = AF_AFI_AFI_IPV6;
+      if (s->nexthop.family == AF_INET6 && afi_out == AF_AFI_AFI_IPV6 &&
+          IN6_IS_ADDR_V4MAPPED (&s->nexthop.u.prefix6))
+        {
+          /* check that nexthop is ipv4 mapped ipv6. transform it if this is it */
+          zrpc_util_convert_ipv6mappedtoipv4 (&s->nexthop);
+        }
+#else
 #if !defined(HAVE_THRIFT_V1)
       else if (p->family == AF_INET6)
         afi_out = AF_AFI_AFI_IPV6;
@@ -223,6 +231,12 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         }
         else
           afi_out = AF_AFI_AFI_IP; /* only L2VPN -> IPv6 */
+      if (s->nexthop.family == AF_INET6 && afi_out == AF_AFI_AFI_IPV6 &&
+          IN6_IS_ADDR_V4MAPPED (&s->nexthop.u.prefix6))
+        {
+          /* check that nexthop is ipv4 mapped ipv6. transform it if this is it */
+          zrpc_util_convert_ipv6mappedtoipv4 (&s->nexthop);
+        }
       if (s->esi)
         p_type  = PROTOCOL_TYPE_PROTOCOL_EVPN;
       else if (zrpc_invalid_rd)
@@ -230,6 +244,9 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       else
         p_type = PROTOCOL_TYPE_PROTOCOL_L3VPN;
 #endif /* !HAVE_THRIFT_V1 */
+#endif /* HAVE_THRIFT_V4 */
+      zrpc_util_prefix_2str (&s->nexthop, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
+      nexthop = nh_str;
       if (announce == TRUE)
         {
           char pfx_str[ZRPC_UTIL_IPV6_LEN_MAX];
