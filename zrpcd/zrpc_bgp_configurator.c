@@ -1641,6 +1641,14 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
+  entry = zrpc_bgp_configurator_find_peer(ctxt, routerId, _return, 0);
+  if(entry && entry->peer_nid)
+    {
+      *_return = BGP_ERR_FAILED; 
+      if(IS_ZRPC_DEBUG)
+        zrpc_info ("createPeer(%s) already present. do nothing.", asNumber);
+      return FALSE;
+    }
   memset(&inst, 0, sizeof(struct peer));
   inst.host = ZRPC_STRDUP(routerId);
   inst.as = (uint32_t) asNumber;
