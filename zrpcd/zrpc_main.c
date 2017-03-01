@@ -49,8 +49,8 @@ zrpc_usage (int status)
 Daemon which manages rpc configuration/updates from/to quagga\n\n\
 zrpc configuration across thrift defined model : vpnservice.\n\n\
 -D                          Disable default logging to stdout \n\
--p, --thrift_port           Set thrift's config port number\n\
--P, --thrift_notif_port     Set thrift's notif update port number\n\
+-P, --thrift_port           Set thrift's config port number\n\
+-p, --thrift_notif_port     Set thrift's notif update port number\n\
 -N, --thrift_notif_address  Set thrift's notif update specified address\n\
 -h, --help                  Display this help and exit\n\n");
   exit (status);
@@ -195,6 +195,13 @@ main (int argc, char **argv)
 	case 'D':
           zrpc_disable_stdout = 1;
           break;
+	case 'P':
+	  tmp_port = atoi (optarg);
+	  if (tmp_port < 0 || tmp_port > 0xffff)
+            vty_port = 0;
+          else
+            vty_port = tmp_port;
+	  break;
 	case 'p':
 	  tmp_port = atoi (optarg);
 	  if (tmp_port < 0 || tmp_port > 0xffff)
