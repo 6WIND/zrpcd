@@ -340,8 +340,6 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       zrpc_bgp_updater_on_notification_send_event(nexthop, t->type, t->subtype);
     }
   capn_free(&rc);
-  if(client_ready == FALSE)
-    ctxt->bgp_update_lost_msgs++;
   return;
 }
 

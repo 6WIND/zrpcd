@@ -64,7 +64,8 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
               routermac==NULL?"":"routermac ", routermac==NULL?"":routermac,
               response == TRUE?"OK":"NOK");
   }
-
+  if (response == FALSE)
+    ctxt->bgp_update_thrift_lost_msgs++;
   return response;
 }
 
@@ -113,6 +114,8 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
                 ethtag==0?"":ethtag_str,
                 response == TRUE?"OK":"NOK");
     }
+  if (response == FALSE)
+    ctxt->bgp_update_thrift_lost_msgs++;
   return response;
 }
 
@@ -134,6 +137,8 @@ zrpc_bgp_updater_on_start_config_resync_notification (void)
   response = bgp_updater_client_on_start_config_resync_notification(ctxt->bgp_updater_client, &error);
   if(IS_ZRPC_DEBUG_NOTIFICATION)
     zrpc_info ("onStartConfigResyncNotification()");
+  if (response == FALSE)
+    ctxt->bgp_update_thrift_lost_msgs++;
   return response;
 }
 
@@ -155,5 +160,7 @@ zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 e
   if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
     zrpc_log ("onNotificationSendEvent(%s, errCode %d, errSubCode %d)", \
                 prefix, errCode, errSubcode);
+  if (response == FALSE)
+    ctxt->bgp_update_thrift_lost_msgs++;
   return response;
 }

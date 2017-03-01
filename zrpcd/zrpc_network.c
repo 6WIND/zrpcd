@@ -208,7 +208,6 @@ void zrpc_server_socket(struct zrpc *zrpc)
     {
       if (IS_ZRPC_DEBUG_NOTIFICATION)
         zrpc_log ("bgp->sdnc message failed to be sent");
-      zrpc->zrpc_vpnservice->bgp_update_lost_msgs++;
       return;
     }
   return;

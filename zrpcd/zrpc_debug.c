@@ -14,6 +14,12 @@
 
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_debug.h"
+#include "zrpcd/zrpc_thrift_wrapper.h"
+#include "zrpcd/bgp_configurator.h"
+#include "zrpcd/bgp_updater.h"
+#include "zrpcd/zrpc_bgp_configurator.h"
+#include "zrpcd/zrpc_bgp_updater.h"
+#include "zrpcd/zrpc_vpnservice.h"
 
 #define ZRPC_STR "ZRPC Information\n"
 
@@ -61,6 +67,28 @@ zrpc_level_match(const char *s)
   return ZRPC_LOG_LEVEL_DEBUG;
 }
 
+DEFUN (show_debugging_zrpc_stats,
+       show_debugging_zrpc_stats_cmd,
+       "show debugging zrpc stats",
+       SHOW_STR
+       DEBUG_STR
+       ZRPC_STR
+       "Zrpc Statistics")
+{
+  struct zrpc_vpnservice *ctxt = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt)
+    {
+      return CMD_SUCCESS;
+    }
+  vty_out (vty, "BGP ZMQ notifications total %u lost %u thrift lost %u%s",
+           ctxt->bgp_update_total,
+           ctxt->bgp_update_lost_msgs,
+           ctxt->bgp_update_thrift_lost_msgs,
+           VTY_NEWLINE);
+  return CMD_SUCCESS;
+}
 
 DEFUN (show_debugging_zrpc,
        show_debugging_zrpc_cmd,
@@ -231,6 +259,7 @@ zrpc_debug_init (void)
   install_element (ENABLE_NODE, &no_debug_zrpc_network_cmd);
   install_element (ENABLE_NODE, &debug_zrpc_cache_cmd);
   install_element (ENABLE_NODE, &no_debug_zrpc_cache_cmd);
+  install_element (ENABLE_NODE, &show_debugging_zrpc_stats_cmd);
 
   zrpc_debug |= ZRPC_DEBUG;
 }
