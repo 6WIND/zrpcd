@@ -1994,29 +1994,29 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
        ctxt->bgp_vrf_list = entry;
        if(IS_ZRPC_DEBUG)
          zrpc_info ("addVrf(%s) OK", rd);
-       /* max_mpath has been set in bgpd with a default value owned by bgpd itself
-        * must get back this value before going further else max_mpath will be overwritten
-        * by first bgpvrf read */
-       {
-         struct QZCGetRep *grep_vrf;
-
-         grep_vrf = qzcclient_getelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
-                                       NULL, NULL, NULL, NULL);
-         if(grep_vrf == NULL)
-           {
-             *_return = BGP_ERR_FAILED;
-             return FALSE;
-           }
-         memset(&instvrf, 0, sizeof(struct bgp_vrf));
-         qcapn_BGPVRF_read(&instvrf, grep_vrf->data);
-         if (instvrf.rt_import)
-           zrpc_util_rdrt_free (instvrf.rt_import);
-         if (instvrf.rt_export)
-           zrpc_util_rdrt_free (instvrf.rt_export);
-         /* reset qzc reply and rc context */
-         qzcclient_qzcgetrep_free( grep_vrf);
-       }
      }
+   /* max_mpath has been set in bgpd with a default value owned by bgpd itself
+    * must get back this value before going further else max_mpath will be overwritten
+    * by first bgpvrf read */
+   {
+     struct QZCGetRep *grep_vrf;
+
+     grep_vrf = qzcclient_getelem (ctxt->qzc_sock, &bgpvrf_nid, 1,      \
+                                   NULL, NULL, NULL, NULL);
+     if(grep_vrf == NULL)
+       {
+         *_return = BGP_ERR_FAILED;
+         return FALSE;
+       }
+     memset(&instvrf, 0, sizeof(struct bgp_vrf));
+     qcapn_BGPVRF_read(&instvrf, grep_vrf->data);
+     if (instvrf.rt_import)
+       zrpc_util_rdrt_free (instvrf.rt_import);
+     if (instvrf.rt_export)
+       zrpc_util_rdrt_free (instvrf.rt_export);
+     /* reset qzc reply and rc context */
+     qzcclient_qzcgetrep_free( grep_vrf);
+   }
    /* configuring bgp vrf with import and export communities */
    /* irts and erts have to be translated into u_char[8] entities, then put in a list */
    rdrt = ZRPC_CALLOC (sizeof(struct zrpc_rdrt));
