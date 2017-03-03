@@ -2126,6 +2126,13 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
            entry_bgpvrf_prev = entry_bgpvrf;
          }
      }
+   else
+     {
+       *_return = BGP_ERR_FAILED;
+       *error = ERROR_BGP_INTERNAL;
+       if(IS_ZRPC_DEBUG)
+         zrpc_info ("delVrf(%s) NOK (capnproto error)", rd);
+     }
    return FALSE;
  }
 
@@ -2216,6 +2223,18 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
              zrpc_info ("unsetUpdateSource(%s) OK", peerIp);
            else
              zrpc_info ("setUpdateSource(%s, %s) OK", peerIp, srcIp);
+         }
+     }
+   else
+     {
+       *_return = BGP_ERR_FAILED;
+       *error = ERROR_BGP_INTERNAL;
+       if(IS_ZRPC_DEBUG)
+         {
+           if (srcIp == 0)
+             zrpc_info ("unsetUpdateSourcedelVrf(%s) NOK (capnproto error)", peerIp);
+           else
+             zrpc_info ("setUpdateSourcedelVrf(%s) NOK (capnproto error)", peerIp);
          }
      }
    if (peer.host)
