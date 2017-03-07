@@ -837,6 +837,7 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
   zrpc_vpnservice_get_bgp_context(ctxt)->proc = pid;
   /* creation of capnproto context - bgp configurator */
   /* creation of qzc client context */
+  zrpc_vpnservice_get_bgp_context(ctxt)->asNumber = (uint32_t) asNumber;
   ctxt->qzc_sock = qzcclient_connect(s_zmq_sock);
   if(ctxt->qzc_sock == NULL)
     {
@@ -856,7 +857,6 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
     qzcclient_qzcreply_free (rep);
   /* check well known number agains node identifier */
   bgp_bm_nid = qzcclient_wkn(ctxt->qzc_sock, &bgp_bm_wkn);
-  zrpc_vpnservice_get_bgp_context(ctxt)->asNumber = (uint32_t) asNumber;
   if(IS_ZRPC_DEBUG)
     zrpc_info ("startBgp. bgpd called (AS %u, proc %d, .., stalepath %u, announceFbit %s)",
               (uint32_t)asNumber, pid, stalepathTime, announceFbit == true?"true":"false");
