@@ -76,27 +76,20 @@ You will also need to have ZMQ. Here is compilation procedure for ZMQ.
 
 ### Dependency: C-capnproto
 
-You will also need to have ccapnproto. Here is compilation and installation procedure for ccapnproto.
-ccapnproto used is a copy from the original one.
-Original ccapnproto stack maintained at the following url:
+You will also need to have c-capnproto. Here is compilation and installation procedure for c-capnproto.
+c-capnproto 0.2 is used, and can be obtained at the following url:
   https://github.com/opensourcerouting/c-capnproto
-Note also some updates from
-  https://github.com/sandstorm-io/capnproto
 
 The following procedure is used:
 
     git clone https://github.com/opensourcerouting/c-capnproto
     cd c-capnproto
-    git checkout 332076e52257
+    git checkout c-capnproto-0.2
+    mkdir -p gtest/googletest && \
+    autoreconf -fiv && \
     ./configure --prefix=/opt/quagga --without-gtest
     make
-    mkdir /opt/quagga/lib -p
-    mkdir /opt/quagga/include/c-capnproto -p
-    cp capn.h /opt/quagga/include/c-capnproto/.
-    cp .libs/libcapn.so.1.0.0 .libs/libcapn_c.so.1.0.0
-    ln -s .libs/libcapn_c.so.1.0.0 .libs/libcapn_c.so
-    cp .libs/libcapn.so.1.0.0 /opt/quagga/lib/libcapn_c.so.1.0.0
-    ln -s /opt/quagga/lib/libcapn_c.so.1.0.0 libcapn_c.so
+    maks install
 
 ### Dependency: Quagga
 
@@ -124,8 +117,8 @@ shell:
 
     export ZEROMQ_CFLAGS="-I/tmp/zeromq4-1/include"
     export ZEROMQ_LIBS="-L/tmp/zeromq4-1/.libs/ -lzmq"
-    export CAPN_C_CFLAGS='-I/tmp/c-capnproto/ -I/tmp/'
-    export CAPN_C_LIBS='-L/tmp/c-capnproto/.libs/ -lcapn_c'
+    export CAPN_C_CFLAGS='-I/tmp/c-capnproto/lib'
+    export CAPN_C_LIBS='-L/tmp/c-capnproto/.libs/ -lcapnp_c'
 
 You will have to enable zeromq and capnproto services. Perform the following:
 
@@ -146,7 +139,7 @@ Also, if you are on a Centos distribution, please check that you have the follow
 yum install initscripts.x86_64 glib2.x86_64.
 
 To compile zrpc, once the dependencies above resolved, retake the environment settings used to compile
-quagga, and add the followingones:
+quagga, and add the following ones:
 
     export THRIFT_CFLAGS="-I/tmp/thrift/lib/c_glib/src/thrift/c_glib/"
     export THRIFT_LIBS="-L/tmp/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
@@ -162,7 +155,8 @@ perform the following in order to compile zrpc daemon:
     LIBS='-L/tmp/zeromq4-1/.libs -L/tmp/c-capnproto -L/tmp/thrift/lib/c_glib/.libs/ \
      -L/tmp/quagga/lib/.libs' ./configure --enable-zrpcd --prefix=/opt/quagga \
      --enable-user=quagga --enable-group=quagga \
-     --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga 
+     --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga \
+     --with-thrift-version=1
     make
     make install
     mkdir /opt/quagga/etc/init.d -p
@@ -178,10 +172,13 @@ perform the following in order to compile zrpc daemon:
     echo "debug bgp events" >> /opt/quagga/etc/bgpd.conf
     echo "debug bgp fsm" >> /opt/quagga/etc/bgpd.conf
 
+Note that ZRPC can rely on various vpnservice.thrift. It has just to be configured at the compilation level.
+By default, ZRPC is configured to use L3VPN thrift vpnservice file. If you want to use EVPN thrift vpnservice level, you have to call configure command with --with-thrift-version=2.
+
 ## Packaging ZRPC
 
-Packaging ZRPC means that you have to rely on 4 packages, namely quagga, zrpc, but also ccapnproto, zmq and thrift. If the two last package are already available in most distribution, this is not the case for the three first ones.
-This chapter focuses on packaging Quagga, Zrpc, and Ccapnproto.
+Packaging ZRPC means that you have to rely on 4 packages, namely quagga, zrpc, but also c-capnproto, zmq and thrift. If the two last package are already available in most distribution, this is not the case for the three first ones.
+This chapter focuses on packaging Quagga, Zrpc, and c-capnproto.
 To be able to produce deb or rpm packages, you will need to copy some produced files into a file system hierarchy. Once done, a script is given as well as the necessary files to produce the package.
 
 ### RPM Packaging
@@ -246,24 +243,27 @@ ccapnproto file system hierarchy looks like the following:
     ./opt/
     ./opt/quagga/
     ./opt/quagga/include/
-    ./opt/quagga/include/c-capnproto/
-    ./opt/quagga/include/c-capnproto/capn.h
+    ./opt/quagga/include/capnp_c.h
+    ./opt/quagga/include/capnp/c.capnp
+    ./opt/quagga/bin/capnpc-c
     ./opt/quagga/lib/
-    ./opt/quagga/lib/libcapn_c.so
-    ./opt/quagga/lib/libcapn_c.a
+    ./opt/quagga/lib/libcapnp_c.la
+    ./opt/quagga/lib/pkgconfig/c-capnproto.pc
+    ./opt/quagga/lib/libcapnp_c.a
+    ./opt/quagga/lib/libcapnp_c.so
+    ./opt/quagga/lib/libcapnp_c.so.0
 
 For deb production, an extra file at ./bin/DEBIAN/control place contains the following
 
-    Package: ccapnproto
-    Version: 1.0.0.cfc3
+    Package: c-capnproto
+    Version: 1.0.2.75f7
     Architecture: amd64
     Maintainer: 6WIND <packaging@6wind.com>
-    Description: ccapnproto library
+    Description: c-capnproto library
     Library for CCAPNPROTO.
     CCAPNPROTO_BUILD_DEPS=''
 
-For rpm production, an extra file at ./bin/SPECS/rpm.spec is copied from ccapnproto/package/rpm.spec file.
-
+For rpm production, an extra file at ./package/c-capnproto/rpm.spec is available for usage.
 
 ### Packaging quagga
 
@@ -315,7 +315,7 @@ For rpm production, a rpm.spec file is necessary to be copied in ./bin/SPECS/rpm
     Group: Applications/Internet
     License: GPL
     BuildRoot: /home/packager/packager/rpm/bin/BUILD/ROOT
-    Requires: zmq ccapnproto
+    Requires: zmq c-capnproto
  
     %description
     Quagga is an advanced routing software package that provides a suite of TCP/IP based routing protocols.
@@ -352,7 +352,7 @@ For deb production, an extra file at ./bin/DEBIAN/control place contains the fol
     Version: 1.1.0.201611274
     Architecture: amd64
     Maintainer: 6WIND <packaging@6wind.com>
-    Depends: zmq(>=4.1.0), ccapnproto(>=1.0.0)
+    Depends: zmq(>=4.1.0), c-capnproto(>=1.0.0)
     Description: Quagga Routing Suite
     Quagga is an advanced routing software package that provides a suite of TCP/IP based routing protocols.
 
@@ -428,7 +428,7 @@ Some files are not produced by "quagga building instructions". Two files are pro
 
 For rpm production, a rpm.spec file is necessary to be copied in ./bin/SPECS/rpm.spec. Use ./package/rpm.spec file. Note that for centos distribution, you should ignore the following dependencies on rpm.spec file by suppressing or adapting the following line. The fact is that the package naming on centos differs.
 
-    Requires: thrift zmq ccapnproto quagga
+    Requires: thrift zmq c-capnproto quagga
 
 For deb production, an extra file at ./bin/DEBIAN/control place contains the following.
 
@@ -436,7 +436,7 @@ For deb production, an extra file at ./bin/DEBIAN/control place contains the fol
     Version: 0.2.
     Architecture: amd64
     Maintainer: 6WIND <packaging@6wind.com>
-    Depends: thrift(>=0.9), zmq(>=4.1.0), libglib2.0-0(>=2.22.5), quagga(>=1.1.0), ccapnproto(>=1.0.0)
+    Depends: thrift(>=0.9), zmq(>=4.1.0), libglib2.0-0(>=2.22.5), quagga(>=1.1.0), c-capnproto(>=1.0.0)
     Description: Zebra Remote Procedure Call
     ZRPC provides a Thrift API and handles RPC to configure Quagga framework.
 

@@ -36,8 +36,8 @@ export_variables (){
     #these are required by quagga
     export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
     export ZEROMQ_LIBS="-L"$ZRPCD_BUILD_FOLDER"/zeromq4-1/.libs/ -lzmq"
-    export CAPN_C_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/c-capnproto/ -I'$ZRPCD_BUILD_FOLDER'/'
-    export CAPN_C_LIBS='-L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapn_c'
+    export CAPN_C_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/c-capnproto/lib'
+    export CAPN_C_LIBS='-L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c'
 
     #In addition to the above, zrpcd requires these flags too.
     export QUAGGA_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/quagga/lib/'
@@ -89,20 +89,13 @@ install_deps() {
 #Install C-capnproto
      git clone https://github.com/opensourcerouting/c-capnproto
      cd c-capnproto
-     git checkout 332076e52257
-     autoreconf -i
+     git checkout c-capnproto-0.2
+     mkdir -p gtest/googletest
+     autoreconf -fiv
      ./configure --prefix=/opt/quagga --without-gtest
-
      make
-     mkdir /opt/quagga/lib -p
-     mkdir /opt/quagga/include/c-capnproto -p
-
-    cp capn.h /opt/quagga/include/c-capnproto/.
-    cp .libs/libcapn.so.1.0.0 .libs/libcapn_c.so.1.0.0
-    ln -sf $ZRPCD_BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so.1.0.0 $ZRPCD_BUILD_FOLDER/c-capnproto/.libs/libcapn_c.so
-    cp .libs/libcapn.so.1.0.0 /opt/quagga/lib/libcapn_c.so.1.0.0
-    ln -sf /opt/quagga/lib/libcapn_c.so.1.0.0 /opt/quagga/lib/libcapn_c.so
-    cd ..
+     make install
+     cd ..
 
 #Install Quagga
     git clone https://github.com/6WIND/quagga.git
