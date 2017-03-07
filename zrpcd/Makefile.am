@@ -18,6 +18,9 @@ libzrpc_a_SOURCES = \
 	qzmqclient.c qzcclient.capnp.c qzcclient.c zrpc_util.c \
 	zrpc_bgp_capnp.c
 
+pkginclude_HEADERS = \
+	zrpc_os_wrapper.h zrpc_global.h
+
 noinst_HEADERS = \
 	bgp_configurator.h bgp_updater.h vpnservice_types.h zrpc_bgp_updater.h \
 	zrpc_bgp_configurator.h zrpc_bgp_updater.h zrpc_debug.h zrpc_memory.h \
