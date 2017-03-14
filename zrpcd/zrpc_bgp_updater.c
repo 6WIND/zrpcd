@@ -44,11 +44,15 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
 #else
   response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, p_type,
                                                           rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress, 
+#if defined(HAVE_THRIFT_V4)
+                                                          l3label, l2label, routermac, afi, &error);
+#else
 #if defined(HAVE_THRIFT_V2)
                                                           l3label, l2label, routermac, &error);
 #else
                                                           l3label, l2label, routermac, gatewayIp, afi, &error);
 #endif /* HAVE_THRIFT_V2 */
+#endif /* HAVE_THRIFT_V4 */
 #endif /* HAVE_THRIFT_V1 */
   if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
   {

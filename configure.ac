@@ -771,6 +771,13 @@ if test "x${THRIFTVERSION}" = "x3" ; then
 else
   AM_CONDITIONAL([HAVE_THRIFT_V3], [test x = xtrue])
 fi
+if test "x${THRIFTVERSION}" = "x4" ; then
+  AM_CONDITIONAL([HAVE_THRIFT_V4], [test xtrue = xtrue])
+  AC_DEFINE(HAVE_THRIFT_V3, [1], [Version for Thrift])
+  AC_DEFINE(HAVE_THRIFT_V4, [1], [Version for Thrift])
+else
+  AM_CONDITIONAL([HAVE_THRIFT_V4], [test x = xtrue])
+fi
 
 dnl -----------
 dnl GLIB2

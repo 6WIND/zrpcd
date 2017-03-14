@@ -56,6 +56,12 @@ vpnservice.thrift: vpnservice.ipv6.thrift
 	($(THRIFT_PRG) -out . --gen c_glib $(srcdir)/vpnservice.thrift)
 	rm vpnservice.thrift
 endif
+if HAVE_THRIFT_V4
+vpnservice.thrift: vpnservice.evpnipv6.thrift
+	cp vpnservice.evpnipv6.thrift vpnservice.thrift
+	($(THRIFT_PRG) -out . --gen c_glib $(srcdir)/vpnservice.thrift)
+	rm vpnservice.thrift
+endif
 
 examplesdir = $(exampledir)
 dist_examples_DATA = 
