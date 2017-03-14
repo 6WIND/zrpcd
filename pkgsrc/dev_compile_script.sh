@@ -100,7 +100,7 @@ install_deps() {
 #Install Quagga
     git clone https://github.com/6WIND/quagga.git
     cd quagga
-    git checkout quagga_110_mpbgp_capnp
+    git checkout quagga_mpbgp_capnp
     autoreconf -i
     LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/' \
     ./configure --with-zeromq --with-ccapnproto --prefix=/opt/quagga --enable-user=quagga \
