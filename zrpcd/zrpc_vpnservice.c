@@ -463,7 +463,8 @@ void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup)
     zrpc_debug_configure_stdout (0);
 }
 
-#define ERROR_BGP_MULTIPATH_NOT_SET g_error_new(1, 7, "BGP multipath already configured for afi/safi");
+#define ERROR_BGP_MULTIPATH_SET g_error_new(1, BGP_ERR_ACTIVE, "BGP multipath already configured for afi/safi");
+#define ERROR_BGP_MULTIPATH_UNSET g_error_new(1, BGP_ERR_INACTIVE, "BGP multipath already unconfigured for afi/safi");
 
 gboolean zrpc_vpnservice_set_bgp_context_multipath (struct zrpc_vpnservice_bgp_context *bgp,
                                                     address_family_t afi, subsequent_address_family_t safi,
@@ -472,13 +473,13 @@ gboolean zrpc_vpnservice_set_bgp_context_multipath (struct zrpc_vpnservice_bgp_c
   if (on && bgp->multipath_on[afi][safi])
     {
       *_return = BGP_ERR_ACTIVE;
-      *error = ERROR_BGP_MULTIPATH_NOT_SET;
+      *error = ERROR_BGP_MULTIPATH_SET;
       return FALSE;
     }
   if ((on == 0) && bgp->multipath_on[afi][safi] == 0)
     {
       *_return = BGP_ERR_INACTIVE;
-      *error = ERROR_BGP_MULTIPATH_NOT_SET;
+      *error = ERROR_BGP_MULTIPATH_UNSET;
       return FALSE;
     }
   bgp->multipath_on[afi][safi] = 1;
