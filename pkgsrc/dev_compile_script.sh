@@ -44,7 +44,7 @@ export_variables (){
     export QUAGGA_LIBS='-L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/. -lzebra'
     export THRIFT_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src/thrift/c_glib/ -I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src"
     export THRIFT_LIBS="-L'$ZRPCD_BUILD_FOLDER'/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
-
+    export THRIFT_PATH="$ZRPCD_BUILD_FOLDER/thrift/compiler/cpp"
 }
 
 install_deps() {
@@ -167,10 +167,10 @@ build_zrpcd (){
         # prepate the dist archive
         touch NEWS README
         autoreconf -i
-        LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' \
+        LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' PATH=$PATH:$THRIFT_PATH \
         ./configure --enable-zrpcd --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
         --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=1
-        make dist
+        PATH=$PATH:$THRIFT_PATH make dist
         DIST_ARCHIVE=$(ls *.tar.gz)
         tar zxvf $DIST_ARCHIVE
         cd "${DIST_ARCHIVE%.tar.gz}"
@@ -178,11 +178,11 @@ build_zrpcd (){
 
     touch NEWS README
     autoreconf -i
-    LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' \
+    LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' PATH=$PATH:$THRIFT_PATH \
 	./configure --enable-zrpcd --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
     --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga
-    make
-    make install
+    PATH=$PATH:$THRIFT_PATH make
+    PATH=$PATH:$THRIFT_PATH make install
     # Temporarily disable this when using the dist method
     if [ -z "$BUILD_FROM_DIST" ]; then
         mkdir /opt/quagga/etc/init.d -p
