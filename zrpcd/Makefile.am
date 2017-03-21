@@ -16,13 +16,15 @@ libzrpc_a_SOURCES = \
 	bgp_updater.c vpnservice_types.c \
 	zrpc_debug.c zrpc_bgp_configurator.c zrpc_bgp_updater.c \
 	qzmqclient.c qzcclient.capnp.c qzcclient.c zrpc_util.c \
-	zrpc_bgp_capnp.c
+	zrpc_bgp_capnp.c bgp_configurator.h bgp_updater.h vpnservice_types.h \
+	zrpc_thrift_wrapper.h zrpc_vpnservice.h zrpc_os_wrapper.h \
+	zrpc_util.h zrpc_bgp_capnp.h zrpc_global.h qzcclient.h qzmqclient.h \
+	qzcclient.capnp.h
 
 BUILT_SOURCES = bgp_configurator.c bgp_updater.c vpnservice_types.c \
 	bgp_configurator.h bgp_updater.h vpnservice_types.h
 
 noinst_HEADERS = \
-	bgp_configurator.h bgp_updater.h vpnservice_types.h zrpc_bgp_updater.h \
 	zrpc_bgp_configurator.h zrpc_bgp_updater.h zrpc_debug.h zrpc_memory.h \
 	zrpcd.h zrpc_network.h zrpc_thrift_wrapper.h zrpc_vpnservice.h \
 	qzmqclient.h qzcclient.capnp.h qzcclient.h zrpc_util.h \
@@ -52,5 +54,5 @@ endif
 examplesdir = $(exampledir)
 dist_examples_DATA = 
 
-EXTRA_DIST = 
+EXTRA_DIST = vpnservice.evpn.thrift vpnservice.l3vpn.thrift
 
