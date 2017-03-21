@@ -52,7 +52,20 @@ install_deps() {
     pushd $ZRPCD_BUILD_FOLDER
     export_variables
 #Install the required software for building quagga
-    apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
+    HOST_NAME=`cat /proc/version`
+    case $HOST_NAME in
+    *Ubuntu*)
+         echo "UBUNTU VM"
+         apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
+       ;;
+
+    *centos*)
+         echo "CENTOS VM"
+         yum -y group install "Development Tools"
+         yum -y install readline readline-devel glib2-devel autoconf* bison* \
+               libevent-devel zlib-devel openssl-devel  boost*
+       ;;
+    esac
 
 #Clean the directory
     rm -rf c-capnproto thrift zeromq4-1 quagga zrpcd
@@ -60,6 +73,7 @@ install_deps() {
 #Install thrift
     git clone https://git-wip-us.apache.org/repos/asf/thrift.git
     cd thrift
+    git checkout 0c27352179e0463bde1f68757f2d77e3c222f530
 
     wget https://issues.apache.org/jira/secure/attachment/12840512/0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
     patch -p1 < 0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
@@ -112,11 +126,24 @@ install_deps() {
     mkdir /opt/quagga/var/run/quagga -p
     mkdir /opt/quagga/var/log/quagga -p
     touch /opt/quagga/var/log/quagga/zrpcd.init.log
-    addgroup --system quagga 
-    addgroup --system quagga
-    adduser --system --ingroup quagga --home /opt/quagga/var/run/quagga \
-             --gecos "Quagga-BGP routing suite" \
-             --shell /bin/false quagga  >/dev/null
+    HOST_NAME=`cat /proc/version`
+    case $HOST_NAME in
+    *Ubuntu*)
+         echo "UBUNTU VM"
+         addgroup --system quagga
+         addgroup --system quagga
+         adduser --system --ingroup quagga --home /opt/quagga/var/run/quagga \
+                 --gecos "Quagga-BGP routing suite" \
+                 --shell /bin/false quagga  >/dev/null
+       ;;
+    *centos*)
+         echo "CENTOS VM"
+         groupadd --system quagga
+         adduser --system --gid quagga --home /opt/quagga/var/run/quagga \
+                --comment  "Quagga-BGP routing suite" \
+                --shell /bin/false quagga
+        ;;
+     esac
     chown -R quagga:quagga /opt/quagga/var/run/quagga
     chown -R quagga:quagga /opt/quagga/var/log/quagga
 
@@ -130,8 +157,9 @@ build_zrpcd (){
 
     if [ -z "${BUILD_FROM_DIST}" ]; then
         pushd $ZRPCD_BUILD_FOLDER
-        git clone https://github.com/6WIND/zrpcd.git
+        git clone /root/aa/zrpcd/
         cd zrpcd
+        git checkout opensource
     elif [ -n "${DIST_ARCHIVE}" ]; then
         tar zxvf $DIST_ARCHIVE
         cd "${DIST_ARCHIVE%.tar.gz}"
@@ -141,7 +169,7 @@ build_zrpcd (){
         autoreconf -i
         LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' \
         ./configure --enable-zrpcd --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
-        --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga
+        --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=1
         make dist
         DIST_ARCHIVE=$(ls *.tar.gz)
         tar zxvf $DIST_ARCHIVE
@@ -158,7 +186,15 @@ build_zrpcd (){
     # Temporarily disable this when using the dist method
     if [ -z "$BUILD_FROM_DIST" ]; then
         mkdir /opt/quagga/etc/init.d -p
-        cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+        HOST_NAME=`cat /proc/version`
+        case $HOST_NAME in
+        *ubuntu*)
+             cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+           ;;
+        *centos*)
+              cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
+           ;;
+        esac
         chmod +x /opt/quagga/etc/init.d/zrpcd
     fi
 
