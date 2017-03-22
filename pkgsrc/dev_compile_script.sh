@@ -30,8 +30,12 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set -eux
+set +u
 
 ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
+THRIFT_FOLDER_NAME=thrift
+THRIFT_BUILD_FOLDER=$ZRPCD_BUILD_FOLDER/$THRIFT_FOLDER_NAME
+
 export_variables (){
     #these are required by quagga
     export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
@@ -42,10 +46,10 @@ export_variables (){
     #In addition to the above, zrpcd requires these flags too.
     export QUAGGA_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/quagga/lib/'
     export QUAGGA_LIBS='-L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/. -lzebra'
-    export THRIFT_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src/thrift/c_glib/ -I"$ZRPCD_BUILD_FOLDER"/thrift/lib/c_glib/src"
-    export THRIFT_LIBS="-L'$ZRPCD_BUILD_FOLDER'/thrift/lib/c_glib/.libs/ -lthrift_c_glib"
-    export THRIFT_PATH="$ZRPCD_BUILD_FOLDER/thrift/compiler/cpp"
-    export THRIFT_LIB_PATH="$ZRPCD_BUILD_FOLDER/thrift/lib/c_glib/.libs"
+    export THRIFT_CFLAGS="-I"$THRIFT_BUILD_FOLDER"/lib/c_glib/src/thrift/c_glib/ -I"$THRIFT_BUILD_FOLDER"/lib/c_glib/src"
+    export THRIFT_LIBS="-L'$THRIFT_BUILD_FOLDER'/lib/c_glib/.libs/ -lthrift_c_glib"
+    export THRIFT_PATH="$THRIFT_BUILD_FOLDER/compiler/cpp"
+    export THRIFT_LIB_PATH="$THRIFT_BUILD_FOLDER/lib/c_glib/.libs"
 }
 
 install_deps() {
@@ -69,13 +73,12 @@ install_deps() {
     esac
 
 #Clean the directory
-    rm -rf c-capnproto thrift zeromq4-1 quagga zrpcd
+    rm -rf c-capnproto $THRIFT_FOLDER_NAME zeromq4-1 quagga zrpcd
 
 #Install thrift
-    git clone https://git-wip-us.apache.org/repos/asf/thrift.git
-    cd thrift
-    git checkout 0c27352179e0463bde1f68757f2d77e3c222f530
-
+    git clone http://git-wip-us.apache.org/repos/asf/thrift.git
+    cd $THRIFT_FOLDER_NAME
+    git checkout 0.10.0
     wget https://issues.apache.org/jira/secure/attachment/12840512/0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
     patch -p1 < 0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
     wget https://issues.apache.org/jira/secure/attachment/12840511/0002-THRIFT-3986-using-autoreconf-i-fails-because-of-miss.patch
@@ -158,31 +161,43 @@ build_zrpcd (){
 
     if [ -z "${BUILD_FROM_DIST}" ]; then
         pushd $ZRPCD_BUILD_FOLDER
-        git clone /root/aa/zrpcd/
+        git clone https://github.com/6WIND/zrpcd.git
         cd zrpcd
-        git checkout opensource
     elif [ -n "${DIST_ARCHIVE}" ]; then
         tar zxvf $DIST_ARCHIVE
         cd "${DIST_ARCHIVE%.tar.gz}"
     else
-        # prepate the dist archive
+        # prepare the dist archive
+        # assume we are on root folder of zrpcd
         touch NEWS README
         autoreconf -i
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ \
-        -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' PATH=$PATH:$THRIFT_PATH \
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c \                      
+        -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH \
         ./configure --enable-zrpcd --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
         --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=1
         LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH PATH=$PATH:$THRIFT_PATH make dist
         DIST_ARCHIVE=$(ls *.tar.gz)
         tar zxvf $DIST_ARCHIVE
         cd "${DIST_ARCHIVE%.tar.gz}"
+        cd ..
+        mkdir /opt/quagga/etc/init.d -p
+        HOST_NAME=`cat /proc/version`
+        case $HOST_NAME in
+        *ubuntu*)
+             cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+           ;;
+        *centos*)
+              cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
+           ;;
+        esac
+        chmod +x /opt/quagga/etc/init.d/zrpcd
     fi
 
     touch NEWS README
     autoreconf -i
-    LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/' PATH=$PATH:$THRIFT_PATH \
-	./configure --enable-zrpcd --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
-    --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga
+    LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH \
+        ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
+        --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH PATH=$PATH:$THRIFT_PATH make
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH PATH=$PATH:$THRIFT_PATH make install
     # Temporarily disable this when using the dist method
