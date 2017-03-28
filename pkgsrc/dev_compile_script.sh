@@ -138,7 +138,7 @@ install_deps() {
          addgroup --system quagga
          adduser --system --ingroup quagga --home /opt/quagga/var/run/quagga \
                  --gecos "Quagga-BGP routing suite" \
-                 --shell /bin/false quagga  >/dev/null
+                --shell /bin/false quagga  >/dev/null
        ;;
     *centos*)
          echo "CENTOS VM"
@@ -171,11 +171,7 @@ build_zrpcd (){
         # assume we are on root folder of zrpcd
         touch NEWS README
         autoreconf -i
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH \
-        LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' \
-        PATH=$PATH:$THRIFT_PATH \
-        ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
-        --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
         LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH PATH=$PATH:$THRIFT_PATH make dist
         DIST_ARCHIVE=$(ls *.tar.gz)
         tar zxvf $DIST_ARCHIVE
@@ -196,10 +192,7 @@ build_zrpcd (){
 
     touch NEWS README
     autoreconf -i
-    LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' \
-    PATH=$PATH:$THRIFT_PATH \
-    ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga \
-    --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
+    LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH PATH=$PATH:$THRIFT_PATH make
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH PATH=$PATH:$THRIFT_PATH make install
     # Temporarily disable this when using the dist method
