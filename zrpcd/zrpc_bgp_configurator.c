@@ -20,8 +20,7 @@
 #include "zrpcd/qzmqclient.h"
 #include "zrpcd/qzcclient.h"
 #include "zrpcd/qzcclient.capnp.h"
-
-
+#include "version.h"
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #endif
@@ -2386,7 +2385,9 @@ instance_bgp_configurator_handler_set_log_config (BgpConfiguratorIf *iface, gint
     }
   else
     {
-      zrpc_vpnservice_get_bgp_context(ctxt)->logFile = strdup ( ZRPC_DEFAULT_LOG_FILE);
+      zrpc_vpnservice_get_bgp_context(ctxt)->logFile = zrpc_cmd_get_path_prefix_dir();
+      if (zrpc_vpnservice_get_bgp_context(ctxt)->logFile == NULL)
+        zrpc_vpnservice_get_bgp_context(ctxt)->logFile = strdup ( ZRPC_DEFAULT_LOG_FILE);
     }
   if (logLevel)
     {

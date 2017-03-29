@@ -174,5 +174,6 @@ extern int zrpc_util_str2mac (const char *str, char *mac);
 extern char *zrpc_util_esi2str (struct zrpc_eth_segment_id *id);
 extern char *zrpc_util_mac2str (char *mac);
 extern char *zrpc_util_ecom_mac2str(char *ecom_mac);
+extern char *zrpc_cmd_get_path_prefix_dir (void);
 
 #endif /* _QUAGGA_ZRPC_UTIL_H */

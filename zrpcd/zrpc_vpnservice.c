@@ -24,6 +24,7 @@
 #include "zrpcd/qzcclient.capnp.h"
 #include "zrpcd/zrpc_debug.h"
 #include "zrpcd/vpnservice_types.h"
+#include "version.h"
 
 static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *msg);
 
@@ -438,7 +439,9 @@ void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup)
   if (setup->bgp_context)
     return;
   setup->bgp_context=ZRPC_CALLOC( sizeof(struct zrpc_vpnservice_bgp_context));
-  setup->bgp_context->logFile = strdup (ZRPC_DEFAULT_LOG_FILE);
+  setup->bgp_context->logFile = zrpc_cmd_get_path_prefix_dir();
+  if (setup->bgp_context->logFile == NULL)
+    setup->bgp_context->logFile = strdup ( ZRPC_DEFAULT_LOG_FILE);
   setup->bgp_context->logLevel = strdup (ZRPC_DEFAULT_LOG_LEVEL);
   /* configure log settings to qthrift daemon too */
   zrpc_debug_set_log_file_with_level(setup->bgp_context->logFile, setup->bgp_context->logLevel);

@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include "version.h"
 
 struct zrpc_rdrt *zrpc_util_append_rdrt_to_list (u_char *incoming_rdrt, struct zrpc_rdrt *rdrt)
 {
@@ -725,4 +726,41 @@ char *zrpc_util_ecom_mac2str(char *ecom_mac)
   en = ecom_mac;
   en+=2;
   return zrpc_util_mac2str(en);
+}
+
+/*
+ * retrieve installation path where daemon
+ * will be put. Default is /. 0 is returned.
+ * if prefix_dir is mentioned, path is /<prefixdir>
+ * function returns value > 0 on success, 0 otherwise
+ */
+#define OPTION_PREFIX_DIR  "--prefix="
+char *zrpc_cmd_get_path_prefix_dir (void)
+{
+  char *cfg_args = (char *)QUAGGAZRPC_CONFIG_ARGS;
+  char *ret, *ret2;
+
+  if (cfg_args == NULL || cfg_args[0] == '\0')
+    {
+      goto error;
+    }
+  ret = strstr(cfg_args, OPTION_PREFIX_DIR);
+  if(ret == NULL)
+    {
+      goto error;
+    }
+  ret+=strlen(OPTION_PREFIX_DIR);
+  ret2 = strchr(ret, ' ');
+  if(ret2 == NULL)
+    {
+	ret2 = strchr(ret, '\0');
+	if(ret2 == NULL)
+          {
+            goto error;
+          }
+    }
+  *ret2 = '\0';
+  return ZRPC_STRDUP (ret);
+ error:
+  return NULL;
 }
