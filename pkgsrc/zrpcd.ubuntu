@@ -16,7 +16,7 @@ set -e
 
 # /opt/quagga/etc/init.d/zrpcd: start and stop the quagga-thrift daemon
 
-PREFIX=/opt/quagga
+PREFIX=%ZRPC_INSTALL_PATH%
 
 BIN=$PREFIX/sbin/zrpcd
 test -x $BIN || exit 0

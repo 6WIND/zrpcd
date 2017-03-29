@@ -12,7 +12,7 @@
 # Description:	Zebra RPC Daemon for QUAGGA Framework
 ### END INIT INFO
 
-PREFIX=/opt/quagga
+PREFIX=%ZRPC_INSTALL_PATH%
 
 BIN=$PREFIX/sbin/zrpcd
 test -x $BIN || exit 5

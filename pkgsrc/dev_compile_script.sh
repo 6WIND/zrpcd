@@ -129,7 +129,6 @@ install_deps() {
     cp /opt/quagga/etc/bgpd.conf.sample4 /opt/quagga/etc/bgpd.conf
     mkdir /opt/quagga/var/run/quagga -p
     mkdir /opt/quagga/var/log/quagga -p
-    touch /opt/quagga/var/log/quagga/zrpcd.init.log
     HOST_NAME=`cat /proc/version`
     case $HOST_NAME in
     *Ubuntu*)
@@ -171,49 +170,58 @@ build_zrpcd (){
         # assume we are on root folder of zrpcd
         touch NEWS README
         autoreconf -i
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=$ZRPC_INSTALL_PATH --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=$ZRPC_INSTALL_PATH/var/run/quagga --with-thrift-version=$THRIFT_VERSION
         LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH PATH=$PATH:$THRIFT_PATH make dist
         DIST_ARCHIVE=$(ls *.tar.gz)
         tar zxvf $DIST_ARCHIVE
         cd "${DIST_ARCHIVE%.tar.gz}"
         cd ..
-        mkdir /opt/quagga/etc/init.d -p
+        mkdir $ZRPC_INSTALL_PATH/etc/init.d -p
         HOST_NAME=`cat /proc/version`
         case $HOST_NAME in
         *ubuntu*)
-             cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+             cp pkgsrc/zrpcd.ubuntu $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
+             sed -i "s@%ZRPC_INSTALL_PATH%@$ZRPC_INSTALL_PATH@" $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
            ;;
         *centos*)
-              cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
+              cp pkgsrc/zrpcd.centos $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
+              sed -i "s@%ZRPC_INSTALL_PATH%@$ZRPC_INSTALL_PATH@" $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
            ;;
         esac
-        chmod +x /opt/quagga/etc/init.d/zrpcd
+        chmod +x $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
     fi
 
     touch NEWS README
     autoreconf -i
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=$ZRPC_INSTALL_PATH --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=$ZRPC_INSTALL_PATH/var/run/quagga --with-thrift-version=$THRIFT_VERSION
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install
     # Temporarily disable this when using the dist method
     if [ -z "$BUILD_FROM_DIST" ]; then
-        mkdir /opt/quagga/etc/init.d -p
+        mkdir $ZRPC_INSTALL_PATH/etc/init.d -p
         HOST_NAME=`cat /proc/version`
         case $HOST_NAME in
         *ubuntu*)
-             cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+              cp pkgsrc/zrpcd.ubuntu $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
+              sed -i "s@%ZRPC_INSTALL_PATH%@$ZRPC_INSTALL_PATH@" $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
            ;;
         *centos*)
-              cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
+              cp pkgsrc/zrpcd.centos $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
+              sed -i "s@%ZRPC_INSTALL_PATH%@$ZRPC_INSTALL_PATH@" $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
            ;;
         esac
-        chmod +x /opt/quagga/etc/init.d/zrpcd
-    fi
+        chmod +x $ZRPC_INSTALL_PATH/etc/init.d/zrpcd
+   fi
 
     if [ -z "${BUILD_FROM_DIST}" ]; then
         popd
     fi
 
+     mkdir $ZRPC_INSTALL_PATH/var/run/quagga -p
+     mkdir $ZRPC_INSTALL_PATH/var/log/quagga -p
+     chown -R quagga:quagga $ZRPC_INSTALL_PATH/var/run/quagga
+     chown -R quagga:quagga $ZRPC_INSTALL_PATH/var/log/quagga
+     touch $ZRPC_INSTALL_PATH/var/log/quagga/zrpcd.init.log
      echo "hostname bgpd" >> /opt/quagga/etc/bgpd.conf
      echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
      echo "service advanced-vty" >> /opt/quagga/etc/bgpd.conf
@@ -249,6 +257,8 @@ BUILD_ZRPCD=""
 BUILD_FROM_DIST=""
 DIST_ARCHIVE=""
 THRIFT_VERSION="1"
+ZRPC_INSTALL_PATH="/opt/quagga/"
+
 parse_cmdline() {
     while [ $# -gt 0 ]
     do
@@ -283,6 +293,17 @@ parse_cmdline() {
                 ;;
         esac
     done
+    case "$THRIFT_VERSION" in
+        1)
+            ZRPC_INSTALL_PATH="/opt/l3vpn"
+            ;;
+        2)
+            ZRPC_INSTALL_PATH="/opt/evpn"
+            ;;
+        3)
+            ZRPC_INSTALL_PATH="/opt/ipv6"
+            ;;
+    esac
 }
 
 parse_cmdline $@
