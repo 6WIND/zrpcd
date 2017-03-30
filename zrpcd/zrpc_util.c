@@ -737,16 +737,18 @@ char *zrpc_util_ecom_mac2str(char *ecom_mac)
 #define OPTION_PREFIX_DIR  "--prefix="
 char *zrpc_cmd_get_path_prefix_dir (void)
 {
-  char *cfg_args = (char *)QUAGGAZRPC_CONFIG_ARGS;
+  char *cfg_args = ZRPC_STRDUP(QUAGGAZRPC_CONFIG_ARGS);
   char *ret, *ret2;
 
   if (cfg_args == NULL || cfg_args[0] == '\0')
     {
+      ret2 = NULL;
       goto error;
     }
   ret = strstr(cfg_args, OPTION_PREFIX_DIR);
   if(ret == NULL)
     {
+      ret2 = NULL;
       goto error;
     }
   ret+=strlen(OPTION_PREFIX_DIR);
@@ -756,11 +758,13 @@ char *zrpc_cmd_get_path_prefix_dir (void)
 	ret2 = strchr(ret, '\0');
 	if(ret2 == NULL)
           {
+            ret2 = NULL;
             goto error;
           }
     }
   *ret2 = '\0';
-  return ZRPC_STRDUP (ret);
+  ZRPC_FREE (cfg_args);
+  ret2 = ZRPC_STRDUP (ret);
  error:
-  return NULL;
+  return ret2;
 }
