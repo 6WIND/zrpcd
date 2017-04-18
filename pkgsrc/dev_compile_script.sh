@@ -59,9 +59,14 @@ install_deps() {
 #Install the required software for building quagga
     HOST_NAME=`cat /proc/version`
     case $HOST_NAME in
-    *Ubuntu*)
-         echo "UBUNTU VM"
+    *ubuntu1~14*)
+         echo "UBUNTU 14.04 VM"
          apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
+       ;;
+
+    *ubuntu1~16*)
+         echo "UBUNTU 16.04 VM"
+         apt-get install automake bison flex g++ git libboost1.58-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
        ;;
 
     *centos*)
