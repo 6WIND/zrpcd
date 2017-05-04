@@ -57,26 +57,44 @@ install_deps() {
     pushd $ZRPCD_BUILD_FOLDER
     export_variables
 #Install the required software for building quagga
-    HOST_NAME=`cat /proc/version`
-    case $HOST_NAME in
-    *ubuntu1~14*)
-         echo "UBUNTU 14.04 VM"
-         apt-get install automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
-       ;;
+    for i in {0..5}
+    do
+    	echo "Attempt $i of installing dependencies..."
+        HOST_NAME=`cat /proc/version`
+    	case $HOST_NAME in
+    	*ubuntu1~14*)
+        	echo "UBUNTU 14.04 VM"
+                for pkg in automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
+                do 
+                      if [ $(dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+                          apt-get install $pkg -y --force-yes
+                      fi
+                done
+      	      ;;
 
-    *ubuntu1~16*)
-         echo "UBUNTU 16.04 VM"
-         apt-get install automake bison flex g++ git libboost1.58-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget -y --force-yes
-       ;;
+    	*ubuntu1~16*)
+         	echo "UBUNTU 16.04 VM"
+         	for pkg in automake bison flex g++ git libboost1.58-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
+                do
+                      if [ $(dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+                           apt-cache policy $pkg
+                           apt-get install $pkg -y --force-yes
+                      fi
+                done
+       	      ;;
 
-    *centos*)
-         echo "CENTOS VM"
-         yum -y group install "Development Tools"
-         yum -y install readline readline-devel glib2-devel autoconf* bison* \
-               libevent-devel zlib-devel openssl-devel  boost*
-       ;;
-    esac
-
+    	*centos*)
+         	echo "CENTOS VM"
+                yum -y group install "Development Tools"
+                for pkg in readline readline-devel glib2-devel autoconf* bison* libevent-devel zlib-devel openssl-devel  boost*
+                do
+                      if [ $(dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+                            yum -y install $pkg
+                      fi
+                done
+       	      ;;
+    	esac
+    done
 #Clean the directory
     rm -rf c-capnproto $THRIFT_FOLDER_NAME zeromq4-1 quagga zrpcd
 
