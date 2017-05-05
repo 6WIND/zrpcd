@@ -83,11 +83,11 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
 #endif /* HAVE_THRIFT_V1 */
 gboolean
 instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint64 asNumber, GError **error);
-#if defined(HAVE_THRIFT_V4)
+#if defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V3)
 gboolean
 instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint32* _return, const gchar * ipAddress,
                                                   const gchar *rfc2385_sharedSecret, GError **error);
-#endif /* HAVE_THRIFT_V4 */
+#endif /* HAVE_THRIFT_V4 HAVE_THRIFT_V3 */
 gboolean
 instance_bgp_configurator_handler_delete_peer(BgpConfiguratorIf *iface, gint32* _return, const gchar * ipAddress, GError **error);
 #ifdef HAVE_THRIFT_V1
@@ -1887,7 +1887,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
    return ret;
  }
 
-#if defined(HAVE_THRIFT_V4)
+#if defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V3)
 /* 'setPeerSecret' sets the shared secret needed to protect the peer
  * connection using TCP MD5 Signature Option (see rfc 2385).
  */
@@ -1899,7 +1899,7 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
   return FALSE;
 
 }
-#endif /* HAVE_THRIFT_V4 */
+#endif /* HAVE_THRIFT_V4 HAVE_THRIFT_V3 */
 
  /*
   * Delete a BGP neighbor for a given IP
@@ -3302,10 +3302,10 @@ instance_bgp_configurator_handler_class_init (InstanceBgpConfiguratorHandlerClas
   bgp_configurator_handler_class->stop_bgp =
     instance_bgp_configurator_handler_stop_bgp;
 
-#if defined(HAVE_THRIFT_V4)
+#if defined(HAVE_THRIFT_V4) || defined (HAVE_THRIFT_V3)
   bgp_configurator_handler_class->set_peer_secret =
     instance_bgp_configurator_handler_set_peer_secret;
-#endif /* HAVE_THRIFT_V4 */
+#endif /* HAVE_THRIFT_V4 HAVE_THRIFT_V3 */
 
   bgp_configurator_handler_class->delete_peer =
     instance_bgp_configurator_handler_delete_peer;
