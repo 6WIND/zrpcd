@@ -97,10 +97,19 @@ instance_bgp_configurator_handler_add_vrf(BgpConfiguratorIf *iface, gint32* _ret
 #else
 gboolean
 instance_bgp_configurator_handler_add_vrf(BgpConfiguratorIf *iface, gint32* _return, const layer_type l_type, const gchar * rd,
+#ifdef HAVE_THRIFT_V5
+                                          const GPtrArray * irts, const GPtrArray * erts, const af_afi afi, const af_safi safi, GError **error);
+#else
                                           const GPtrArray * irts, const GPtrArray * erts, GError **error);
+#endif /* HAVE_THRIFT_V5 */
 #endif /* HAVE_THRIFT_V1 */
 gboolean
-instance_bgp_configurator_handler_del_vrf(BgpConfiguratorIf *iface, gint32* _return, const gchar * rd, GError **error);
+instance_bgp_configurator_handler_del_vrf(BgpConfiguratorIf *iface, gint32* _return, const gchar * rd,
+#ifdef HAVE_THRIFT_V5
+                                          const af_afi afi, const af_safi safi, GError **error);
+#else
+                                          GError **error);
+#endif /* HAVE_THRIFT_V5 */
 gboolean
 instance_bgp_configurator_handler_set_update_source (BgpConfiguratorIf *iface, gint32* _return, const gchar * peerIp,
                                                      const gchar * srcIp, GError **error);
@@ -165,7 +174,7 @@ static void instance_bgp_configurator_handler_finalize(GObject *object);
  * some of those functions implement a cache mecanism for some objects
  * like VRF, and Neighbors
  */
-static uint64_t
+static struct zrpc_vpnservice_cache_bgpvrf *
 zrpc_bgp_configurator_find_vrf(struct zrpc_vpnservice *ctxt, struct zrpc_rd_prefix *rd, gint32* _return);
 
 static struct zrpc_vpnservice_cache_peer * 
@@ -341,7 +350,7 @@ static af_safi zrpc_safi_value (subsequent_address_family_t safi)
  * It returns the capnp node identifier related to peer context,
  * 0 otherwise.
  */
-static uint64_t
+static struct zrpc_vpnservice_cache_bgpvrf *
 zrpc_bgp_configurator_find_vrf(struct zrpc_vpnservice *ctxt, struct zrpc_rd_prefix *rd, gint32* _return)
 {
   struct zrpc_vpnservice_cache_bgpvrf *entry_bgpvrf, *entry_bgpvrf_next;
@@ -354,10 +363,10 @@ zrpc_bgp_configurator_find_vrf(struct zrpc_vpnservice *ctxt, struct zrpc_rd_pref
         {
           if(IS_ZRPC_DEBUG_CACHE)
             zrpc_log ("CACHE_VRF: match lookup entry %llx", (long long unsigned int)entry_bgpvrf->bgpvrf_nid);
-          return entry_bgpvrf->bgpvrf_nid; /* match */
+          return entry_bgpvrf; /* match */
         }
     }
-  return 0;
+  return NULL;
 }
 
 /*
@@ -1058,6 +1067,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
+  struct zrpc_vpnservice_cache_bgpvrf *bgpvrf;
   address_family_t afi_int = ADDRESS_FAMILY_IP;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
@@ -1084,13 +1094,14 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   if (rd && zrpc_util_str2rd_prefix((char *)rd, &rd_inst))
     {
       /* if vrf not found, return an error */
-      bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
-      if(bgpvrf_nid == 0)
+      bgpvrf = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+      if(!bgpvrf)
         {
           *error = ERROR_BGP_RD_NOTFOUND;
           *_return = BGP_ERR_PARAM;
           return FALSE;
         }
+      bgpvrf_nid = bgpvrf->bgpvrf_nid;
     }
 #if !defined(HAVE_THRIFT_V1)
   else if (PROTOCOL_TYPE_PROTOCOL_LU != p_type)
@@ -1398,6 +1409,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
+  struct zrpc_vpnservice_cache_bgpvrf *bgpvrf;
   address_family_t afi_int = ADDRESS_FAMILY_IP;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
@@ -1422,13 +1434,14 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   if (rd && zrpc_util_str2rd_prefix((char *)rd, &rd_inst))
     {
       /* if vrf not found, return an error */
-      bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
-      if(bgpvrf_nid == 0)
+      bgpvrf = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+      if (!bgpvrf)
         {
           *error = ERROR_BGP_RD_NOTFOUND;
           *_return = BGP_ERR_PARAM;
           return FALSE;
         }
+      bgpvrf_nid = bgpvrf->bgpvrf_nid;
     }
 #if !defined(HAVE_THRIFT_V1)
   else if (PROTOCOL_TYPE_PROTOCOL_LU != p_type)
@@ -2026,7 +2039,11 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
 #else
  gboolean
  instance_bgp_configurator_handler_add_vrf(BgpConfiguratorIf *iface, gint32* _return, const layer_type l_type, const gchar * rd, 
+#ifdef HAVE_THRIFT_V5
+                                           const GPtrArray * irts, const GPtrArray * erts, const af_afi afi, const af_safi safi, GError **error)
+#else
                                            const GPtrArray * irts, const GPtrArray * erts, GError **error)
+#endif /* HAVE_THRIFT_V5 */
 #endif /* HAVE_THRIFT_V1 */
  {
    struct zrpc_vpnservice *ctxt = NULL;
@@ -2036,6 +2053,10 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
    struct capn_ptr bgpvrf;
    struct capn rc;
    struct capn_segment *cs;
+#ifdef HAVE_THRIFT_V5
+   capn_ptr afisafi_ctxt;
+   int af, saf;
+#endif
    uint64_t bgpvrf_nid;
    struct zrpc_vpnservice_cache_bgpvrf *entry;
    struct zrpc_rdrt *rdrt;
@@ -2061,6 +2082,33 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
        *_return = BGP_ERR_PARAM;
        return FALSE;
      }
+
+#ifdef HAVE_THRIFT_V5
+   if (afi == AF_AFI_AFI_IP)
+     af = ADDRESS_FAMILY_IP;
+   else if (afi == AF_AFI_AFI_IPV6)
+     af = ADDRESS_FAMILY_IPV6;
+   else if (afi == AF_AFI_AFI_L2VPN)
+     af = ADDRESS_FAMILY_L2VPN;
+   else
+    {
+      *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+
+   if (safi == AF_SAFI_SAFI_MPLS_VPN)
+     saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+   else if (safi == AF_SAFI_SAFI_EVPN)
+     saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+   else
+     {
+       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
+       *_return = BGP_ERR_PARAM;
+       return FALSE;
+     }
+#endif /* HAVE_THRIFT_V5 */
+
    memset(&instvrf, 0, sizeof(struct bgp_vrf));
    /* get route distinguisher internal representation */
    zrpc_util_str2rd_prefix((char *)rd, &instvrf.outbound_rd);
@@ -2071,8 +2119,8 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
      ZRPC_BGP_LAYER_TYPE_2 : ZRPC_BGP_LAYER_TYPE_3;
 #endif /* HAVE_THRIFT_V1 */
    /* retrive bgpvrf context or create new bgpvrf context */
-   bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &instvrf.outbound_rd, _return);
-   if(bgpvrf_nid == 0)
+   entry = zrpc_bgp_configurator_find_vrf(ctxt, &instvrf.outbound_rd, _return);
+   if (!entry)
      {
        /* allocate bgpvrf structure */
        capn_init_malloc(&rc);
@@ -2099,6 +2147,9 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
        if(IS_ZRPC_DEBUG)
          zrpc_info ("addVrf(%s) OK", rd);
      }
+   else
+     bgpvrf_nid = entry->bgpvrf_nid;
+
    /* max_mpath has been set in bgpd with a default value owned by bgpd itself
     * must get back this value before going further else max_mpath will be overwritten
     * by first bgpvrf read */
@@ -2157,9 +2208,35 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
    cs = capn_root(&rc).seg;
    bgpvrf = qcapn_new_BGPVRF(cs);
    qcapn_BGPVRF_write(&instvrf, bgpvrf);
-   ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
-                            &bgpvrf, &bgp_datatype_bgpvrf,\
-                            NULL, NULL);
+
+#ifdef HAVE_THRIFT_V5
+   if (entry->afc[af][saf] == 0)
+     {
+       /* prepare afisafi context */
+       afisafi_ctxt = qcapn_new_AfiSafiKey(cs);
+       capn_write8(afisafi_ctxt, 0, af);
+       capn_write8(afisafi_ctxt, 1, saf);
+
+       ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
+                                &bgpvrf, &bgp_datatype_bgpvrf,\
+                                &afisafi_ctxt, &bgp_ctxttype_afisafi);
+       if (ret)
+         {
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("addVrf(%s, afi %u, safi %u) OK", rd, afi, safi);
+           entry->afc[af][saf] = 1;
+         }
+       else
+         {
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd, afi, safi);
+         }
+     }
+   else
+#endif /* HAVE_THRIFT_V5 */
+       ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
+                                &bgpvrf, &bgp_datatype_bgpvrf,\
+                                NULL, NULL);
    if(ret == 0)
        *_return = BGP_ERR_FAILED;
    if (bgpvrf_ptr->rt_import)
@@ -2175,11 +2252,24 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
   * An error is returned if VRF entry does not exist
   */
  gboolean instance_bgp_configurator_handler_del_vrf(BgpConfiguratorIf *iface, gint32* _return,
+#ifdef HAVE_THRIFT_V5
+                                                    const gchar * rd, const af_afi afi, const af_safi safi, GError **error)
+#else
                                                     const gchar * rd, GError **error)
+#endif /* HAVE_THRIFT_V5 */
  {
    struct zrpc_vpnservice *ctxt = NULL;
    uint64_t bgpvrf_nid;
    struct zrpc_rd_prefix rd_inst;
+   struct zrpc_vpnservice_cache_bgpvrf *entry;
+#ifdef HAVE_THRIFT_V5
+   struct bgp_vrf instvrf;
+   struct capn rc;
+   struct capn_segment *cs;
+   struct capn_ptr bgpvrf;
+   capn_ptr afisafi_ctxt;
+   int af, saf;
+#endif /* HAVE_THRIFT_V5 */
 
    zrpc_vpnservice_get_context (&ctxt);
    if(!ctxt)
@@ -2193,17 +2283,101 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
        *error = ERROR_BGP_AS_NOT_STARTED;
        return FALSE;
      }
+
+#ifdef HAVE_THRIFT_V5
+   if (afi == AF_AFI_AFI_IP)
+     af = ADDRESS_FAMILY_IP;
+   else if (afi == AF_AFI_AFI_IPV6)
+     af = ADDRESS_FAMILY_IPV6;
+   else if (afi == AF_AFI_AFI_L2VPN)
+     af = ADDRESS_FAMILY_L2VPN;
+   else
+    {
+      *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+
+   if (safi == AF_SAFI_SAFI_MPLS_VPN)
+     saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+   else if (safi == AF_SAFI_SAFI_EVPN)
+     saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+   else
+     {
+       *error = ERROR_BGP_AFISAFI_NOTSUPPORTED;
+       *_return = BGP_ERR_PARAM;
+       return FALSE;
+     }
+#endif /* HAVE_THRIFT_V5 */
+
    /* get route distinguisher internal representation */
    memset(&rd_inst, 0, sizeof(struct zrpc_rd_prefix));
    zrpc_util_str2rd_prefix((char *)rd, &rd_inst);
    /* if vrf not found, return an error */
-   bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
-   if(bgpvrf_nid == 0)
+   entry = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+   if (!entry)
      {
        *error = ERROR_BGP_RD_NOTFOUND;
        *_return = BGP_ERR_PARAM;
        return FALSE;
      }
+   else
+     bgpvrf_nid = entry->bgpvrf_nid;
+
+#ifdef HAVE_THRIFT_V5
+   /* Disable VRF RIB */
+   if (entry->afc[af][saf])
+     {
+       int ret;
+
+       /* allocate bgpvrf structure for set */
+       memset(&instvrf, 0, sizeof(struct bgp_vrf));
+       memcpy(&instvrf.outbound_rd, &entry->outbound_rd, sizeof(struct zrpc_rd_prefix));
+       instvrf.ltype = entry->ltype;
+
+       capn_init_malloc(&rc);
+       cs = capn_root(&rc).seg;
+       bgpvrf = qcapn_new_BGPVRF(cs);
+       qcapn_BGPVRF_write(&instvrf, bgpvrf);
+
+       /* prepare afisafi context */
+       afisafi_ctxt = qcapn_new_AfiSafiKey(cs);
+       capn_write8(afisafi_ctxt, 0, af);
+       capn_write8(afisafi_ctxt, 1, saf);
+
+       /* set route within afi context using QZC set request */
+       ret = qzcclient_unsetelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
+                                  &bgpvrf, &bgp_datatype_bgpvrf, \
+                                  &afisafi_ctxt, &bgp_ctxttype_afisafi);
+
+       if (ret == 0)
+         {
+           if (IS_ZRPC_DEBUG)
+             {
+               zrpc_info ("delVrf(%s, afi %u, safi %u) NOK", rd, afi, safi);
+             }
+           *error = ERROR_BGP_INTERNAL;
+           *_return = BGP_ERR_FAILED;
+           return FALSE;
+         }
+       else
+         {
+           if (IS_ZRPC_DEBUG)
+             {
+               zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd, afi, safi);
+             }
+           entry->afc[af][saf] = 0;
+         }
+       capn_free(&rc);
+     }
+
+   /* Is there other RIB table enabled ? If no, delete the vrf node. */
+   for (int i = 0; i < ADDRESS_FAMILY_MAX; i++ )
+     for (int j = 0; j < SUBSEQUENT_ADDRESS_FAMILY_MAX; j++)
+       if (entry->afc[i][j])
+           return TRUE;
+#endif /* HAVE_THRIFT_V5 */
+
    if( qzcclient_deletenode(ctxt->qzc_sock, &bgpvrf_nid))
      {
        struct zrpc_vpnservice_cache_bgpvrf *entry_bgpvrf, *entry_bgpvrf_prev, *entry_bgpvrf_next;      
@@ -3239,6 +3413,7 @@ instance_bgp_configurator_handler_multipaths(BgpConfiguratorIf *iface, gint32* _
   struct capn_segment *cs;
   struct bgp_vrf instvrf;
   uint64_t bgpvrf_nid;
+  struct zrpc_vpnservice_cache_bgpvrf *entry;
   struct zrpc_rd_prefix rd_inst;
   struct QZCGetRep *grep_vrf;
   int ret;
@@ -3268,13 +3443,15 @@ instance_bgp_configurator_handler_multipaths(BgpConfiguratorIf *iface, gint32* _
   memset(&rd_inst, 0, sizeof(struct zrpc_rd_prefix));
   zrpc_util_str2rd_prefix((char *)rd, &rd_inst);
   /* if vrf not found, return an error */
-  bgpvrf_nid = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
-  if(bgpvrf_nid == 0)
+  entry = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+  if (!entry)
     {
       *error = ERROR_BGP_RD_NOTFOUND;
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
+  else
+    bgpvrf_nid = entry->bgpvrf_nid;
 
   grep_vrf = qzcclient_getelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
                                 NULL, NULL, NULL, NULL);
