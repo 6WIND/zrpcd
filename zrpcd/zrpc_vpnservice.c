@@ -208,16 +208,6 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         zrpc_invalid_rd = 1;
       if (p->family == AF_INET)
         afi_out = AF_AFI_AFI_IP;
-#if defined(HAVE_THRIFT_V4)
-      else if (p->family == AF_INET6)
-        afi_out = AF_AFI_AFI_IPV6;
-      if (s->nexthop.family == AF_INET6 && afi_out == AF_AFI_AFI_IPV6 &&
-          IN6_IS_ADDR_V4MAPPED (&s->nexthop.u.prefix6))
-        {
-          /* check that nexthop is ipv4 mapped ipv6. transform it if this is it */
-          zrpc_util_convert_ipv6mappedtoipv4 (&s->nexthop);
-        }
-#else
 #if !defined(HAVE_THRIFT_V1)
       else if (p->family == AF_INET6)
         afi_out = AF_AFI_AFI_IPV6;
@@ -243,8 +233,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         p_type = PROTOCOL_TYPE_PROTOCOL_LU;
       else
         p_type = PROTOCOL_TYPE_PROTOCOL_L3VPN;
+      zrpc_log(" protocol type is %u", p_type);
 #endif /* !HAVE_THRIFT_V1 */
-#endif /* HAVE_THRIFT_V4 */
       zrpc_util_prefix_2str (&s->nexthop, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       nexthop = nh_str;
       if (announce == TRUE)
@@ -287,6 +277,9 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
               macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_macip.mac);
             }
 #if defined(HAVE_THRIFT_V1)
+
+
+
           zrpc_bgp_updater_on_update_push_route(
 #else
           zrpc_bgp_updater_on_update_push_route(p_type,
