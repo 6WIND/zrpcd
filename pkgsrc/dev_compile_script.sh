@@ -88,7 +88,7 @@ install_deps() {
                 yum -y group install "Development Tools"
                 for pkg in readline readline-devel glib2-devel autoconf* bison* libevent-devel zlib-devel openssl-devel  boost*
                 do
-                      if [ $(dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+                      if [ $(rpm -q $pkg | grep -c "not installed") -eq 1 ]; then
                             yum -y install $pkg
                       fi
                 done
