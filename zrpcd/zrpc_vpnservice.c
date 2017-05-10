@@ -233,7 +233,6 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         p_type = PROTOCOL_TYPE_PROTOCOL_LU;
       else
         p_type = PROTOCOL_TYPE_PROTOCOL_L3VPN;
-      zrpc_log(" protocol type is %u", p_type);
 #endif /* !HAVE_THRIFT_V1 */
       zrpc_util_prefix_2str (&s->nexthop, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       nexthop = nh_str;
