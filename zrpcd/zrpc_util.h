@@ -178,6 +178,7 @@ struct zrpc_rdrt *zrpc_util_rdrt_import (u_char *vals, int listsize);
 extern int zrpc_cmd_get_path_prefix_dir(char *path, unsigned int size);
 #endif
 extern uint32_t zrpc_util_get_pid_output (const char *path);
+extern uint32_t zrpc_util_proc_find(const char* name);
 
 extern int zrpc_util_str2esi (const char *str, struct zrpc_eth_segment_id *id);
 extern int zrpc_util_str2mac (const char *str, char *mac);

@@ -16,6 +16,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <unistd.h>
+#include <dirent.h>
 
 struct zrpc_rdrt *zrpc_util_append_rdrt_to_list (u_char *incoming_rdrt, struct zrpc_rdrt *rdrt)
 {
@@ -527,6 +529,49 @@ zrpc_util_get_pid_output (const char *path)
 
 #endif /* HAVE_FCNTL */
 
+uint32_t zrpc_util_proc_find(const char* name) 
+{
+  DIR* dir;
+  struct dirent* ent;
+  char* endptr;
+  char buf[512];
+
+  if (!(dir = opendir("/proc"))) {
+    perror("can't open /proc");
+    return -1;
+  }
+
+  while((ent = readdir(dir)) != NULL) {
+    /* if endptr is not a null character, the directory is not
+     * entirely numeric, so ignore it */
+    long lpid = strtol(ent->d_name, &endptr, 10);
+    if (*endptr != '\0') {
+      continue;
+    }
+    if (lpid == getpid())
+      continue;
+    /* try to open the cmdline file */
+    snprintf(buf, sizeof(buf), "/proc/%ld/cmdline", lpid);
+    FILE* fp = fopen(buf, "r");
+
+    if (fp) {
+      if (fgets(buf, sizeof(buf), fp) != NULL) {
+        /* check the first token in the file, the program name */
+        char* first = strtok(buf, " ");
+        if (!strcmp(first, name)) {
+          fclose(fp);
+          closedir(dir);
+          return lpid;
+        }
+      }
+      fclose(fp);
+    }
+
+  }
+
+  closedir(dir);
+  return -1;
+}
 
 static uint8_t zrpc_util_convertchartohexa (uint8_t *hexa, int *error)
 {
