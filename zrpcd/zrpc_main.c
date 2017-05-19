@@ -184,6 +184,11 @@ main (int argc, char **argv)
   /* Set umask before anything for security */
   umask (0027);
 
+  if (zrpc_util_proc_find(argv[0]) != -1)
+    {
+      printf("%s: pid %u already present. cancel execution\r\n",argv[0], zrpc_util_proc_find(argv[0]));
+      return;
+    }
   /* ZRPC main init. */
   zrpc_global_init ();
 
