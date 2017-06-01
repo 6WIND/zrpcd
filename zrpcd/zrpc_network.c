@@ -61,6 +61,7 @@ zrpc_accept (struct thread *thread)
   struct zrpc *zrpc = (struct zrpc *)(listener->zrpc);
   ThriftTransport *transport;
   ThriftSocket *socket;
+  struct zrpc_peer *peer_to_parse, *peer_next, *peer_prev;
 
   /* Register accept thread. */
   if( THREAD_FD (thread) < 0)
@@ -91,6 +92,36 @@ zrpc_accept (struct thread *thread)
                                   transport);
   /* run a thread for reading on accepted socket */
   THREAD_READ_ON (tm->global, peer->t_read, zrpc_read_packet, peer, peer->fd);
+
+  /* close previous thrift connections */
+  peer_prev = NULL;
+  for (peer_to_parse = zrpc->peer; peer_to_parse; peer_to_parse = peer_next)
+    {
+      peer_next = peer_to_parse->next;
+      if (peer == peer_to_parse)
+        {
+          peer_prev = peer_to_parse;
+          continue;
+        }
+      break;
+    }
+  if (peer_to_parse == NULL)
+    return 0;
+  THREAD_OFF(peer_to_parse->t_read);
+  if (peer_prev)
+    peer_prev->next = peer_to_parse->next;
+  else
+    zrpc->peer = peer_to_parse->next;
+  if(peer_to_parse->fd)
+    {
+      if (IS_ZRPC_DEBUG_NETWORK)
+        zrpc_log("zrpc_accept : close connection (fd %d)", peer_to_parse->fd);
+      zrpc_vpnservice_terminate_client(peer_to_parse->peer);
+    }
+  ZRPC_FREE(peer_to_parse->peer);
+  peer_to_parse->peer = NULL;
+  peer_to_parse->fd=0;
+  ZRPC_FREE(peer_to_parse);
   return 0;
 }
 
