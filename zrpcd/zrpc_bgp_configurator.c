@@ -1151,13 +1151,14 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           return FALSE;
         }
       inst.esi = strdup(esi);
-      if( !routermac || zrpc_util_str2mac (routermac, NULL) == 0)
+      if( routermac && zrpc_util_str2mac (routermac, NULL))
         {
-          *_return = BGP_ERR_PARAM;
-          ret = FALSE;
-          goto error;
+          inst.mac_router = strdup(routermac);
         }
-      inst.mac_router = strdup(routermac);
+      else
+        {
+          inst.mac_router = NULL;
+        }
 
       if (is_auto_discovery)
         {
@@ -1327,7 +1328,7 @@ inst_filled:
         zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, l3label %d, l2label %d,"
                     " esi %s, ethtag %d, routermac %s, macaddress %s, enc_type %d) %s",
                     prefix, nexthop, rd==NULL?"<none>":rd, l3label, l2label, esi, ethtag,
-                   routermac, macaddress, enc_type, (ret==FALSE)?"NOK":"OK");
+                   routermac?routermac:"<none>", macaddress, enc_type, (ret==FALSE)?"NOK":"OK");
       else
 #endif /* !HAVE_THRIFT_V1 */
         zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) %s",
