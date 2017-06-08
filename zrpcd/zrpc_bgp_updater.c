@@ -18,7 +18,7 @@
 #include "zrpcd/zrpc_debug.h"
 
 extern gboolean zrpc_transport_current_status;
-void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
+extern void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
 
 /*
  * update push route notification message
