@@ -231,8 +231,6 @@ void zrpc_server_socket(struct zrpc *zrpc)
   g_type_init ();
 #endif
   zrpc_vpnservice_setup_thrift_bgp_configurator_server(zrpc->zrpc_vpnservice);
-  client_ready = zrpc_vpnservice_setup_thrift_bgp_updater_client(zrpc->zrpc_vpnservice);
-  /* send notification to listener */
   zrpc_bgp_updater_on_start_config_resync_notification ();
   zrpc->zrpc_vpnservice->bgp_update_total++;
   if(client_ready == FALSE)

@@ -27,13 +27,13 @@
 
 static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *msg);
 
-static void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
+void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
 static int zrpc_vpnservice_setup_bgp_updater_client_retry (struct thread *thread);
 static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thread);
 int zrpc_monitor_retry_job_in_progress;
-static gboolean zrpc_transport_current_status = FALSE;
+gboolean zrpc_transport_current_status = FALSE;
 
-static void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response)
+void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response)
 {
   if(zrpc_monitor_retry_job_in_progress)
     return;

@@ -17,6 +17,9 @@
 #include "zrpcd/zrpc_vpnservice.h"
 #include "zrpcd/zrpc_debug.h"
 
+extern gboolean zrpc_transport_current_status;
+void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
+
 /*
  * update push route notification message
  * sent when a vpnv4 route is pushed
@@ -133,15 +136,27 @@ zrpc_bgp_updater_on_start_config_resync_notification (void)
   GError *error = NULL;
   gboolean response;
   struct zrpc_vpnservice *ctxt = NULL;
+  static gboolean client_ready;
 
   zrpc_vpnservice_get_context (&ctxt);
-  if(!ctxt || !ctxt->bgp_updater_client)
+  if(!ctxt)
       return FALSE;
+  if (ctxt->bgp_updater_client)
+    zrpc_vpnservice_terminate_thrift_bgp_updater_client (ctxt);
+  /* start the retry mechanism */
+  client_ready = zrpc_vpnservice_setup_thrift_bgp_updater_client(ctxt);
+  zrpc_transport_check_response(ctxt, client_ready);
+  if(client_ready == FALSE)
+    {
+      if(IS_ZRPC_DEBUG_NOTIFICATION)
+        zrpc_info ("bgp->sdnc message failed to be sent");
+      zrpc_info ("onStartConfigResyncNotification() NOK");
+      ctxt->bgp_update_lost_msgs++;
+      return;
+    }
   response = bgp_updater_client_on_start_config_resync_notification(ctxt->bgp_updater_client, &error);
   if(IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_info ("onStartConfigResyncNotification()");
-  if (response == FALSE)
-    ctxt->bgp_update_thrift_lost_msgs++;
+    zrpc_info ("onStartConfigResyncNotification() OK");
   return response;
 }
 
