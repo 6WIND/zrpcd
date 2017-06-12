@@ -119,6 +119,7 @@ static void zrpc_sigchild (void)
       if(asNumber)
         zrpc_info ("stopBgp(AS %u) OK", asNumber);
       zrpc_kill_in_progress = 0;
+      zrpc_sigint();
     }
 }
 
