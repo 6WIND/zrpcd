@@ -1654,6 +1654,7 @@ instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _re
   if (zrpc_kill_in_progress)
     return TRUE;
   zrpc_kill_in_progress = 1;
+  zrpc_stopbgp_called = 1;
   /* kill BGP Daemon */
   zrpc_vpnservice_terminate_qzc(ctxt);
   zrpc_vpnservice_terminate_bgpvrf_cache(ctxt);

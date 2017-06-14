@@ -40,6 +40,7 @@ int vty_port = 0;
 char *vty_addr = NULL;
 int zrpc_kill_in_progress = 0;
 int zrpc_disable_stdout = 0;
+int zrpc_stopbgp_called = 0;
 
 /* Help information display. */
 static void
@@ -119,7 +120,10 @@ static void zrpc_sigchild (void)
       if(asNumber)
         zrpc_info ("stopBgp(AS %u) OK", asNumber);
       zrpc_kill_in_progress = 0;
-      zrpc_sigint();
+      if (zrpc_stopbgp_called == 0)
+        zrpc_sigint();
+      else
+        zrpc_stopbgp_called = 0;
     }
 }
 

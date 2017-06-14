@@ -39,5 +39,6 @@ extern struct zrpc_global *tm;
 
 extern int zrpc_kill_in_progress;
 extern int zrpc_disable_stdout;
+extern int zrpc_stopbgp_called;
 
 #endif /* _ZRPC_GLOBAL_H_ */
