@@ -914,7 +914,27 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
     struct capn_ptr bgp;
     struct capn rc;
     struct capn_segment *cs;
+    struct QZCGetRep *grep;
 
+    /* get bgp_master configuration */
+    grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+    if(grep == NULL)
+      {
+        *_return = BGP_ERR_FAILED;
+        return FALSE;
+      }
+    memset(&inst, 0, sizeof(struct bgp));
+    qcapn_BGP_read(&inst, grep->data);
+    qzcclient_qzcgetrep_free( grep);
+
+    if (inst.notify_zmq_url)
+      free (inst.notify_zmq_url);
+    if (inst.logFile)
+      free (inst.logFile);
+    if (inst.logLevel)
+      free (inst.logLevel);
+
+    /* set new configuration */
     inst.as = (uint32_t)asNumber;
     if(routerId)
       inet_aton (routerId, &inst.router_id_static);
