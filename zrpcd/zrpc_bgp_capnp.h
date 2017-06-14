@@ -77,6 +77,9 @@ struct bgp
 
   char *logFile;
   char *logLevel;
+
+#define MAX_EOR_UPDATE_DELAY 3600
+  u_int16_t v_update_delay;
 };
 
 typedef enum
