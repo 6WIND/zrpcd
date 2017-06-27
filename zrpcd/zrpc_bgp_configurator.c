@@ -208,12 +208,10 @@ static int
 zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
                     struct zrpc_vpnservice_cache_bgpvrf *entry,
                     int af, int saf);
-#ifdef HAVE_THRIFT_V5
 static int
 zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
                      struct zrpc_vpnservice_cache_bgpvrf *entry,
                      int af, int saf);
-#endif
 
 /* The implementation of InstanceBgpConfiguratorHandler follows. */
 
@@ -2044,19 +2042,12 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
    struct capn_ptr bgpvrf;
    struct capn rc;
    struct capn_segment *cs;
-#ifdef HAVE_THRIFT_V5
    capn_ptr afisafi_ctxt;
-#endif
    uint64_t bgpvrf_nid;
    int ret;
 
    if (!ctxt || !instvrf || !entry)
      return 0;
-
-#ifndef HAVE_THRIFT_V5
-   (void)af;
-   (void)saf;
-#endif
 
    /* allocate bgpvrf structure for set */
    capn_init_malloc(&rc);
@@ -2065,7 +2056,6 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
    qcapn_BGPVRF_write(instvrf, bgpvrf);
 
    bgpvrf_nid = entry->bgpvrf_nid;
-#ifdef HAVE_THRIFT_V5
    if (entry->afc[af][saf] == 0)
      {
        /* prepare afisafi context */
@@ -2081,11 +2071,12 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
            entry->afc[af][saf] = 1;
          }
      }
+#if 0
    else
-#endif /* HAVE_THRIFT_V5 */
        ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
                                 &bgpvrf, &bgp_datatype_bgpvrf,\
                                 NULL, NULL);
+#endif
    capn_free(&rc);
    return ret;
 }
@@ -2117,9 +2108,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
    struct capn_ptr bgpvrf;
    struct capn rc;
    struct capn_segment *cs;
-#ifdef HAVE_THRIFT_V5
    int af = 0, saf = 0;
-#endif
    uint64_t bgpvrf_nid;
    struct zrpc_vpnservice_cache_bgpvrf *entry;
    struct zrpc_rdrt *rdrt;
@@ -2175,6 +2164,8 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
        *_return = BGP_ERR_PARAM;
        return FALSE;
      }
+#else
+   af = saf = 0;
 #endif /* HAVE_THRIFT_V5 */
 
    memset(&instvrf, 0, sizeof(struct bgp_vrf));
@@ -2271,8 +2262,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
    else  
      zrpc_util_rdrt_free (rdrt);
 
-#ifdef HAVE_THRIFT_V5
-   if (af == 0)
+   if ((af == 0) && (saf == 0))
      {
        /* enable VRF for (IPv4, MPLSVPN) */
        ret = zrpc_bgp_enable_vrf(ctxt, &instvrf, entry, ADDRESS_FAMILY_IP,
@@ -2290,6 +2280,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
                         AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN);
          }
 
+#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
        /* enable VRF for (IPv6, MPLSVPN) */
        ret = zrpc_bgp_enable_vrf(ctxt, &instvrf, entry, ADDRESS_FAMILY_IPV6,
                                  SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN);
@@ -2305,7 +2296,9 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
              zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd,
                         AF_AFI_AFI_IPV6, AF_SAFI_SAFI_MPLS_VPN);
          }
+#endif /* defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
 
+#if defined(HAVE_THRIFT_V2) || defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
        /* enable VRF for (IPv4, EVPN) */
        ret = zrpc_bgp_enable_vrf(ctxt, &instvrf, entry, ADDRESS_FAMILY_IP,
                                  SUBSEQUENT_ADDRESS_FAMILY_EVPN);
@@ -2321,7 +2314,9 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
              zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd,
                         AF_AFI_AFI_IP, AF_SAFI_SAFI_EVPN);
          }
+#endif /* defined(HAVE_THRIFT_V2) || defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
 
+#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
        /* enable VRF for (IPv6, EVPN) */
        ret = zrpc_bgp_enable_vrf(ctxt, &instvrf, entry, ADDRESS_FAMILY_IPV6,
                                  SUBSEQUENT_ADDRESS_FAMILY_EVPN);
@@ -2337,7 +2332,9 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
              zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd,
                         AF_AFI_AFI_IPV6, AF_SAFI_SAFI_EVPN);
          }
+#endif /* defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
      }
+#ifdef HAVE_THRIFT_V5
    else
      {
        ret = zrpc_bgp_enable_vrf(ctxt, &instvrf, entry, af, saf);
@@ -2352,10 +2349,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
              zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd, afi, safi);
          }
      }
-#else
-   ret = zrpc_bgp_enable_vrf(ctxt, &instvrf, entry, 0, 0);
-#endif /* HAVE_THRIFT_V5 */
-
+#endif /* THRIFT_V5 */
    if(ret == 0)
        *_return = BGP_ERR_FAILED;
    if (bgpvrf_ptr->rt_import)
@@ -2365,7 +2359,6 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
    return ret;
  }
 
-#ifdef HAVE_THRIFT_V5
 static int
 zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
                      struct zrpc_vpnservice_cache_bgpvrf *entry,
@@ -2415,7 +2408,6 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
 
    return ret;
 }
-#endif
 
  /*
   * Delete a VRF entry for a given route distinguisher
@@ -2432,10 +2424,8 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
    uint64_t bgpvrf_nid;
    struct zrpc_rd_prefix rd_inst;
    struct zrpc_vpnservice_cache_bgpvrf *entry;
-#ifdef HAVE_THRIFT_V5
    int af = 0, saf = 0;
    int ret;
-#endif /* HAVE_THRIFT_V5 */
 
    zrpc_vpnservice_get_context (&ctxt);
    if(!ctxt)
@@ -2495,8 +2485,7 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
    else
      bgpvrf_nid = entry->bgpvrf_nid;
 
-#ifdef HAVE_THRIFT_V5
-   if (af == 0)
+   if ((af == 0) && (saf == 0))
      {
        /* disable VRF for (IPv4, MPLSVPN) */
        ret = zrpc_bgp_disable_vrf(ctxt, entry, ADDRESS_FAMILY_IP,
@@ -2514,6 +2503,7 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
                         AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN);
          }
 
+#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
        /* disable VRF for (IPv6, MPLSVPN) */
        ret = zrpc_bgp_disable_vrf(ctxt, entry, ADDRESS_FAMILY_IPV6,
                                   SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN);
@@ -2529,7 +2519,9 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
              zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd,
                         AF_AFI_AFI_IPV6, AF_SAFI_SAFI_MPLS_VPN);
          }
+#endif /* defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
 
+#if defined(HAVE_THRIFT_V2) || defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
        /* disable VRF for (IPv4, EVPN) */
        ret = zrpc_bgp_disable_vrf(ctxt, entry, ADDRESS_FAMILY_IP,
                                   SUBSEQUENT_ADDRESS_FAMILY_EVPN);
@@ -2545,7 +2537,9 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
              zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd,
                         AF_AFI_AFI_IP, AF_SAFI_SAFI_EVPN);
          }
+#endif /* defined(HAVE_THRIFT_V2) || defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
 
+#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
        /* disable VRF for (IPv6, EVPN) */
        ret = zrpc_bgp_disable_vrf(ctxt, entry, ADDRESS_FAMILY_IPV6,
                                   SUBSEQUENT_ADDRESS_FAMILY_EVPN);
@@ -2561,7 +2555,9 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
              zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd,
                         AF_AFI_AFI_IPV6, AF_SAFI_SAFI_EVPN);
          }
+#endif /* defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
      }
+#ifdef HAVE_THRIFT_V5
    else
      {
        ret = zrpc_bgp_disable_vrf(ctxt, entry, af, saf);
@@ -2579,13 +2575,12 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
              zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd, afi, safi);
          }
      }
-
+#endif /* !HAVE_THRIFT_V5 */
    /* Is there other RIB table enabled ? If no, delete the vrf node. */
    for (int i = 0; i < ADDRESS_FAMILY_MAX; i++ )
      for (int j = 0; j < SUBSEQUENT_ADDRESS_FAMILY_MAX; j++)
        if (entry->afc[i][j])
            return TRUE;
-#endif /* HAVE_THRIFT_V5 */
 
    if( qzcclient_deletenode(ctxt->qzc_sock, &bgpvrf_nid))
      {

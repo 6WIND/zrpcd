@@ -58,9 +58,7 @@ struct zrpc_vpnservice_cache_bgpvrf
   struct zrpc_rd_prefix outbound_rd;
   struct zrpc_vpnservice_cache_bgpvrf *next;
   bgp_layer_type_t ltype;
-#ifdef HAVE_THRIFT_V5
   uint8_t afc[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
-#endif
 };
 
 struct zrpc_vpnservice_cache_peer
