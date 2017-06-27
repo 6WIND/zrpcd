@@ -3555,14 +3555,29 @@ zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_
   ret = zrpc_vpnservice_set_bgp_context_multipath (zrpc_vpnservice_get_bgp_context(ctxt),
                                                    afi, safi, (uint8_t) enable, _return, error);
   /* silently leave command if bgp did not start */
-  if((ret == TRUE) && IS_ZRPC_DEBUG)
+  if(ret == TRUE)
     {
-      if(enable)
-        zrpc_info ("enableMultipath config for afi:%d safi:%d OK",
-                   afi, safi);
-      else
-        zrpc_info ("disableMultipath config for afi:%d safi:%d OK",
-                   afi, safi);
+      if (IS_ZRPC_DEBUG)
+        {
+          if(enable)
+            zrpc_info ("enableMultipath config for afi:%d safi:%d OK",
+                       afi, safi);
+          else
+            zrpc_info ("disableMultipath config for afi:%d safi:%d OK",
+                       afi, safi);
+        }
+    }
+  else
+    {
+      if (IS_ZRPC_DEBUG)
+        {
+          if(enable)
+            zrpc_info ("enableMultipath config for afi:%d safi:%d NOK",
+                       afi, safi);
+          else
+            zrpc_info ("disableMultipath config for afi:%d safi:%d NOK",
+                       afi, safi);
+        }
     }
   if (zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
     {
