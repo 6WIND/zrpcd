@@ -996,7 +996,10 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
         if (zrpc_vpnservice_get_bgp_context(ctxt)->multipath_on[i][j])
           ret = zrpc_bgp_set_multipath_internal (ctxt, _return, i, j, 1, error);
   }
- return ret;
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
 }
 
 
@@ -1385,7 +1388,10 @@ inst_filled:
     free(inst.esi);
   if (inst.mac_router)
     free(inst.mac_router);
-  return ret;
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
 }
 
 /*
@@ -1665,7 +1671,10 @@ error:
                    (ret==FALSE)?"NOK":"OK");
     }
   free(inst.esi);
-  return ret;
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
 }
 
 /* 
@@ -1944,7 +1953,10 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
      }
 #endif /* HAVE_THRIFT_V2 */
 #endif /* !HAVE_THRIFT_V1 */
-   return ret;
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
  }
 
 #if defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V3)
@@ -2078,7 +2090,10 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
                                 NULL, NULL);
 #endif
    capn_free(&rc);
-   return ret;
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
 }
 
  /*
@@ -2356,7 +2371,10 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
      zrpc_util_rdrt_free (bgpvrf_ptr->rt_import);
    if (bgpvrf_ptr->rt_export)
      zrpc_util_rdrt_free (bgpvrf_ptr->rt_export);
-   return ret;
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
  }
 
 static int
@@ -2804,7 +2822,10 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
          }
      }
 #endif /* !HAVE_THRIFT_V1 */
-  return ret;
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
 }
 
 /*
@@ -2833,7 +2854,10 @@ instance_bgp_configurator_handler_disable_address_family(BgpConfiguratorIf *ifac
       if(IS_ZRPC_DEBUG)
         zrpc_info ("disableAddressFamily(%s, %u, %u) NOK (capnproto error)", peerIp, afi, safi);
     }
-  return ret;
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
 }
 
 gboolean
@@ -3581,11 +3605,17 @@ zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_
     }
   if (zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
     {
-      return ret;
+      if (ret)
+        return TRUE;
+      else
+        return FALSE;
     }
   ret = zrpc_bgp_set_multipath_internal (ctxt, _return, af, saf,
                                          enable, error);
-  return ret;
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
 }
 
 gboolean
