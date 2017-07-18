@@ -19,7 +19,7 @@
 
 extern gboolean zrpc_transport_current_status;
 extern void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
-
+extern void zrpc_transport_cancel_monitor(struct zrpc_vpnservice *setup);
 /*
  * update push route notification message
  * sent when a vpnv4 route is pushed
@@ -57,7 +57,21 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
 #endif /* HAVE_THRIFT_V2 */
 #endif /* HAVE_THRIFT_V4 */
 #endif /* HAVE_THRIFT_V1 */
-  if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
+  if (error != NULL)
+    {
+      if (error->domain == THRIFT_TRANSPORT_ERROR &&
+          error->code == THRIFT_TRANSPORT_ERROR_SEND)
+        {
+          ctxt->bgp_update_thrift_lost_msgs++;
+          zlog_info ("onUpdatePushRoute(): sent error %s", error->message);
+          zrpc_transport_cancel_monitor(ctxt);
+          response = FALSE;
+          zrpc_transport_check_response(ctxt, FALSE);
+        }
+      g_clear_error (&error);
+      error = NULL;
+    }
+  if(IS_ZRPC_DEBUG_NOTIFICATION)
   {
     char ethtag_str[20];
     sprintf(ethtag_str,"ethtag %ld", ethtag);
@@ -70,8 +84,6 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
               routermac==NULL?"":"routermac ", routermac==NULL?"":routermac,
               response == TRUE?"OK":"NOK");
   }
-  if (response == FALSE)
-    ctxt->bgp_update_thrift_lost_msgs++;
   return response;
 }
 
@@ -108,7 +120,21 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
                                                          l3label, l2label, afi, &error);
 #endif /* HAVE_THRIFT_V2 */
 #endif /* HAVE_THRIFT_V1 */
-  if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
+  if (error != NULL)
+    {
+      if (error->domain == THRIFT_TRANSPORT_ERROR &&
+          error->code == THRIFT_TRANSPORT_ERROR_SEND)
+        {
+          ctxt->bgp_update_thrift_lost_msgs++;
+          zrpc_info ("onUpdateWithdrawRoute(): sent error %s", error->message);
+          zrpc_transport_cancel_monitor(ctxt);
+          response = FALSE;
+          zrpc_transport_check_response(ctxt, FALSE);
+        }
+      g_clear_error (&error);
+      error = NULL;
+    }
+  if(IS_ZRPC_DEBUG_NOTIFICATION)
     {
       char ethtag_str[20];
       sprintf(ethtag_str,"ethtag %ld", ethtag);
@@ -120,8 +146,6 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
                 ethtag==0?"":ethtag_str,
                 response == TRUE?"OK":"NOK");
     }
-  if (response == FALSE)
-    ctxt->bgp_update_thrift_lost_msgs++;
   return response;
 }
 
@@ -141,22 +165,36 @@ zrpc_bgp_updater_on_start_config_resync_notification (void)
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
       return FALSE;
-  if (ctxt->bgp_updater_client)
-    zrpc_vpnservice_terminate_thrift_bgp_updater_client (ctxt);
-  /* start the retry mechanism */
-  client_ready = zrpc_vpnservice_setup_thrift_bgp_updater_client(ctxt);
-  zrpc_transport_check_response(ctxt, client_ready);
-  if(client_ready == FALSE)
+  if ((!ctxt->bgp_updater_client) || (zrpc_transport_current_status == FALSE))
     {
-      if(IS_ZRPC_DEBUG_NOTIFICATION)
-        zrpc_info ("bgp->sdnc message failed to be sent");
-      zrpc_info ("onStartConfigResyncNotification() NOK");
-      ctxt->bgp_update_lost_msgs++;
-      return;
+      if (ctxt->bgp_updater_client)
+        zrpc_vpnservice_terminate_thrift_bgp_updater_client (ctxt);
+      /* start the retry mechanism */
+      client_ready = zrpc_vpnservice_setup_thrift_bgp_updater_client(ctxt);
+      zrpc_transport_check_response(ctxt, client_ready);
+      if(client_ready == FALSE)
+        {
+          if(IS_ZRPC_DEBUG_NOTIFICATION)
+            zrpc_info ("bgp->sdnc message failed to be sent");
+        }
     }
   response = bgp_updater_client_on_start_config_resync_notification(ctxt->bgp_updater_client, &error);
+  if (error != NULL)
+    {
+      if (error->domain == THRIFT_TRANSPORT_ERROR &&
+          error->code == THRIFT_TRANSPORT_ERROR_SEND)
+        {
+          zrpc_info ("onStartConfigResyncNotification(): sent error %s", error->message);
+          response = FALSE;
+          ctxt->bgp_update_lost_msgs++;
+          zrpc_transport_cancel_monitor(ctxt);
+          zrpc_transport_check_response(ctxt, FALSE);
+        }
+      g_clear_error (&error);
+      error = NULL;
+    }
   if(IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_info ("onStartConfigResyncNotification() OK");
+    zrpc_info ("onStartConfigResyncNotification() %s", response == FALSE?"NOK":"OK");
   return response;
 }
 
@@ -175,10 +213,22 @@ zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 e
       return FALSE;
   response = bgp_updater_client_on_notification_send_event(ctxt->bgp_updater_client, \
                                                            prefix, errCode, errSubcode, &error); 
-  if(response == FALSE || IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_log ("onNotificationSendEvent(%s, errCode %d, errSubCode %d)", \
-                prefix, errCode, errSubcode);
-  if (response == FALSE)
-    ctxt->bgp_update_thrift_lost_msgs++;
+   if (error != NULL)
+    {
+      if (error->domain == THRIFT_TRANSPORT_ERROR &&
+          error->code == THRIFT_TRANSPORT_ERROR_SEND)
+        {
+          ctxt->bgp_update_thrift_lost_msgs++;
+          zrpc_info ("onNotificationSendEvent(): sent error %s", error->message);
+          response = FALSE;
+          zrpc_transport_cancel_monitor(ctxt);
+          zrpc_transport_check_response(ctxt, response);
+        }
+      g_clear_error (&error);
+      error = NULL;
+    }
+ if(IS_ZRPC_DEBUG_NOTIFICATION)
+    zrpc_log ("onNotificationSendEvent(%s, errCode %d, errSubCode %d) %s", \
+               prefix, errCode, errSubcode, response == FALSE?"NOK":"OK");
   return response;
 }

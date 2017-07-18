@@ -28,23 +28,39 @@
 static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *msg);
 
 void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
+void zrpc_transport_cancel_monitor(struct zrpc_vpnservice *setup);
+void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean response);
 static int zrpc_vpnservice_setup_bgp_updater_client_retry (struct thread *thread);
 static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thread);
 int zrpc_monitor_retry_job_in_progress;
 gboolean zrpc_transport_current_status = FALSE;
 
-void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response)
+void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean response)
 {
-  if(zrpc_monitor_retry_job_in_progress)
-    return;
   if (zrpc_transport_current_status != response)
     {
-      zrpc_log ("bgpUpdater check connection with %s:%u %s",
+      zrpc_info("bgpUpdater check connection with %s:%u %s",
                 tm->zrpc_notification_address,
                 setup->zrpc_notification_port,
                 response == TRUE?"OK":"NOK");
     }
   zrpc_transport_current_status = response;
+}
+void zrpc_transport_cancel_monitor(struct zrpc_vpnservice *setup)
+{
+  if (setup->bgp_updater_client_thread)
+    {
+      THREAD_TIMER_OFF(setup->bgp_updater_client_thread);
+      setup->bgp_updater_client_thread = NULL;
+    }
+  zrpc_monitor_retry_job_in_progress = 0;
+}
+
+void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response)
+{
+  if(zrpc_monitor_retry_job_in_progress)
+    return;
+  zrpc_transport_change_status (setup, response);
   if(response == FALSE)
     {
       setup->bgp_update_retries++;
