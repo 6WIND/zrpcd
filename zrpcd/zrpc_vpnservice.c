@@ -32,17 +32,25 @@ void zrpc_transport_cancel_monitor(struct zrpc_vpnservice *setup);
 void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean response);
 static int zrpc_vpnservice_setup_bgp_updater_client_retry (struct thread *thread);
 static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thread);
-int zrpc_monitor_retry_job_in_progress;
-gboolean zrpc_transport_current_status = FALSE;
+int zrpc_monitor_retry_job_in_progress = 0;
+zrpc_status zrpc_transport_current_status = ZRPC_TO_SDN_UNKNOWN;
 
 void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean response)
 {
-  if (zrpc_transport_current_status != response)
+  if ((zrpc_transport_current_status == ZRPC_TO_SDN_UNKNOWN) ||
+      ((response == TRUE) && (zrpc_transport_current_status == ZRPC_TO_SDN_FALSE)) ||
+      ((response == FALSE) && (zrpc_transport_current_status == ZRPC_TO_SDN_TRUE)))
     {
       zrpc_info("bgpUpdater check connection with %s:%u %s",
                 tm->zrpc_notification_address,
                 setup->zrpc_notification_port,
                 response == TRUE?"OK":"NOK");
+      if (response == TRUE) {
+        zrpc_transport_current_status = ZRPC_TO_SDN_TRUE;
+        zrpc_bgp_updater_on_start_config_resync_notification_quick (setup, FALSE);
+      } else {
+        zrpc_transport_current_status = ZRPC_TO_SDN_FALSE;
+      }
     }
   zrpc_transport_current_status = response;
 }
@@ -179,7 +187,9 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
     }
   ctxt->bgp_update_total++;
   /* if first time or previous failure, try to reconnect to client */
-  if((ctxt->bgp_updater_client == NULL) || (zrpc_transport_current_status == FALSE))
+  if((ctxt->bgp_updater_client == NULL) ||
+     (zrpc_transport_current_status == ZRPC_TO_SDN_UNKNOWN) ||
+     (zrpc_transport_current_status == ZRPC_TO_SDN_FALSE))
     {
       if(ctxt->bgp_updater_client)
         zrpc_vpnservice_terminate_thrift_bgp_updater_client(ctxt);

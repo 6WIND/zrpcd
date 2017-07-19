@@ -9,13 +9,16 @@
 #ifndef _ZRPC_BGP_UPDATER_H
 #define _ZRPC_BGP_UPDATER_H
 
+struct zrpc_vpnservice;
 
 gboolean
 zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 errCode, const gint8 errSubcode);
 
-gboolean
+void
 zrpc_bgp_updater_on_start_config_resync_notification (void);
 
+gboolean
+zrpc_bgp_updater_on_start_config_resync_notification_quick (struct zrpc_vpnservice *ctxt, gboolean restart);
 
 gboolean
 #if defined(HAVE_THRIFT_V1)

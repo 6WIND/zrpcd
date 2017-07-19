@@ -120,6 +120,14 @@ struct zrpc_vpnservice
   u_int32_t bgp_update_thrift_lost_msgs;
 };
 
+enum _zrpc_status
+  {
+    ZRPC_TO_SDN_UNKNOWN,
+    ZRPC_TO_SDN_TRUE,
+    ZRPC_TO_SDN_FALSE
+  };
+typedef enum _zrpc_status zrpc_status;
+
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_terminate_thrift_bgp_configurator_server(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_terminate_thrift_bgp_updater_client(struct zrpc_vpnservice *setup);
