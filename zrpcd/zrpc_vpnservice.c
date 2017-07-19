@@ -614,14 +614,14 @@ void zrpc_vpnservice_terminate_client(struct zrpc_vpnservice_client *peer)
   thrift_transport_flush(peer->transport, &error);
   if (error != NULL)
     {
-      zlog_err("Unable to flush thrift socket: %s\n", error->message);
+      zrpc_info("Unable to flush thrift socket: %s\n", error->message);
       g_error_free (error);
       error = NULL;
     }
   thrift_transport_close(peer->transport, &error);
   if (error != NULL)
     {
-      zlog_err("Unable to close thrift socket: %s\n", error->message);
+      zrpc_info("Unable to close thrift socket: %s\n", error->message);
       g_error_free (error);
     }
   g_object_unref(peer->transport_buffered);
