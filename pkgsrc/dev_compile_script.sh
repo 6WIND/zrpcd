@@ -1,4 +1,4 @@
-# Copyright 2016 Tata Consulting
+# Copyright 2016 Ericsson
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,21 +28,17 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
-
 set -eux
 set +u
-
 ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
 THRIFT_FOLDER_NAME=thrift
 THRIFT_BUILD_FOLDER=$ZRPCD_BUILD_FOLDER/$THRIFT_FOLDER_NAME
-
 export_variables (){
     #these are required by quagga
     export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
     export ZEROMQ_LIBS="-L"$ZRPCD_BUILD_FOLDER"/zeromq4-1/.libs/ -lzmq"
     export CAPN_C_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/c-capnproto/lib'
     export CAPN_C_LIBS='-L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c'
-
     #In addition to the above, zrpcd requires these flags too.
     export QUAGGA_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/quagga/lib/'
     export QUAGGA_LIBS='-L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/. -lzebra'
@@ -51,18 +47,26 @@ export_variables (){
     export THRIFT_PATH="$THRIFT_BUILD_FOLDER/compiler/cpp"
     export THRIFT_LIB_PATH="$THRIFT_BUILD_FOLDER/lib/c_glib/.libs"
 }
-
 install_deps() {
-
     pushd $ZRPCD_BUILD_FOLDER
     export_variables
 #Install the required software for building quagga
     for i in {0..5}
     do
     	echo "Attempt $i of installing dependencies..."
-        HOST_NAME=`cat /proc/version`
+        get_os=`cat /etc/*-release | sed -ne  '/^ID=/,1p' | tr -d "ID=" | tr -d '"'`
+        get_version=`cat /etc/*-release | sed -ne  '/^VERSION_ID=/,1p' | tr -d "VERSION_ID=" | tr -d '"'`
+        if [ "ubuntu" = $get_os ] ;
+          then
+             HOST_NAME=$get_os$get_version
+             echo "its a ubuntu  os:$HOST_NAME " ;
+        elif [ "centos" = $get_os  ] ;
+         then
+            HOST_NAME=$get_os$get_version
+            echo "its a centos host:$HOST_NAME" ;
+        fi
     	case $HOST_NAME in
-    	*ubuntu1~14*)
+    	ubuntu14*)
         	echo "UBUNTU 14.04 VM"
                 for pkg in automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
                 do 
@@ -71,8 +75,7 @@ install_deps() {
                       fi
                 done
       	      ;;
-
-    	*ubuntu1~16*)
+    	ubuntu16.04*)
          	echo "UBUNTU 16.04 VM"
          	for pkg in automake bison flex g++ git libboost1.58-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
                 do
@@ -82,8 +85,18 @@ install_deps() {
                       fi
                 done
        	      ;;
+        ubuntu16*|ubuntu17* )
+                echo "UBUNTU 16.*/17.* VM"
+                for pkg in automake bison flex g++ git  libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
+                do
+                      if [ $(dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+                           apt-cache policy $pkg
+                           apt-get install $pkg -y --force-yes
+                      fi
+                done
+              ;;
 
-    	*centos*)
+    	centos*)
          	echo "CENTOS VM"
                 yum -y group install "Development Tools"
                 for pkg in readline readline-devel glib2-devel autoconf* bison* libevent-devel zlib-devel openssl-devel  boost*
@@ -95,6 +108,7 @@ install_deps() {
        	      ;;
     	esac
     done
+
 #Clean the directory
     rm -rf c-capnproto $THRIFT_FOLDER_NAME zeromq4-1 quagga zrpcd
 
@@ -137,7 +151,6 @@ install_deps() {
      make
      make install
      cd ..
-
 #Install Quagga
     git clone https://github.com/6WIND/quagga.git
     cd quagga
@@ -153,9 +166,17 @@ install_deps() {
     mkdir /opt/quagga/var/run/quagga -p
     mkdir /opt/quagga/var/log/quagga -p
     touch /opt/quagga/var/log/quagga/zrpcd.init.log
-    HOST_NAME=`cat /proc/version`
+    if [ "ubuntu" = $get_os ] ;
+     then
+        HOST_NAME=$get_os
+        echo "its a ubuntu  os:$HOST_NAME " ;
+    elif [ "centos" = $get_os  ] ;
+     then
+        HOST_NAME=$get_os
+        echo "its a centos host:$HOST_NAME" ;
+    fi     
     case $HOST_NAME in
-    *Ubuntu*)
+    ubuntu*)
          echo "UBUNTU VM"
          addgroup --system quagga
          addgroup --system quagga
@@ -163,7 +184,7 @@ install_deps() {
                  --gecos "Quagga-BGP routing suite" \
                 --shell /bin/false quagga  >/dev/null
        ;;
-    *centos*)
+    centos*)
          echo "CENTOS VM"
          groupadd --system quagga
          adduser --system --gid quagga --home /opt/quagga/var/run/quagga \
@@ -173,7 +194,6 @@ install_deps() {
      esac
     chown -R quagga:quagga /opt/quagga/var/run/quagga
     chown -R quagga:quagga /opt/quagga/var/log/quagga
-
     cd ..
     popd
 }
@@ -181,7 +201,6 @@ install_deps() {
 build_zrpcd (){
 #Install ZRPC.
     export_variables
-
     if [ -z "${BUILD_FROM_DIST}" ]; then
         pushd $ZRPCD_BUILD_FOLDER
         git clone https://github.com/6WIND/zrpcd.git
@@ -201,18 +220,25 @@ build_zrpcd (){
         cd "${DIST_ARCHIVE%.tar.gz}"
         cd ..
         mkdir /opt/quagga/etc/init.d -p
-        HOST_NAME=`cat /proc/version`
+        if [ "ubuntu" = $get_os ] ;
+         then
+           HOST_NAME=$get_os
+           echo "its a ubuntu  os:$HOST_NAME " ;
+        elif [ "centos" = $get_os  ] ;
+         then
+           HOST_NAME=$get_os
+           echo "its a centos host:$HOST_NAME" ;
+        fi          
         case $HOST_NAME in
-        *ubuntu*)
+        ubuntu*)
              cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
            ;;
-        *centos*)
+        centos*)
               cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
            ;;
         esac
         chmod +x /opt/quagga/etc/init.d/zrpcd
     fi
-
     touch NEWS README
     autoreconf -i
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
@@ -221,22 +247,28 @@ build_zrpcd (){
     # Temporarily disable this when using the dist method
     if [ -z "$BUILD_FROM_DIST" ]; then
         mkdir /opt/quagga/etc/init.d -p
-        HOST_NAME=`cat /proc/version`
+        if [ "ubuntu" = $get_os ] ;
+         then
+           HOST_NAME=$get_os
+           echo "its a ubuntu  os:$HOST_NAME " ;
+        elif [ "centos" = $get_os  ] ;
+         then
+           HOST_NAME=$get_os
+           echo "its a centos host:$HOST_NAME" ;
+        fi  
         case $HOST_NAME in
-        *ubuntu*)
+        ubuntu*)
              cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
            ;;
-        *centos*)
+        centos*)
               cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
            ;;
         esac
         chmod +x /opt/quagga/etc/init.d/zrpcd
     fi
-
     if [ -z "${BUILD_FROM_DIST}" ]; then
         popd
     fi
-
      echo "hostname bgpd" >> /opt/quagga/etc/bgpd.conf
      echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
      echo "service advanced-vty" >> /opt/quagga/etc/bgpd.conf
@@ -248,7 +280,6 @@ build_zrpcd (){
      echo "debug bgp events" >> /opt/quagga/etc/bgpd.conf
      echo "debug bgp fsm" >> /opt/quagga/etc/bgpd.conf
 }
-
 display_usage ()
 {
 cat << EOF
@@ -262,11 +293,8 @@ OPTIONS:
   -d/--install-deps, compile and install zrpcd's dependencies.
   -v/--version, define the thrift API to use with: 1 = l3vpn, 2 = evpn, 4 = ipv6
   -h help, prints this help text
-
 EOF
 }
-
-
 INSTALL_DEPS=""
 BUILD_ZRPCD=""
 BUILD_FROM_DIST=""
@@ -307,7 +335,6 @@ parse_cmdline() {
         esac
     done
 }
-
 parse_cmdline $@
 
 if [ -n "$INSTALL_DEPS" ]; then
