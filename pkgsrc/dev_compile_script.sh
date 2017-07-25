@@ -112,10 +112,8 @@ install_deps() {
        	      ;;
     	esac
     done
-
 #Clean the directory
     rm -rf c-capnproto $THRIFT_FOLDER_NAME zeromq4-1 quagga zrpcd
-
 #Install thrift
     git clone http://git-wip-us.apache.org/repos/asf/thrift.git
     cd $THRIFT_FOLDER_NAME
@@ -134,7 +132,6 @@ install_deps() {
     make
     make install
     cd ..
-
 #Install ZeroMQ
     git clone https://github.com/zeromq/zeromq4-1.git
     cd zeromq4-1
@@ -144,7 +141,6 @@ install_deps() {
     make
     make install
     cd ..
-
 #Install C-capnproto
      git clone https://github.com/opensourcerouting/c-capnproto
      cd c-capnproto
@@ -199,7 +195,6 @@ install_deps() {
     cd ..
     popd
 }
-
 build_zrpcd (){
 #Install ZRPC.
     export_variables
@@ -334,11 +329,9 @@ parse_cmdline() {
     done
 }
 parse_cmdline $@
-
 if [ -n "$INSTALL_DEPS" ]; then
     install_deps
 fi
-
 if [ -n "$BUILD_ZRPCD" ]; then
     build_zrpcd
 fi
