@@ -62,6 +62,7 @@ zrpc_accept (struct thread *thread)
   ThriftTransport *transport;
   ThriftSocket *socket;
   struct zrpc_peer *peer_to_parse, *peer_next, *peer_prev;
+  socklen_t len;
 
   /* Register accept thread. */
   if( THREAD_FD (thread) < 0)
@@ -82,9 +83,23 @@ zrpc_accept (struct thread *thread)
   peer = zrpc_peer_create_accept(zrpc);
   socket = THRIFT_SOCKET (transport);
   peer->fd = socket->sd;
+  len = sizeof(struct sockaddr_storage);
+  getpeername(peer->fd, (struct sockaddr*)&peer->peerIp, &len);
   zrpc_update_sock_send_buffer_size (socket->sd);
-  if(IS_ZRPC_DEBUG_NETWORK)
-    zrpc_log("zrpcd accept : new connection (fd %d)", socket->sd);
+  if(IS_ZRPC_DEBUG){
+    char ipstr[INET6_ADDRSTRLEN];
+    int port;
+    if (peer->peerIp.ss_family == AF_INET) {
+      struct sockaddr_in *s = (struct sockaddr_in *)&peer->peerIp;
+      port = ntohs(s->sin_port);
+      inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
+    } else {
+      struct sockaddr_in6 *s = (struct sockaddr_in6 *)&peer->peerIp;
+      port = ntohs(s->sin6_port);
+      inet_ntop(AF_INET6, &s->sin6_addr, ipstr, sizeof ipstr);
+    }
+    zrpc_info("zrpc_accept : new connection (fd %d) from %s:%u", socket->sd, ipstr, port);
+  }
   //set_nonblocking (socket->sd);
   peer->peer = ZRPC_CALLOC (sizeof(struct zrpc_vpnservice_client));
   zrpc_vpnservice_setup_client(peer->peer,
@@ -102,6 +117,29 @@ zrpc_accept (struct thread *thread)
         {
           peer_prev = peer_to_parse;
           continue;
+        }
+      if (peer->peerIp.ss_family == peer_to_parse->peerIp.ss_family)
+        {
+          if (peer->peerIp.ss_family == AF_INET)
+            {
+              struct sockaddr_in *update = (struct sockaddr_in *)&peer->peerIp;
+              struct sockaddr_in *orig = (struct sockaddr_in *)&peer_to_parse->peerIp;
+              if (update->sin_addr.s_addr == orig->sin_addr.s_addr)
+                {
+                  zrpc_info("zrpc_accept : a new connection from same src IP. Ignoring it (fd %d)", peer_to_parse->fd);
+                  continue;
+                }
+            } 
+          else
+            {
+              struct sockaddr_in6 *update = (struct sockaddr_in6 *)&peer->peerIp;
+              struct sockaddr_in6 *orig = (struct sockaddr_in6 *)&peer_to_parse->peerIp;
+              if (0 == memcpy (&(update->sin6_addr), &(orig->sin6_addr), sizeof (struct sockaddr_in6)))
+                {
+                  zrpc_info("zrpc_accept : a new connection from same src IP. Ignoring it (fd %d)", peer_to_parse->fd);
+                  continue;
+                }
+            }
         }
       break;
     }
@@ -139,7 +177,7 @@ zrpc_read_packet (struct thread *thread)
                                     &error);
   if (error != NULL)
     {
-      if(IS_ZRPC_DEBUG_NETWORK)
+      if(IS_ZRPC_DEBUG)
         zrpc_log("zrpcd_read_packet: close connection (fd %d)", peer->fd);
       g_clear_error (&error);
       zrpc_vpnservice_terminate_client(peer->peer); 

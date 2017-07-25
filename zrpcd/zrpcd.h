@@ -48,6 +48,9 @@ struct zrpc_peer
   struct zrpc_vpnservice_client *peer;
 
   struct zrpc_peer *next;
+
+  /* information about peer */
+  struct sockaddr_storage peerIp;
 };
 
 #include "zrpcd/zrpc_global.h"
