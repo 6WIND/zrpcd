@@ -1,4 +1,4 @@
-# Copyright 2016 Tata Consulting
+# Copyright 2016 Tata Consulting and Ericsson
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -47,7 +47,6 @@ export_variables (){
     export THRIFT_PATH="$THRIFT_BUILD_FOLDER/compiler/cpp"
     export THRIFT_LIB_PATH="$THRIFT_BUILD_FOLDER/lib/c_glib/.libs"
 }
-
 install_deps() {
     pushd $ZRPCD_BUILD_FOLDER
     export_variables
@@ -55,19 +54,23 @@ install_deps() {
     for i in {0..5}
     do
     	echo "Attempt $i of installing dependencies..."
-        get_os=`cat /etc/*-release | sed -ne  '/^ID=/,1p' | tr -d "ID=" | tr -d '"'`
-        get_version=`cat /etc/*-release | sed -ne  '/^VERSION_ID=/,1p' | tr -d "VERSION_ID=" | tr -d '"'`
-        if [ "ubuntu" = $get_os ] ;
-          then
-             HOST_NAME=$get_os$get_version
-             echo "its a ubuntu  os:$HOST_NAME " ;
-        elif [ "centos" = $get_os  ] ;
-         then
-            HOST_NAME=$get_os$get_version
-            echo "its a centos host:$HOST_NAME" ;
+        if ! [ -x "$(command -v facter)" ]; then
+           echo 'Error: facter is not installed.' >&2
+           echo "Facter  is installing now" 
+           apt-get install -y facter || yum -y install facter ;
+        else
+           echo "facter is already installed"
+        fi
+        get_version=`facter operatingsystemrelease`
+        if [ `facter operatingsystem` = "Ubuntu" ]; then
+           HOST_NAME=Ubuntu$get_version
+           echo "its a Ubuntu-Host:$HOST_NAME " ;
+        elif [ `facter operatingsystem` = "CentOS" ] ; then
+           HOST_NAME=CentOS$get_version
+           echo "its a CentOS-Host:$HOST_NAME" ;
         fi
     	case $HOST_NAME in
-    	ubuntu14*)
+    	Ubuntu14*)
         	echo "UBUNTU 14.04 VM"
                 for pkg in automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
                 do 
@@ -76,7 +79,7 @@ install_deps() {
                       fi
                 done
       	      ;;
-    	ubuntu16.04*)
+    	Ubuntu16.04*)
          	echo "UBUNTU 16.04 VM"
          	for pkg in automake bison flex g++ git libboost1.58-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
                 do
@@ -86,7 +89,7 @@ install_deps() {
                       fi
                 done
        	      ;;
-        ubuntu16*|ubuntu17* )
+        Ubuntu16*|Ubuntu17* )
                 echo "UBUNTU 16.*/17.* VM"
                 for pkg in automake bison flex g++ git  libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
                 do
@@ -96,7 +99,8 @@ install_deps() {
                       fi
                 done
               ;;
-    	centos*)
+
+    	CentOS*)
          	echo "CENTOS VM"
                 yum -y group install "Development Tools"
                 for pkg in readline readline-devel glib2-devel autoconf* bison* libevent-devel zlib-devel openssl-devel  boost*
@@ -118,6 +122,7 @@ install_deps() {
     patch -p1 < 0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
     wget https://issues.apache.org/jira/secure/attachment/12840511/0002-THRIFT-3986-using-autoreconf-i-fails-because-of-miss.patch
     patch -p1 < 0002-THRIFT-3986-using-autoreconf-i-fails-because-of-miss.patch
+
     autoreconf -i
     ./configure --without-qt4 --without-qt6 --without-csharp --without-java\
     --without-erlang --without-nodejs --without-perl --without-python\
@@ -161,17 +166,15 @@ install_deps() {
     mkdir /opt/quagga/var/run/quagga -p
     mkdir /opt/quagga/var/log/quagga -p
     touch /opt/quagga/var/log/quagga/zrpcd.init.log
-    if [ "ubuntu" = $get_os ] ;
-     then
-        HOST_NAME=$get_os
-        echo "its a ubuntu  os:$HOST_NAME " ;
-    elif [ "centos" = $get_os  ] ;
-     then
-        HOST_NAME=$get_os
-        echo "its a centos host:$HOST_NAME" ;
-    fi    
+    if [ `facter operatingsystem` = "Ubuntu" ]; then
+        HOST_NAME=Ubuntu$get_version
+        echo "its a Ubuntu-Host:$HOST_NAME " ;
+    elif [ `facter operatingsystem` = "CentOS" ] ; then
+        HOST_NAME=CentOS$get_version
+        echo "its a CentOS-Host:$HOST_NAME" ;
+    fi
     case $HOST_NAME in
-    ubuntu*)
+    Ubuntu*)
          echo "UBUNTU VM"
          addgroup --system quagga
          addgroup --system quagga
@@ -179,7 +182,7 @@ install_deps() {
                  --gecos "Quagga-BGP routing suite" \
                 --shell /bin/false quagga  >/dev/null
        ;;
-    centos*)
+    CentOS*)
          echo "CENTOS VM"
          groupadd --system quagga
          adduser --system --gid quagga --home /opt/quagga/var/run/quagga \
@@ -214,20 +217,18 @@ build_zrpcd (){
         cd "${DIST_ARCHIVE%.tar.gz}"
         cd ..
         mkdir /opt/quagga/etc/init.d -p
-        if [ "ubuntu" = $get_os ] ;
-         then
-           HOST_NAME=$get_os
-           echo "its a ubuntu  os:$HOST_NAME " ;
-        elif [ "centos" = $get_os  ] ;
-         then
-           HOST_NAME=$get_os
-           echo "its a centos host:$HOST_NAME" ;
-        fi        
+        if [ `facter operatingsystem` = "Ubuntu" ]; then
+           HOST_NAME=Ubuntu$get_version
+           echo "its a Ubuntu-Host:$HOST_NAME " ;
+        elif [ `facter operatingsystem` = "CentOS" ] ; then
+           HOST_NAME=CentOS$get_version
+           echo "its a CentOS-Host:$HOST_NAME" ;
+        fi         
         case $HOST_NAME in
-        ubuntu*)
+        Ubuntu*)
              cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
            ;;
-        centos*)
+        CentOS*)
               cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
            ;;
         esac
@@ -241,26 +242,23 @@ build_zrpcd (){
     # Temporarily disable this when using the dist method
     if [ -z "$BUILD_FROM_DIST" ]; then
         mkdir /opt/quagga/etc/init.d -p
-        if [ "ubuntu" = $get_os ] ;
-         then
-           HOST_NAME=$get_os
-           echo "its a ubuntu  os:$HOST_NAME " ;
-        elif [ "centos" = $get_os  ] ;
-         then
-           HOST_NAME=$get_os
-           echo "its a centos host:$HOST_NAME" ;
-        fi
+        if [ `facter operatingsystem` = "Ubuntu" ]; then
+           HOST_NAME=Ubuntu$get_version
+           echo "its a Ubuntu-Host:$HOST_NAME " ;
+        elif [ `facter operatingsystem` = "CentOS" ] ; then
+           HOST_NAME=CentOS$get_version
+           echo "its a CentOS-Host:$HOST_NAME" ;
+        fi   
         case $HOST_NAME in
-        ubuntu*)
+        Ubuntu*)
              cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
            ;;
-        centos*)
+        CentOS*)
               cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
            ;;
         esac
         chmod +x /opt/quagga/etc/init.d/zrpcd
     fi
-
     if [ -z "${BUILD_FROM_DIST}" ]; then
         popd
     fi
@@ -288,7 +286,6 @@ OPTIONS:
   -d/--install-deps, compile and install zrpcd's dependencies.
   -v/--version, define the thrift API to use with: 1 = l3vpn, 2 = evpn, 4 = ipv6
   -h help, prints this help text
-
 EOF
 }
 INSTALL_DEPS=""
@@ -332,11 +329,9 @@ parse_cmdline() {
     done
 }
 parse_cmdline $@
-
 if [ -n "$INSTALL_DEPS" ]; then
     install_deps
 fi
-
 if [ -n "$BUILD_ZRPCD" ]; then
     build_zrpcd
 fi
