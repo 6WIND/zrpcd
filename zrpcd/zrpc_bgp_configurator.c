@@ -811,6 +811,7 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
                                             const gboolean announceFbit, GError **error)
 {
   struct zrpc_vpnservice *ctxt = NULL;
+  struct zrpc_vpnservice_bgp_context *bgp_ctxt;
   int ret = 0;
   struct bgp inst;
   pid_t pid;
@@ -925,7 +926,6 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
   }
   zrpc_debug_set_log_file_with_level (zrpc_vpnservice_get_bgp_context(ctxt)->logFile,
                                       zrpc_vpnservice_get_bgp_context(ctxt)->logLevel);
-  zrpc_bgp_set_log_config (ctxt, zrpc_vpnservice_get_bgp_context(ctxt), _return, error);
 
   /* from bgp_master, inject configuration, and send zmq message to BGP */
   {
@@ -953,10 +953,20 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
       free (inst.logLevel);
 
     /* set new configuration */
+    bgp_ctxt = zrpc_vpnservice_get_bgp_context(ctxt);
     inst.as = (uint32_t)asNumber;
     if(routerId)
       inet_aton (routerId, &inst.router_id_static);
     inst.notify_zmq_url = ZRPC_STRDUP(ctxt->zmq_subscribe_sock);
+
+    /* log file and log level */
+    if (bgp_ctxt->logLevel)
+      inst.logLevel = ZRPC_STRDUP(bgp_ctxt->logLevel);
+    else
+      inst.logLevel = NULL;
+    if (bgp_ctxt->logFile)
+      inst.logFile = ZRPC_STRDUP(bgp_ctxt->logFile);
+
     inst.default_holdtime = holdTime;
     inst.default_keepalive= keepAliveTime;
     if (stalepathTime)
@@ -979,13 +989,30 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
                              NULL, NULL);
     ZRPC_FREE(inst.notify_zmq_url);
     inst.notify_zmq_url = NULL;
+    if (inst.logFile)
+      {
+        ZRPC_FREE(inst.logFile);
+        inst.logFile = NULL;
+      }
+    if (inst.logLevel)
+      {
+        ZRPC_FREE(inst.logLevel);
+        inst.logLevel = NULL;
+      }
+
     capn_free(&rc);
   }
   if(IS_ZRPC_DEBUG)
     {
       if(ret)
+        {
+          zrpc_info ("setLogConfig(%s, %s) OK",
+                     bgp_ctxt->logFile,
+                     bgp_ctxt->logLevel==NULL?"none":
+                     bgp_ctxt->logLevel);
           zrpc_info ("startBgp(%u, %s, .., %u, %s) OK",(uint32_t)asNumber, routerId,
                   stalepathTime, announceFbit == true?"true":"false");
+        }
       else
         zrpc_info ("startBgp(%u, %s, .., %u, %s) NOK",(uint32_t)asNumber, routerId,
                   stalepathTime, announceFbit == true?"true":"false");
