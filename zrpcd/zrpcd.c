@@ -143,6 +143,10 @@ void  zrpc_create_context (struct zrpc **zrpc_val)
       if(zrpc_server_listen (zrpc) < 0)
         exit(1);
     }
+
+  /* connect updater server and send notification */
+  zrpc_bgp_updater_on_start_config_resync_notification ();
+  zrpc->zrpc_vpnservice->bgp_update_total++;
   return ;
 }
 

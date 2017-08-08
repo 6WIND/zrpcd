@@ -263,19 +263,9 @@ zrpc_close (void)
 
 void zrpc_server_socket(struct zrpc *zrpc)
 {
-  gboolean client_ready;
-
 #if (!GLIB_CHECK_VERSION (2, 36, 0))
   g_type_init ();
 #endif
   zrpc_vpnservice_setup_thrift_bgp_configurator_server(zrpc->zrpc_vpnservice);
-  zrpc_bgp_updater_on_start_config_resync_notification ();
-  zrpc->zrpc_vpnservice->bgp_update_total++;
-  if(client_ready == FALSE)
-    {
-      if (IS_ZRPC_DEBUG_NOTIFICATION)
-        zrpc_log ("bgp->sdnc message failed to be sent");
-      return;
-    }
   return;
 }
