@@ -243,6 +243,7 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
 #define ERROR_BGP_INVALID_AD_PROCESSING g_error_new(1, 6, "BGP [Push/Withdraw]Route: error when processing Auto Discovery");
 #define ERROR_BGP_INTERNAL g_error_new(1, BGP_ERR_FAILED, "Error reported by BGP, check log file");
 #define ERROR_BGP_INVALID_UPDATE_DELAY g_error_new(1, BGP_ERR_PARAM, "BGP EOR update delay: out of range value 0 <= %d <= %d", delay, MAX_EOR_UPDATE_DELAY);
+#define ERROR_BGP_PEER_EXISTS g_error_new(1, BGP_ERR_PEER_EXISTS, "BGP Peer %s already configured", routerId);
 #define BGP_ERR_INTERNAL 110
 
 /*
@@ -1767,10 +1768,14 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
   entry = zrpc_bgp_configurator_find_peer(ctxt, routerId, _return, 0);
   if(entry && entry->peer_nid)
     {
-      *_return = BGP_ERR_FAILED; 
       if(IS_ZRPC_DEBUG)
-        zrpc_info ("createPeer(%s) already present. do nothing.", asNumber);
+        zrpc_info ("createPeer(%s) already present. do nothing.", routerId);
+#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
+      *error = ERROR_BGP_PEER_EXISTS;
       return FALSE;
+#else
+      return TRUE;
+#endif
     }
   memset(&inst, 0, sizeof(struct peer));
   inst.host = ZRPC_STRDUP(routerId);
