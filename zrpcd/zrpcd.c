@@ -96,6 +96,22 @@ zrpc_global_init (void)
   tm->zrpc_notification_address = strdup(ZRPC_CLIENT_ADDRESS);
 }
 
+static void
+zrpc_kill_bgpd()
+{
+  pid_t pid;
+  int ret;
+
+  pid = zrpc_util_get_pid_output(BGPD_PATH_BGPD_PID);
+  if (pid)
+    {
+      zrpc_log("attempt to kill BGP instance %d", pid);
+      ret = kill(pid, SIGINT);
+      if (ret == 0)
+          unlink(BGPD_PATH_BGPD_PID);
+      zrpc_log("attempt to kill BGP instance (%d) %s", pid, ret == 0 ? "OK" : "NOK");
+    }
+}
 
 /* Called from VTY commands. */
 void  zrpc_create_context (struct zrpc **zrpc_val)
@@ -117,31 +133,12 @@ void  zrpc_create_context (struct zrpc **zrpc_val)
   /* creation of capnproto context - updater */
   zrpc_vpnservice_setup_qzc(zrpc->zrpc_vpnservice);
 
+  zrpc_kill_bgpd();
   /* run bgp_configurator_server */ 
   if(zrpc_server_listen (zrpc) < 0)
     {
-      uint32_t pid;
-
-      pid = zrpc_util_get_pid_output(BGPD_PATH_BGPD_PID);
-      if(pid)
-        {
-          char saddr[64];
-          char *ptr = saddr;
-          uint32_t pid2;
-
-          ptr+=sprintf(saddr, "attempt to kill BGP instance %d",pid);
-          zrpc_log(saddr);
-          pid2 = kill((pid_t)pid, SIGKILL);
-          if(pid2 == 0)
-            {
-              unlink(BGPD_PATH_BGPD_PID);
-              sleep(5);
-            }
-          zrpc_log("attempt to kill BGP instance (%d) %s", pid, pid2 == 0?"OK":"NOK");
-        }
       /* exit on failure */
-      if(zrpc_server_listen (zrpc) < 0)
-        exit(1);
+      exit(1);
     }
 
   /* connect updater server and send notification */
