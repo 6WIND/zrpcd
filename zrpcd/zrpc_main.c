@@ -146,6 +146,10 @@ static void zrpc_sig_handler(int signo)
     {
       zrpc_sigchild ();
     }
+  else if (signo ==  SIGTERM)
+    {
+      zrpc_sigint ();
+    }
 }
 
 /*
@@ -251,6 +255,8 @@ main (int argc, char **argv)
     zrpc_log("can't catch SIGPIPE");
   if (signal(SIGCHLD, zrpc_sig_handler) == SIG_ERR)
     zrpc_log("can't catch SIGCHLD");
+  if (signal(SIGTERM, zrpc_sig_handler) == SIG_ERR)
+    zrpc_log("can't catch SIGTERM");
 
   cmd_init (1);
   memory_init ();
