@@ -101,6 +101,9 @@ zrpc_accept (struct thread *thread)
     zrpc_info("zrpc_accept : new connection (fd %d) from %s:%u", socket->sd, ipstr, port);
   }
   //set_nonblocking (socket->sd);
+  if (fcntl (socket->sd, F_SETFD, FD_CLOEXEC) == -1)
+    zrpc_log ("zrpc_accept : fcntl failed (%s)", strerror (errno));
+
   peer->peer = ZRPC_CALLOC (sizeof(struct zrpc_vpnservice_client));
   zrpc_vpnservice_setup_client(peer->peer,
                                   zrpc->zrpc_vpnservice,
@@ -223,6 +226,10 @@ zrpc_server_listen (struct zrpc *zrpc)
     {
       ThriftServerSocket *tsocket = \
         THRIFT_SERVER_SOCKET (zrpc->zrpc_vpnservice->bgp_configurator_server_transport);
+
+      if (fcntl (tsocket->sd, F_SETFD, FD_CLOEXEC) == -1)
+        zrpc_log ("zrpc_server_listen : fcntl failed (%s)", strerror (errno));
+
       listener = ZRPC_CALLOC (sizeof(*listener));
       listener->zrpc = zrpc;
       listener->thread = NULL;
