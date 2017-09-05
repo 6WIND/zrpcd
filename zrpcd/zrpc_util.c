@@ -510,20 +510,20 @@ zrpc_util_get_pid_output (const char *path)
   char *ptr;
   uint32_t pid;
 
-  fd = open (path, O_READ, 0);
+  fd = open (path, O_RDONLY);
   if (fd < 0)
     {
-      char saddr[128];
-      sprintf(saddr,"Can't create pid lock file %s (%s), exiting",
-              path, safe_strerror(errno));
-      zrpc_log(saddr);
-      exit(1);
+      zrpc_log ("Can't open pid lock file %s (%s), continuing",
+                path, safe_strerror(errno));
+      return 0;
     }
 
   memset(buf, '\0', sizeof(buf));
   ptr = buf;
   read (fd, ptr, 16);
   pid = atoi(buf);
+
+  close(fd);
   return pid;
 }
 
