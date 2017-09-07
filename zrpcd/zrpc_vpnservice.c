@@ -52,7 +52,6 @@ void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean respon
         zrpc_transport_current_status = ZRPC_TO_SDN_FALSE;
       }
     }
-  zrpc_transport_current_status = response;
 }
 void zrpc_transport_cancel_monitor(struct zrpc_vpnservice *setup)
 {
