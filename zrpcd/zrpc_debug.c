@@ -266,6 +266,17 @@ zrpc_debug_init (void)
 
 char dest_sys[1024];
 
+inline void zrpc_system ( char *text)
+{
+  FILE *fp = fopen(log_file_filename, "a+");
+  if (fp == NULL){
+    return;
+  }
+  fprintf (fp, "%s\r\n", text);
+  fflush (fp);
+  fclose (fp);
+}
+
 void
 zrpc_log(const char *format, ...)
 {
@@ -293,8 +304,8 @@ zrpc_log(const char *format, ...)
   //log_file_fp = fopen (log_file_filename, "a");
   //if (log_file_fp == NULL)
   //  return ;
-  sprintf(dest_sys, "echo \"%s ZRPC: %s\" >> %s", buffer, dest, log_file_filename); 
-  system (dest_sys);
+  sprintf(dest_sys, "%s ZRPC: %s", buffer, dest);
+  zrpc_system (dest_sys);
   //fprintf (log_file_fp, "%s ZRPC: %s\r\n", buffer, dest);
   //fclose (log_file_fp);
 
@@ -323,13 +334,8 @@ zrpc_info(const char *format, ...)
     fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
   if (!log_file_filename)
     return;
-  //log_file_fp = fopen (log_file_filename, "a");
-  //if (log_file_fp == NULL)
-  //  return ;
-  sprintf(dest_sys, "echo \"%s ZRPC: %s\" >> %s", buffer, dest, log_file_filename); 
-  system (dest_sys);
-  //  fprintf (log_file_fp, "%s ZRPC: %s\r\n", buffer, dest);
-  //fclose (log_file_fp);
+  sprintf(dest_sys, "%s ZRPC: %s", buffer, dest);
+  zrpc_system (dest_sys);
 }
 
 void
@@ -340,13 +346,7 @@ zrpc_debug_set_log_file_with_level (char *logFileName, char *logLevel)
   /* close previous file */
   zrpc_debug_flush();
 
-  //  log_file_fp = fopen (logFileName, "a");
-  //umask(oldumask);
-  //if (log_file_fp == NULL)
-  //  return ;
   log_file_filename = ZRPC_STRDUP (logFileName);
-  //fclose (log_file_fp);
-  //log_file_fp = NULL;
 }
 
 void
