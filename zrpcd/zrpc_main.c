@@ -110,6 +110,7 @@ static void zrpc_sigchild (void)
       zrpc_kill_in_progress = 1;
       asNumber = zrpc_vpnservice_get_bgp_context(ctxt)->asNumber;
       /* reset Thrift Context */
+      zrpc_vpnservice_get_bgp_context(ctxt)->proc = 0;
       zrpc_vpnservice_terminate_bgp_context(ctxt);
       zrpc_vpnservice_terminate_bgpvrf_cache(ctxt);
       zrpc_vpnservice_terminate_qzc(ctxt);
