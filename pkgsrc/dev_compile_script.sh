@@ -33,6 +33,7 @@ set +u
 ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
 THRIFT_FOLDER_NAME=thrift
 THRIFT_BUILD_FOLDER=$ZRPCD_BUILD_FOLDER/$THRIFT_FOLDER_NAME
+
 export_variables (){
     #these are required by quagga
     export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
@@ -61,15 +62,17 @@ install_deps() {
         else
            echo "facter is already installed"
         fi
-        get_version=`facter operatingsystemrelease`
-        if [ `facter operatingsystem` = "Ubuntu" ]; then
-           HOST_NAME=Ubuntu$get_version
+        distrib=`facter operatingsystem`
+        version=`facter operatingsystemrelease`
+
+        if [ $distrib = "Ubuntu" ]; then
+           HOST_NAME=Ubuntu$version
            echo "its a Ubuntu-Host:$HOST_NAME " ;
-        elif [ `facter operatingsystem` = "CentOS" ] ; then
-           HOST_NAME=CentOS$get_version
+        elif [ $distrib = "CentOS" ] ; then
+           HOST_NAME=CentOS$version
            echo "its a CentOS-Host:$HOST_NAME" ;
-        elif [ `facter operatingsystem` = "RedHat" ] ; then
-           HOST_NAME=RedHat$get_version
+        elif [ $distrib = "RedHat" ] ; then
+           HOST_NAME=RedHat$version
            echo "its a RedHat-Host:$HOST_NAME" ;
         fi
     	case $HOST_NAME in
@@ -180,14 +183,14 @@ install_deps() {
     mkdir /opt/quagga/var/run/quagga -p
     mkdir /opt/quagga/var/log/quagga -p
     touch /opt/quagga/var/log/quagga/zrpcd.init.log
-    if [ `facter operatingsystem` = "Ubuntu" ]; then
-        HOST_NAME=Ubuntu$get_version
+    if [ $distrib = "Ubuntu" ]; then
+        HOST_NAME=Ubuntu$version
         echo "its a Ubuntu-Host:$HOST_NAME " ;
-    elif [ `facter operatingsystem` = "CentOS" ] ; then
-        HOST_NAME=CentOS$get_version
+    elif [ $distrib = "CentOS" ] ; then
+        HOST_NAME=CentOS$version
         echo "its a CentOS-Host:$HOST_NAME" ;
-    elif [ `facter operatingsystem` = "RedHat" ] ; then
-        HOST_NAME=RedHat$get_version
+    elif [ $distrib = "RedHat" ] ; then
+        HOST_NAME=RedHat$version
         echo "its a RedHat-Host:$HOST_NAME" ;
     fi
     case $HOST_NAME in
@@ -224,6 +227,9 @@ install_deps() {
 build_zrpcd (){
 #Install ZRPC.
     export_variables
+    distrib=`facter operatingsystem`
+    version=`facter operatingsystemrelease`
+
     if [ -z "${BUILD_FROM_DIST}" ]; then
         pushd $ZRPCD_BUILD_FOLDER
         git clone https://github.com/6WIND/zrpcd.git
@@ -243,14 +249,14 @@ build_zrpcd (){
         cd "${DIST_ARCHIVE%.tar.gz}"
         cd ..
         mkdir /opt/quagga/etc/init.d -p
-        if [ `facter operatingsystem` = "Ubuntu" ]; then
-           HOST_NAME=Ubuntu$get_version
+        if [ $distrib = "Ubuntu" ]; then
+           HOST_NAME=Ubuntu$version
            echo "its a Ubuntu-Host:$HOST_NAME " ;
-        elif [ `facter operatingsystem` = "CentOS" ] ; then
-           HOST_NAME=CentOS$get_version
+        elif [ $distrib = "CentOS" ] ; then
+           HOST_NAME=CentOS$version
            echo "its a CentOS-Host:$HOST_NAME" ;
-        elif [ `facter operatingsystem` = "RedHat" ] ; then
-           HOST_NAME=RedHat$get_version
+        elif [ $distrib = "RedHat" ] ; then
+           HOST_NAME=RedHat$version
            echo "its a RedHat-Host:$HOST_NAME" ;
         fi         
         case $HOST_NAME in
@@ -274,14 +280,14 @@ build_zrpcd (){
     # Temporarily disable this when using the dist method
     if [ -z "$BUILD_FROM_DIST" ]; then
         mkdir /opt/quagga/etc/init.d -p
-        if [ `facter operatingsystem` = "Ubuntu" ]; then
-           HOST_NAME=Ubuntu$get_version
+        if [ $distrib = "Ubuntu" ]; then
+           HOST_NAME=Ubuntu$version
            echo "its a Ubuntu-Host:$HOST_NAME " ;
-        elif [ `facter operatingsystem` = "CentOS" ] ; then
-           HOST_NAME=CentOS$get_version
+        elif [ $distrib = "CentOS" ] ; then
+           HOST_NAME=CentOS$version
            echo "its a CentOS-Host:$HOST_NAME" ;
-        elif [ `facter operatingsystem` = "RedHat" ] ; then
-           HOST_NAME=RedHat$get_version
+        elif [ $distrib = "RedHat" ] ; then
+           HOST_NAME=RedHat$version
            echo "its a RedHat-Host:$HOST_NAME" ;
         fi   
         case $HOST_NAME in
