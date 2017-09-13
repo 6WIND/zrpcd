@@ -68,6 +68,9 @@ install_deps() {
         elif [ `facter operatingsystem` = "CentOS" ] ; then
            HOST_NAME=CentOS$get_version
            echo "its a CentOS-Host:$HOST_NAME" ;
+        elif [ `facter operatingsystem` = "RedHat" ] ; then
+           HOST_NAME=RedHat$get_version
+           echo "its a RedHat-Host:$HOST_NAME" ;
         fi
     	case $HOST_NAME in
     	Ubuntu14*)
@@ -110,6 +113,17 @@ install_deps() {
                       fi
                 done
        	      ;;
+
+        RedHat7*)
+                echo "REDHAT VM"
+                yum -y group install "Development Tools"
+                for pkg in readline readline-devel glib2 glib2-devel autoconf* bison* libevent-devel zlib-devel openssl-devel boost* wget
+                do
+                      if [ $(rpm -q $pkg | grep -c "not installed") -eq 1 ]; then
+                            yum -y install $pkg
+                      fi
+                done
+              ;;
     	esac
     done
 #Clean the directory
@@ -172,6 +186,9 @@ install_deps() {
     elif [ `facter operatingsystem` = "CentOS" ] ; then
         HOST_NAME=CentOS$get_version
         echo "its a CentOS-Host:$HOST_NAME" ;
+    elif [ `facter operatingsystem` = "RedHat" ] ; then
+        HOST_NAME=RedHat$get_version
+        echo "its a RedHat-Host:$HOST_NAME" ;
     fi
     case $HOST_NAME in
     Ubuntu*)
@@ -188,6 +205,15 @@ install_deps() {
          adduser --system --gid quagga --home /opt/quagga/var/run/quagga \
                 --comment  "Quagga-BGP routing suite" \
                 --shell /bin/false quagga
+        ;;
+    RedHat*)
+         echo "REDHAT VM"
+         if [ $(grep -c "quagga" /etc/group) -eq 0 ]; then
+             groupadd --system quagga
+             adduser --system --gid quagga --home /opt/quagga/var/run/quagga \
+                    --comment  "Quagga-BGP routing suite" \
+                    --shell /bin/false quagga
+         fi
         ;;
      esac
     chown -R quagga:quagga /opt/quagga/var/run/quagga
@@ -223,6 +249,9 @@ build_zrpcd (){
         elif [ `facter operatingsystem` = "CentOS" ] ; then
            HOST_NAME=CentOS$get_version
            echo "its a CentOS-Host:$HOST_NAME" ;
+        elif [ `facter operatingsystem` = "RedHat" ] ; then
+           HOST_NAME=RedHat$get_version
+           echo "its a RedHat-Host:$HOST_NAME" ;
         fi         
         case $HOST_NAME in
         Ubuntu*)
@@ -230,6 +259,9 @@ build_zrpcd (){
            ;;
         CentOS*)
               cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
+           ;;
+        RedHat*)
+              cp pkgsrc/zrpcd.redhat7 /opt/quagga/etc/init.d/zrpcd
            ;;
         esac
         chmod +x /opt/quagga/etc/init.d/zrpcd
@@ -248,6 +280,9 @@ build_zrpcd (){
         elif [ `facter operatingsystem` = "CentOS" ] ; then
            HOST_NAME=CentOS$get_version
            echo "its a CentOS-Host:$HOST_NAME" ;
+        elif [ `facter operatingsystem` = "RedHat" ] ; then
+           HOST_NAME=RedHat$get_version
+           echo "its a RedHat-Host:$HOST_NAME" ;
         fi   
         case $HOST_NAME in
         Ubuntu*)
@@ -255,6 +290,9 @@ build_zrpcd (){
            ;;
         CentOS*)
               cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
+           ;;
+        RedHat*)
+              cp pkgsrc/zrpcd.redhat7 /opt/quagga/etc/init.d/zrpcd
            ;;
         esac
         chmod +x /opt/quagga/etc/init.d/zrpcd
