@@ -58,7 +58,7 @@ install_deps() {
         if ! [ -x "$(command -v facter)" ]; then
            echo 'Error: facter is not installed.' >&2
            echo "Facter  is installing now" 
-           apt-get install -y facter || yum -y install facter ;
+           apt-get install -y facter || yum -y install facter || zypper install -y facter ;
         else
            echo "facter is already installed"
         fi
@@ -74,6 +74,9 @@ install_deps() {
         elif [ $distrib = "RedHat" ] ; then
            HOST_NAME=RedHat$version
            echo "its a RedHat-Host:$HOST_NAME" ;
+        elif [ $distrib = "SUSE" ] ; then
+           HOST_NAME=SUSE$version
+           echo "its a SUSE-Host:$HOST_NAME" ;
         fi
     	case $HOST_NAME in
     	Ubuntu14*)
@@ -127,6 +130,17 @@ install_deps() {
                       fi
                 done
               ;;
+        SUSE*)
+                echo "SUSE VM"
+                for pkg in glibc-devel pcre-devel gcc automake libtool perl-Error git-core git flex bison emacs glib2-tools \
+			libglib-2_0-0-debuginfo glibc-devel-static glib2-devel gcc48-c++
+                do
+                      if [ $(rpm -q $pkg | grep -c "not installed") -eq 1 ]; then
+                            zypper install $pkg
+                      fi
+                done
+              ;;
+
     	esac
     done
 #Clean the directory
@@ -192,6 +206,9 @@ install_deps() {
     elif [ $distrib = "RedHat" ] ; then
         HOST_NAME=RedHat$version
         echo "its a RedHat-Host:$HOST_NAME" ;
+    elif [ $distrib = "SUSE" ] ; then
+        HOST_NAME=SUSE$version
+        echo "its a SUSE-Host:$HOST_NAME" ;
     fi
     case $HOST_NAME in
     Ubuntu*)
@@ -214,6 +231,15 @@ install_deps() {
          if [ $(grep -c "quagga" /etc/group) -eq 0 ]; then
              groupadd --system quagga
              adduser --system --gid quagga --home /opt/quagga/var/run/quagga \
+                    --comment  "Quagga-BGP routing suite" \
+                    --shell /bin/false quagga
+         fi
+        ;;
+    SUSE*)
+         echo "SUSE VM"
+         if [ $(grep -c "quagga" /etc/group) -eq 0 ]; then
+             groupadd --system quagga
+             useradd --system --gid quagga --home /opt/quagga/var/run/quagga \
                     --comment  "Quagga-BGP routing suite" \
                     --shell /bin/false quagga
          fi
@@ -258,6 +284,9 @@ build_zrpcd (){
         elif [ $distrib = "RedHat" ] ; then
            HOST_NAME=RedHat$version
            echo "its a RedHat-Host:$HOST_NAME" ;
+        elif [ $distrib = "SUSE" ] ; then
+           HOST_NAME=SUSE$version
+           echo "its a SUSE-Host:$HOST_NAME" ;
         fi         
         case $HOST_NAME in
         Ubuntu*)
@@ -268,6 +297,9 @@ build_zrpcd (){
            ;;
         RedHat*)
               cp pkgsrc/zrpcd.redhat7 /opt/quagga/etc/init.d/zrpcd
+           ;;
+        SUSE*)
+              cp pkgsrc/zrpcd.suse /opt/quagga/etc/init.d/zrpcd
            ;;
         esac
         chmod +x /opt/quagga/etc/init.d/zrpcd
@@ -289,6 +321,9 @@ build_zrpcd (){
         elif [ $distrib = "RedHat" ] ; then
            HOST_NAME=RedHat$version
            echo "its a RedHat-Host:$HOST_NAME" ;
+        elif [ $distrib = "SUSE" ] ; then
+           HOST_NAME=SUSE$version
+           echo "its a SUSE-Host:$HOST_NAME" ;
         fi   
         case $HOST_NAME in
         Ubuntu*)
@@ -299,6 +334,9 @@ build_zrpcd (){
            ;;
         RedHat*)
               cp pkgsrc/zrpcd.redhat7 /opt/quagga/etc/init.d/zrpcd
+           ;;
+        SUSE*)
+              cp pkgsrc/zrpcd.suse /opt/quagga/etc/init.d/zrpcd
            ;;
         esac
         chmod +x /opt/quagga/etc/init.d/zrpcd
