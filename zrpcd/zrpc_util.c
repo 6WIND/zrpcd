@@ -57,6 +57,9 @@ zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type)
   char buf_local[ZRPC_UTIL_RDRT_LEN];
   struct in_addr addr_ipv4;
 
+  if (!buf || !rd_rt)
+    return 0;
+
   /* bad length */
   if(strlen(buf) > ZRPC_UTIL_RDRT_LEN)
     return 0;

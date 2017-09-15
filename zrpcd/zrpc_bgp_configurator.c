@@ -2272,9 +2272,16 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
      memset(&instvrf, 0, sizeof(struct bgp_vrf));
      qcapn_BGPVRF_read(&instvrf, grep_vrf->data);
      if (instvrf.rt_import)
-       zrpc_util_rdrt_free (instvrf.rt_import);
+       {
+         zrpc_util_rdrt_free (instvrf.rt_import);
+         instvrf.rt_import = NULL;
+       }
+
      if (instvrf.rt_export)
-       zrpc_util_rdrt_free (instvrf.rt_export);
+       {
+         zrpc_util_rdrt_free (instvrf.rt_export);
+         instvrf.rt_export = NULL;
+       }
      /* reset qzc reply and rc context */
      qzcclient_qzcgetrep_free( grep_vrf);
    }
@@ -3771,6 +3778,10 @@ instance_bgp_configurator_handler_multipaths(BgpConfiguratorIf *iface, gint32* _
       }
   }
 
+  if (instvrf.rt_import)
+      zrpc_util_rdrt_free (instvrf.rt_import);
+  if (instvrf.rt_export)
+      zrpc_util_rdrt_free (instvrf.rt_export);
   return TRUE;
 }
 
