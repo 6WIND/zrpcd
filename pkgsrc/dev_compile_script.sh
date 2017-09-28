@@ -333,6 +333,12 @@ build_zrpcd (){
            ;;
         RedHat*)
               cp pkgsrc/zrpcd.redhat7 $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+              if [ -d pkgsrc/systemd ]; then
+                  mkdir $INSTALL_DIR/usr/lib/systemd/system -p
+                  cp -p pkgsrc/systemd/qbgp.service $INSTALL_DIR/usr/lib/systemd/system
+                  mkdir $INSTALL_DIR/etc/sysconfig -p
+                  cp -p pkgsrc/systemd/qbgp $INSTALL_DIR/etc/sysconfig
+              fi
            ;;
         SUSE*)
               cp pkgsrc/zrpcd.suse $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
@@ -385,6 +391,12 @@ build_zrpcd (){
            ;;
         RedHat*)
               cp pkgsrc/zrpcd.redhat7 $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+              if [ -d pkgsrc/systemd ]; then
+                  mkdir $INSTALL_DIR/usr/lib/systemd/system -p
+                  cp -p pkgsrc/systemd/qbgp.service $INSTALL_DIR/usr/lib/systemd/system
+                  mkdir $INSTALL_DIR/etc/sysconfig -p
+                  cp -p pkgsrc/systemd/qbgp $INSTALL_DIR/etc/sysconfig
+              fi
            ;;
         SUSE*)
               cp pkgsrc/zrpcd.suse $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
