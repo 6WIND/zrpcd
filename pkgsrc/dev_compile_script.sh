@@ -189,8 +189,8 @@ install_deps() {
     else
         INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/quagga/install_tmp
         QUAGGA_DIR=$ZRPCD_BUILD_FOLDER/packager/quagga
-	rm -rf $INSTALL_DIR
-	rm -rf $QUAGGA_DIR
+        rm -rf $INSTALL_DIR
+        rm -rf $QUAGGA_DIR
     fi
     git clone https://github.com/6WIND/quagga.git
     cd quagga
@@ -205,6 +205,7 @@ install_deps() {
         make install
     else
         make install DESTDIR=$INSTALL_DIR
+        COMMITID=`git log -n1 --format="%h"`
     fi
     cd ..
     popd
@@ -273,7 +274,7 @@ install_deps() {
             fi
             ;;
         esac
-        $DIR_NAME/packaging.sh "quagga" $INSTALL_DIR $QUAGGA_DIR $HOST_NAME
+        $DIR_NAME/packaging.sh "quagga" $INSTALL_DIR $QUAGGA_DIR $HOST_NAME $COMMITID
     fi
 }
 build_zrpcd (){
@@ -287,8 +288,8 @@ build_zrpcd (){
     else
         INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/zrpc/bin
         ZRPC_DIR=$ZRPCD_BUILD_FOLDER/packager/zrpc
-	rm -rf $INSTALL_DIR
-	rm -rf $ZRPC_DIR
+        rm -rf $INSTALL_DIR
+        rm -rf $ZRPC_DIR
     fi
 
     if [ -z "${BUILD_FROM_DIST}" ]; then
@@ -347,6 +348,11 @@ build_zrpcd (){
         LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install
     else
         LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install DESTDIR=$INSTALL_DIR
+        if [ -d .git ]; then
+            COMMITID=`git log -n1 --format="%h"`
+        else
+            COMMITID=""
+        fi
     fi
     # Temporarily disable this when using the dist method
     if [ -z "$BUILD_FROM_DIST" ]; then
@@ -394,7 +400,7 @@ build_zrpcd (){
             fi
 	    ;;
         esac
-        $DIR_NAME/packaging.sh "zrpc" $INSTALL_DIR $ZRPC_DIR $HOST_NAME
+        $DIR_NAME/packaging.sh "zrpc" $INSTALL_DIR $ZRPC_DIR $HOST_NAME $COMMITID
     else
         echo "hostname bgpd" > /opt/quagga/etc/bgpd.conf
         echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf

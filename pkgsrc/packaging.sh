@@ -31,9 +31,16 @@
 set -eux
 set +u
 
-DATE=`date "+%Y%m%d"`
+# There must be 5 parameters given by callers:
+# $1 - "zrpc" or "quagga"
+# $2 - the directory where files are installed
+# $3 - working directory for packaging
+# $4 - hostname, including distribution and version, such as "Ubuntu14.04"
+# $5 - last git commit ID
+
 INST_BIN_DIR=$2
 HOST_NAME=$4
+COMMITID=$5
 PACKAGE_DEB="n"
 
 zrpc_copy_bin_files () {
@@ -52,7 +59,11 @@ zrpc_copy_bin_files () {
 
 zrpc_rpm_bin_spec () {
     echo "Name: zrpc" >> $RPM_SPEC_FILE
-    echo "Version: 0.2.$DATE" >> $RPM_SPEC_FILE
+    if [ -z "$COMMITID" ]; then
+        echo "Version: 0.2.$HOST_NAME" >> $RPM_SPEC_FILE
+    else
+        echo "Version: 0.2.$COMMITID.$HOST_NAME" >> $RPM_SPEC_FILE
+    fi
     echo "Release: 0" >> $RPM_SPEC_FILE
     echo >> $RPM_SPEC_FILE
 
@@ -115,7 +126,11 @@ zrpc_rpm_bin_spec () {
 zrpc_deb_bin_control () {
 
     echo "Package: zrpc" >> $DEB_CONTROL_FILE
-    echo "Version: 0.2.$DATE" >> $DEB_CONTROL_FILE
+    if [ -z "$COMMITID" ]; then
+        echo "Version: 0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
+    else
+        echo "Version: 0.2.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+    fi
     echo "Architecture: amd64" >> $DEB_CONTROL_FILE
     echo "Maintainer: 6WIND <packaging@6wind.com>" >> $DEB_CONTROL_FILE
     echo "Depends: thrift(>=0.9), zmq(>=4.1.0), libglib2.0-0(>=2.22.5), quagga(>=1.1.0), c-capnproto(>=1.0.0)" >> $DEB_CONTROL_FILE
@@ -192,7 +207,11 @@ quagga_copy_bin_files () {
 quagga_rpm_bin_spec () {
 
     echo "Name: quagga" >> $RPM_SPEC_FILE
-    echo "Version: 1.1.0.$DATE" >> $RPM_SPEC_FILE
+    if [ -z "$COMMITID" ]; then
+        echo "Version: 1.1.0.$HOST_NAME" >> $RPM_SPEC_FILE
+    else
+        echo "Version: 1.1.0.$COMMITID.$HOST_NAME" >> $RPM_SPEC_FILE
+    fi
     echo "Release: 0" >> $RPM_SPEC_FILE
     echo >> $RPM_SPEC_FILE
 
@@ -251,7 +270,11 @@ quagga_rpm_bin_spec () {
 quagga_deb_bin_control () {
 
     echo "Package: quagga" >> $DEB_CONTROL_FILE
-    echo "Version: 1.1.0.$DATE" >> $DEB_CONTROL_FILE
+    if [ -z "$COMMITID" ]; then
+        echo "Version: 1.1.0.$HOST_NAME" >> $DEB_CONTROL_FILE
+    else
+        echo "Version: 1.1.0.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+    fi
     echo "Architecture: amd64" >> $DEB_CONTROL_FILE
     echo "Maintainer: 6WIND <packaging@6wind.com>" >> $DEB_CONTROL_FILE
     echo "Depends: zmq(>=4.1.0), c-capnproto(>=1.0.0)" >> $DEB_CONTROL_FILE
