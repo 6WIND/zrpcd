@@ -339,6 +339,12 @@ build_zrpcd (){
            ;;
         esac
         chmod +x $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+        if [ -f pkgsrc/zrpcd_log_rotate.sh ]; then
+            cp pkgsrc/zrpcd_log_rotate.sh $INSTALL_DIR/opt/quagga/etc/init.d/
+        fi
+        if [ -f pkgsrc/zrpcd.rotate ]; then
+            cp pkgsrc/zrpcd.rotate $INSTALL_DIR/opt/quagga/etc/init.d/
+        fi
     fi
     touch NEWS README
     autoreconf -i
@@ -385,6 +391,12 @@ build_zrpcd (){
            ;;
         esac
         chmod +x $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+        if [ -f pkgsrc/zrpcd_log_rotate.sh ]; then
+            cp pkgsrc/zrpcd_log_rotate.sh $INSTALL_DIR/opt/quagga/etc/init.d/
+        fi
+        if [ -f pkgsrc/zrpcd.rotate ]; then
+            cp pkgsrc/zrpcd.rotate $INSTALL_DIR/opt/quagga/etc/init.d/
+        fi
     fi
     if [ -z "${BUILD_FROM_DIST}" ]; then
         popd
