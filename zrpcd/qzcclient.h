@@ -22,6 +22,9 @@ void qzcclient_init(void);
 
 void qzcclient_close(struct qzcclient_sock *sock);
 
+int qzcclient_setsockopt(struct qzcclient_sock *sock, int option,
+                         const void *optval, size_t optvallen);
+
 capn_ptr 
 qzcclient_msg_to_notification(zmq_msg_t *msg, struct capn *rc);
 

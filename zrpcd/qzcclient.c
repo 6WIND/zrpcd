@@ -109,6 +109,21 @@ void qzcclient_close (struct qzcclient_sock *sock)
   ZRPC_FREE( sock);
 }
 
+int qzcclient_setsockopt(struct qzcclient_sock *sock, int option,
+                         const void *optval, size_t optvallen)
+{
+  if (!sock || !sock->zmq)
+    return 0;
+
+  if (zmq_setsockopt(sock->zmq, option, optval, optvallen))
+    {
+      zrpc_log ("zmq_setsockopt failed: %s (%d)", strerror (errno), errno);
+      return -1;
+    }
+
+  return 0;
+}
+
 struct qzcclient_sock *qzcclient_connect (const char *url)
 {
   void *qzc_sock;
