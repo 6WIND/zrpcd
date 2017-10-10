@@ -185,9 +185,22 @@ install_deps() {
     autoreconf -i
     ./configure --without-libsodium --prefix=/opt/quagga
     make
-    make install
-    cd ..
+    if [ -z "$DO_PACKAGING" ]; then
+        make install
+        popd
+    else
+        INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/zmq/install_tmp
+        ZMQ_DIR=$ZRPCD_BUILD_FOLDER/packager/zmq
+        rm -rf $INSTALL_DIR
+        rm -rf $ZMQ_DIR
+        make install DESTDIR=$INSTALL_DIR
+        COMMITID=`git log -n1 --format="%h"`
+
+        popd
+        $DIR_NAME/packaging.sh "zmq" $INSTALL_DIR $ZMQ_DIR $HOST_NAME $COMMITID
+    fi
 #Install C-capnproto
+     pushd $ZRPCD_BUILD_FOLDER
      git clone https://github.com/opensourcerouting/c-capnproto
      cd c-capnproto
      git checkout c-capnproto-0.2
