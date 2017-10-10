@@ -304,6 +304,93 @@ quagga_deb_bin_control () {
     chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
 }
 
+ccapnproto_copy_bin_files () {
+    pushd $INST_BIN_DIR
+    if [ $PACKAGE_DEB = "y" ]; then
+       find . \! -type d | cpio -o -H ustar -R 0:0 | tar -C $DEB_BIN_DIR -x
+    fi
+    popd
+}
+
+ccapnproto_rpm_bin_spec () {
+    echo "Name: c-capnproto" >> $RPM_SPEC_FILE
+    if [ -z "$COMMITID" ]; then
+        echo "Version: 1.0.2.$HOST_NAME" >> $RPM_SPEC_FILE
+    else
+        echo "Version: 1.0.2.$COMMITID.$HOST_NAME" >> $RPM_SPEC_FILE
+    fi
+    echo "Release: 0" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "Summary: c-ccapnproto library" >> $RPM_SPEC_FILE
+    echo "Group: Applications/Internet" >> $RPM_SPEC_FILE
+    echo "License: MIT" >> $RPM_SPEC_FILE
+
+    echo "BuildRoot: $RPM_BIN_DIR/BUILD/ROOT" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%description" >> $RPM_SPEC_FILE
+    printf "Library for CCAPNPROTO.\nCCAPNPROTO_BUILD_DEPS=''\n" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%install" >> $RPM_SPEC_FILE
+    echo "rm -rf %{buildroot} && mkdir -p %{buildroot}" >> $RPM_SPEC_FILE
+    echo "cd $INST_BIN_DIR && find . \! -type d | cpio -o -H ustar -R 0:0 | tar -C %{buildroot} -x" >> $RPM_SPEC_FILE
+    echo "find %{buildroot} -type f -o -type l|sed "s,%{buildroot},," > %{_builddir}/files" >> $RPM_SPEC_FILE
+    echo "sed -ri "s/\.py$/\.py*/" %{_builddir}/files" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%clean" >> $RPM_SPEC_FILE
+    echo "rm -rf %{buildroot}" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%pre" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%postun" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%post" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%preun" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%files -f %{_builddir}/files" >> $RPM_SPEC_FILE
+    echo "%defattr(-,root,root)" >> $RPM_SPEC_FILE
+}
+
+ccapnproto_deb_bin_control () {
+    echo "Package: c-capnproto" >> $DEB_CONTROL_FILE
+    if [ -z "$COMMITID" ]; then
+        echo "Version: 1.0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
+    else
+        echo "Version: 1.0.2.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+    fi
+    echo "Architecture: amd64" >> $DEB_CONTROL_FILE
+    echo "Maintainer: 6WIND <packaging@6wind.com>" >> $DEB_CONTROL_FILE
+    echo "Description: c-ccapnproto library" >> $DEB_CONTROL_FILE
+    printf " Library for CCAPNPROTO.\n  CCAPNPROTO_BUILD_DEPS=''\n" >> $DEB_CONTROL_FILE
+
+    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
+    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+    printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+    chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
+
+    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
+    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
+    chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
+
+    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
+    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+    printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+    chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+}
+
 case $HOST_NAME in
 Ubuntu*)
     PACKAGE_DEB="y"
@@ -315,9 +402,12 @@ Ubuntu*)
     if [ $1 = "zrpc" ]; then
         zrpc_copy_bin_files
         zrpc_deb_bin_control
-    else
+    elif [ $1 = "quagga" ]; then
         quagga_copy_bin_files
         quagga_deb_bin_control
+    elif [ $1 = "c-capnproto" ]; then
+        ccapnproto_copy_bin_files
+        ccapnproto_deb_bin_control
     fi
 
     PKG_DIR=`dirname $0`
@@ -333,9 +423,12 @@ RedHat*|CentOS*|SUSE*)
     if [ $1 = "zrpc" ]; then
         zrpc_copy_bin_files
         zrpc_rpm_bin_spec
-    else
+    elif [ $1 = "quagga" ]; then
         quagga_copy_bin_files
         quagga_rpm_bin_spec
+    elif [ $1 = "c-capnproto" ]; then
+        ccapnproto_copy_bin_files
+        ccapnproto_rpm_bin_spec
     fi
 
     PKG_DIR=`dirname $0`

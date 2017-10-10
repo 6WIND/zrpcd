@@ -34,6 +34,8 @@ ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
 THRIFT_FOLDER_NAME=thrift
 THRIFT_BUILD_FOLDER=$ZRPCD_BUILD_FOLDER/$THRIFT_FOLDER_NAME
 
+DIR_NAME=`dirname $0`
+
 export_variables (){
     #these are required by quagga
     export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
@@ -180,10 +182,23 @@ install_deps() {
      autoreconf -fiv
      ./configure --prefix=/opt/quagga --without-gtest
      make
-     make install
-     cd ..
+     if [ -z "$DO_PACKAGING" ]; then
+         make install
+         popd
+     else
+         INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/c-capnproto/bin
+         CCAPNPROTO_DIR=$ZRPCD_BUILD_FOLDER/packager/c-capnproto
+         rm -rf $INSTALL_DIR
+         rm -rf $CCAPNPROTO_DIR
+         make install DESTDIR=$INSTALL_DIR
+         COMMITID=`git log -n1 --format="%h"`
+
+         popd
+         $DIR_NAME/packaging.sh "c-capnproto" $INSTALL_DIR $CCAPNPROTO_DIR $HOST_NAME $COMMITID
+     fi
 #Install Quagga
 
+    pushd $ZRPCD_BUILD_FOLDER
     if [ -z "$DO_PACKAGING" ]; then
         INSTALL_DIR=
     else
@@ -266,7 +281,6 @@ install_deps() {
         chown -R quagga:quagga /opt/quagga/var/run/quagga
         chown -R quagga:quagga /opt/quagga/var/log/quagga
     else
-        DIR_NAME=`dirname $0`
         case $HOST_NAME in
         Ubuntu*)
             if [ -f $DIR_NAME/preinst ]; then
@@ -415,8 +429,6 @@ build_zrpcd (){
     fi
 
     if [ -n "$DO_PACKAGING" ]; then
-        DIR_NAME=`dirname $0`
-
         case $HOST_NAME in
         Ubuntu*)
             if [ -f $DIR_NAME/preinst.zrpc ]; then
