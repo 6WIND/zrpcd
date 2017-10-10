@@ -33,6 +33,9 @@ set +u
 ZRPCD_BUILD_FOLDER=${ZRPCD_BUILD_FOLDER:-/tmp}
 THRIFT_FOLDER_NAME=thrift
 THRIFT_BUILD_FOLDER=$ZRPCD_BUILD_FOLDER/$THRIFT_FOLDER_NAME
+
+DIR_NAME=`dirname $0`
+
 export_variables (){
     #these are required by quagga
     export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
@@ -57,17 +60,25 @@ install_deps() {
         if ! [ -x "$(command -v facter)" ]; then
            echo 'Error: facter is not installed.' >&2
            echo "Facter  is installing now" 
-           apt-get install -y facter || yum -y install facter ;
+           apt-get install -y facter || yum -y install facter || zypper install -y facter ;
         else
            echo "facter is already installed"
         fi
-        get_version=`facter operatingsystemrelease`
-        if [ `facter operatingsystem` = "Ubuntu" ]; then
-           HOST_NAME=Ubuntu$get_version
+        distrib=`facter operatingsystem`
+        version=`facter operatingsystemrelease`
+
+        if [ $distrib = "Ubuntu" ]; then
+           HOST_NAME=Ubuntu$version
            echo "its a Ubuntu-Host:$HOST_NAME " ;
-        elif [ `facter operatingsystem` = "CentOS" ] ; then
-           HOST_NAME=CentOS$get_version
+        elif [ $distrib = "CentOS" ] ; then
+           HOST_NAME=CentOS$version
            echo "its a CentOS-Host:$HOST_NAME" ;
+        elif [ $distrib = "RedHat" ] ; then
+           HOST_NAME=RedHat$version
+           echo "its a RedHat-Host:$HOST_NAME" ;
+        elif [ $distrib = "SUSE" ] ; then
+           HOST_NAME=SUSE$version
+           echo "its a SUSE-Host:$HOST_NAME" ;
         fi
     	case $HOST_NAME in
     	Ubuntu14*)
@@ -110,6 +121,28 @@ install_deps() {
                       fi
                 done
        	      ;;
+
+        RedHat7*)
+                echo "REDHAT VM"
+                yum -y group install "Development Tools"
+                for pkg in readline readline-devel glib2 glib2-devel autoconf* bison* libevent-devel zlib-devel openssl-devel boost* wget
+                do
+                      if [ $(rpm -q $pkg | grep -c "not installed") -eq 1 ]; then
+                            yum -y install $pkg
+                      fi
+                done
+              ;;
+        SUSE*)
+                echo "SUSE VM"
+                for pkg in glibc-devel pcre-devel gcc automake libtool perl-Error git-core git flex bison emacs glib2-tools \
+			libglib-2_0-0-debuginfo glibc-devel-static glib2-devel gcc48-c++
+                do
+                      if [ $(rpm -q $pkg | grep -c "not installed") -eq 1 ]; then
+                            zypper install $pkg
+                      fi
+                done
+              ;;
+
     	esac
     done
 #Clean the directory
@@ -130,18 +163,44 @@ install_deps() {
     --without-haskell --without-go --without-haxe --without-d\
     --prefix=/opt/quagga
     make
-    make install
-    cd ..
+    if [ -z "$DO_PACKAGING" ]; then
+        make install
+        popd
+    else
+        INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/thrift/install_tmp
+        THRIFT_DIR=$ZRPCD_BUILD_FOLDER/packager/thrift
+        rm -rf $INSTALL_DIR
+        rm -rf $THRIFT_DIR
+        make install DESTDIR=$INSTALL_DIR
+        COMMITID=`git log -n1 --format="%h"`
+
+        popd
+        $DIR_NAME/packaging.sh "thrift" $INSTALL_DIR $THRIFT_DIR $HOST_NAME $COMMITID
+    fi
 #Install ZeroMQ
+    pushd $ZRPCD_BUILD_FOLDER
     git clone https://github.com/zeromq/zeromq4-1.git
     cd zeromq4-1
     git checkout 56b71af22db3
     autoreconf -i
     ./configure --without-libsodium --prefix=/opt/quagga
     make
-    make install
-    cd ..
+    if [ -z "$DO_PACKAGING" ]; then
+        make install
+        popd
+    else
+        INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/zmq/install_tmp
+        ZMQ_DIR=$ZRPCD_BUILD_FOLDER/packager/zmq
+        rm -rf $INSTALL_DIR
+        rm -rf $ZMQ_DIR
+        make install DESTDIR=$INSTALL_DIR
+        COMMITID=`git log -n1 --format="%h"`
+
+        popd
+        $DIR_NAME/packaging.sh "zmq" $INSTALL_DIR $ZMQ_DIR $HOST_NAME $COMMITID
+    fi
 #Install C-capnproto
+     pushd $ZRPCD_BUILD_FOLDER
      git clone https://github.com/opensourcerouting/c-capnproto
      cd c-capnproto
      git checkout c-capnproto-0.2
@@ -149,9 +208,31 @@ install_deps() {
      autoreconf -fiv
      ./configure --prefix=/opt/quagga --without-gtest
      make
-     make install
-     cd ..
+     if [ -z "$DO_PACKAGING" ]; then
+         make install
+         popd
+     else
+         INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/c-capnproto/bin
+         CCAPNPROTO_DIR=$ZRPCD_BUILD_FOLDER/packager/c-capnproto
+         rm -rf $INSTALL_DIR
+         rm -rf $CCAPNPROTO_DIR
+         make install DESTDIR=$INSTALL_DIR
+         COMMITID=`git log -n1 --format="%h"`
+
+         popd
+         $DIR_NAME/packaging.sh "c-capnproto" $INSTALL_DIR $CCAPNPROTO_DIR $HOST_NAME $COMMITID
+     fi
 #Install Quagga
+
+    pushd $ZRPCD_BUILD_FOLDER
+    if [ -z "$DO_PACKAGING" ]; then
+        INSTALL_DIR=
+    else
+        INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/quagga/install_tmp
+        QUAGGA_DIR=$ZRPCD_BUILD_FOLDER/packager/quagga
+        rm -rf $INSTALL_DIR
+        rm -rf $QUAGGA_DIR
+    fi
     git clone https://github.com/6WIND/quagga.git
     cd quagga
     git checkout quagga_mpbgp_capnp
@@ -161,43 +242,96 @@ install_deps() {
     --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga \
     --disable-doc --enable-multipath=64
     make
-    make install
-    cp /opt/quagga/etc/bgpd.conf.sample4 /opt/quagga/etc/bgpd.conf
-    mkdir /opt/quagga/var/run/quagga -p
-    mkdir /opt/quagga/var/log/quagga -p
-    touch /opt/quagga/var/log/quagga/zrpcd.init.log
-    if [ `facter operatingsystem` = "Ubuntu" ]; then
-        HOST_NAME=Ubuntu$get_version
-        echo "its a Ubuntu-Host:$HOST_NAME " ;
-    elif [ `facter operatingsystem` = "CentOS" ] ; then
-        HOST_NAME=CentOS$get_version
-        echo "its a CentOS-Host:$HOST_NAME" ;
+    if [ -z "$DO_PACKAGING" ]; then
+        make install
+    else
+        make install DESTDIR=$INSTALL_DIR
+        COMMITID=`git log -n1 --format="%h"`
     fi
-    case $HOST_NAME in
-    Ubuntu*)
-         echo "UBUNTU VM"
-         addgroup --system quagga
-         addgroup --system quagga
-         adduser --system --ingroup quagga --home /opt/quagga/var/run/quagga \
-                 --gecos "Quagga-BGP routing suite" \
-                --shell /bin/false quagga  >/dev/null
-       ;;
-    CentOS*)
-         echo "CENTOS VM"
-         groupadd --system quagga
-         adduser --system --gid quagga --home /opt/quagga/var/run/quagga \
-                --comment  "Quagga-BGP routing suite" \
-                --shell /bin/false quagga
-        ;;
-     esac
-    chown -R quagga:quagga /opt/quagga/var/run/quagga
-    chown -R quagga:quagga /opt/quagga/var/log/quagga
     cd ..
     popd
+
+    cp $INSTALL_DIR/opt/quagga/etc/bgpd.conf.sample4 $INSTALL_DIR/opt/quagga/etc/bgpd.conf
+    mkdir $INSTALL_DIR/opt/quagga/var/run/quagga -p
+    mkdir $INSTALL_DIR/opt/quagga/var/log/quagga -p
+    if [ -z "$DO_PACKAGING" ]; then
+        touch /opt/quagga/var/log/quagga/zrpcd.init.log
+        if [ $distrib = "Ubuntu" ]; then
+            HOST_NAME=Ubuntu$version
+            echo "its a Ubuntu-Host:$HOST_NAME " ;
+        elif [ $distrib = "CentOS" ] ; then
+            HOST_NAME=CentOS$version
+            echo "its a CentOS-Host:$HOST_NAME" ;
+        elif [ $distrib = "RedHat" ] ; then
+            HOST_NAME=RedHat$version
+            echo "its a RedHat-Host:$HOST_NAME" ;
+        elif [ $distrib = "SUSE" ] ; then
+            HOST_NAME=SUSE$version
+            echo "its a SUSE-Host:$HOST_NAME" ;
+        fi
+        case $HOST_NAME in
+        Ubuntu*)
+             echo "UBUNTU VM"
+             addgroup --system quagga
+             addgroup --system quagga
+             adduser --system --ingroup quagga --home /opt/quagga/var/run/quagga \
+                     --gecos "Quagga-BGP routing suite" \
+                    --shell /bin/false quagga  >/dev/null
+            ;;
+        CentOS*)
+             echo "CENTOS VM"
+             groupadd --system quagga
+             adduser --system --gid quagga --home /opt/quagga/var/run/quagga \
+                    --comment  "Quagga-BGP routing suite" \
+                    --shell /bin/false quagga
+            ;;
+        RedHat*)
+             echo "REDHAT VM"
+             if [ $(grep -c "quagga" /etc/group) -eq 0 ]; then
+                 groupadd --system quagga
+                 adduser --system --gid quagga --home /opt/quagga/var/run/quagga \
+                        --comment  "Quagga-BGP routing suite" \
+                        --shell /bin/false quagga
+             fi
+            ;;
+        SUSE*)
+             echo "SUSE VM"
+             if [ $(grep -c "quagga" /etc/group) -eq 0 ]; then
+                 groupadd --system quagga
+                 useradd --system --gid quagga --home /opt/quagga/var/run/quagga \
+                        --comment  "Quagga-BGP routing suite" \
+                        --shell /bin/false quagga
+             fi
+            ;;
+        esac
+        chown -R quagga:quagga /opt/quagga/var/run/quagga
+        chown -R quagga:quagga /opt/quagga/var/log/quagga
+    else
+        case $HOST_NAME in
+        Ubuntu*)
+            if [ -f $DIR_NAME/preinst ]; then
+                cp $DIR_NAME/preinst $INSTALL_DIR/
+            fi
+            ;;
+        esac
+        $DIR_NAME/packaging.sh "quagga" $INSTALL_DIR $QUAGGA_DIR $HOST_NAME $COMMITID
+    fi
 }
 build_zrpcd (){
 #Install ZRPC.
     export_variables
+    distrib=`facter operatingsystem`
+    version=`facter operatingsystemrelease`
+
+    if [ -z "$DO_PACKAGING" ]; then
+        INSTALL_DIR=
+    else
+        INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/zrpc/bin
+        ZRPC_DIR=$ZRPCD_BUILD_FOLDER/packager/zrpc
+        rm -rf $INSTALL_DIR
+        rm -rf $ZRPC_DIR
+    fi
+
     if [ -z "${BUILD_FROM_DIST}" ]; then
         pushd $ZRPCD_BUILD_FOLDER
         git clone https://github.com/6WIND/zrpcd.git
@@ -216,62 +350,131 @@ build_zrpcd (){
         tar zxvf $DIST_ARCHIVE
         cd "${DIST_ARCHIVE%.tar.gz}"
         cd ..
-        mkdir /opt/quagga/etc/init.d -p
-        if [ `facter operatingsystem` = "Ubuntu" ]; then
-           HOST_NAME=Ubuntu$get_version
+        mkdir $INSTALL_DIR/opt/quagga/etc/init.d -p
+        if [ $distrib = "Ubuntu" ]; then
+           HOST_NAME=Ubuntu$version
            echo "its a Ubuntu-Host:$HOST_NAME " ;
-        elif [ `facter operatingsystem` = "CentOS" ] ; then
-           HOST_NAME=CentOS$get_version
+        elif [ $distrib = "CentOS" ] ; then
+           HOST_NAME=CentOS$version
            echo "its a CentOS-Host:$HOST_NAME" ;
+        elif [ $distrib = "RedHat" ] ; then
+           HOST_NAME=RedHat$version
+           echo "its a RedHat-Host:$HOST_NAME" ;
+        elif [ $distrib = "SUSE" ] ; then
+           HOST_NAME=SUSE$version
+           echo "its a SUSE-Host:$HOST_NAME" ;
         fi         
         case $HOST_NAME in
         Ubuntu*)
-             cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+             cp pkgsrc/zrpcd.ubuntu $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
            ;;
         CentOS*)
-              cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
+              cp pkgsrc/zrpcd.centos $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+           ;;
+        RedHat*)
+              cp pkgsrc/zrpcd.redhat7 $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+              if [ -d pkgsrc/systemd ]; then
+                  mkdir $INSTALL_DIR/usr/lib/systemd/system -p
+                  cp -p pkgsrc/systemd/qbgp.service $INSTALL_DIR/usr/lib/systemd/system
+                  mkdir $INSTALL_DIR/etc/sysconfig -p
+                  cp -p pkgsrc/systemd/qbgp $INSTALL_DIR/etc/sysconfig
+              fi
+           ;;
+        SUSE*)
+              cp pkgsrc/zrpcd.suse $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
            ;;
         esac
-        chmod +x /opt/quagga/etc/init.d/zrpcd
+        chmod +x $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+        if [ -f pkgsrc/zrpcd_log_rotate.sh ]; then
+            cp pkgsrc/zrpcd_log_rotate.sh $INSTALL_DIR/opt/quagga/etc/init.d/
+        fi
+        if [ -f pkgsrc/zrpcd.rotate ]; then
+            cp pkgsrc/zrpcd.rotate $INSTALL_DIR/opt/quagga/etc/init.d/
+        fi
     fi
     touch NEWS README
     autoreconf -i
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install
+    if [ -z "$DO_PACKAGING" ]; then
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install
+    else
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install DESTDIR=$INSTALL_DIR
+        if [ -d .git ]; then
+            COMMITID=`git log -n1 --format="%h"`
+        else
+            COMMITID=""
+        fi
+    fi
     # Temporarily disable this when using the dist method
     if [ -z "$BUILD_FROM_DIST" ]; then
-        mkdir /opt/quagga/etc/init.d -p
-        if [ `facter operatingsystem` = "Ubuntu" ]; then
-           HOST_NAME=Ubuntu$get_version
+        mkdir $INSTALL_DIR/opt/quagga/etc/init.d -p
+        if [ $distrib = "Ubuntu" ]; then
+           HOST_NAME=Ubuntu$version
            echo "its a Ubuntu-Host:$HOST_NAME " ;
-        elif [ `facter operatingsystem` = "CentOS" ] ; then
-           HOST_NAME=CentOS$get_version
+        elif [ $distrib = "CentOS" ] ; then
+           HOST_NAME=CentOS$version
            echo "its a CentOS-Host:$HOST_NAME" ;
+        elif [ $distrib = "RedHat" ] ; then
+           HOST_NAME=RedHat$version
+           echo "its a RedHat-Host:$HOST_NAME" ;
+        elif [ $distrib = "SUSE" ] ; then
+           HOST_NAME=SUSE$version
+           echo "its a SUSE-Host:$HOST_NAME" ;
         fi   
         case $HOST_NAME in
         Ubuntu*)
-             cp pkgsrc/zrpcd.ubuntu /opt/quagga/etc/init.d/zrpcd
+             cp pkgsrc/zrpcd.ubuntu $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
            ;;
         CentOS*)
-              cp pkgsrc/zrpcd.centos /opt/quagga/etc/init.d/zrpcd
+              cp pkgsrc/zrpcd.centos $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+           ;;
+        RedHat*)
+              cp pkgsrc/zrpcd.redhat7 $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+              if [ -d pkgsrc/systemd ]; then
+                  mkdir $INSTALL_DIR/usr/lib/systemd/system -p
+                  cp -p pkgsrc/systemd/qbgp.service $INSTALL_DIR/usr/lib/systemd/system
+                  mkdir $INSTALL_DIR/etc/sysconfig -p
+                  cp -p pkgsrc/systemd/qbgp $INSTALL_DIR/etc/sysconfig
+              fi
+           ;;
+        SUSE*)
+              cp pkgsrc/zrpcd.suse $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
            ;;
         esac
-        chmod +x /opt/quagga/etc/init.d/zrpcd
+        chmod +x $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd
+        if [ -f pkgsrc/zrpcd_log_rotate.sh ]; then
+            cp pkgsrc/zrpcd_log_rotate.sh $INSTALL_DIR/opt/quagga/etc/init.d/
+        fi
+        if [ -f pkgsrc/zrpcd.rotate ]; then
+            cp pkgsrc/zrpcd.rotate $INSTALL_DIR/opt/quagga/etc/init.d/
+        fi
     fi
     if [ -z "${BUILD_FROM_DIST}" ]; then
         popd
     fi
-     echo "hostname bgpd" >> /opt/quagga/etc/bgpd.conf
-     echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
-     echo "service advanced-vty" >> /opt/quagga/etc/bgpd.conf
-     echo "log stdout" >> /opt/quagga/etc/bgpd.conf
-     echo "line vty" >> /opt/quagga/etc/bgpd.conf
-     echo " exec-timeout 0 0 " >> /opt/quagga/etc/bgpd.conf
-     echo "debug bgp " >> /opt/quagga/etc/bgpd.conf
-     echo "debug bgp updates" >> /opt/quagga/etc/bgpd.conf
-     echo "debug bgp events" >> /opt/quagga/etc/bgpd.conf
-     echo "debug bgp fsm" >> /opt/quagga/etc/bgpd.conf
+
+    if [ -n "$DO_PACKAGING" ]; then
+        case $HOST_NAME in
+        Ubuntu*)
+            if [ -f $DIR_NAME/preinst.zrpc ]; then
+                cp $DIR_NAME/preinst.zrpc $INSTALL_DIR/preinst
+            fi
+	    ;;
+        esac
+        $DIR_NAME/packaging.sh "zrpc" $INSTALL_DIR $ZRPC_DIR $HOST_NAME $COMMITID
+    else
+        echo "hostname bgpd" > /opt/quagga/etc/bgpd.conf
+        echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
+        echo "service advanced-vty" >> /opt/quagga/etc/bgpd.conf
+        echo "log stdout" >> /opt/quagga/etc/bgpd.conf
+        echo "line vty" >> /opt/quagga/etc/bgpd.conf
+        echo " exec-timeout 0 0 " >> /opt/quagga/etc/bgpd.conf
+        echo "debug bgp " >> /opt/quagga/etc/bgpd.conf
+        echo "debug bgp updates" >> /opt/quagga/etc/bgpd.conf
+        echo "debug bgp events" >> /opt/quagga/etc/bgpd.conf
+        echo "debug bgp fsm" >> /opt/quagga/etc/bgpd.conf
+    fi
 }
 display_usage ()
 {
@@ -292,6 +495,7 @@ INSTALL_DEPS=""
 BUILD_ZRPCD=""
 BUILD_FROM_DIST=""
 DIST_ARCHIVE=""
+DO_PACKAGING=""
 THRIFT_VERSION="1"
 parse_cmdline() {
     while [ $# -gt 0 ]
@@ -316,6 +520,10 @@ parse_cmdline() {
             -a|--archive)
                 DIST_ARCHIVE=${2}
                 shift 2
+                ;;
+            -p|--package)
+                DO_PACKAGING="true"
+                shift
                 ;;
             -v|--version)
                 THRIFT_VERSION=${2}

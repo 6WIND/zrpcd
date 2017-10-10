@@ -1,0 +1,8 @@
+/opt/quagga/var/log/quagga/zrpcd.init.log {
+    compress
+    hourly
+    rotate 99
+    size 10K
+    missingok
+    copytruncate
+}
