@@ -163,9 +163,22 @@ install_deps() {
     --without-haskell --without-go --without-haxe --without-d\
     --prefix=/opt/quagga
     make
-    make install
-    cd ..
+    if [ -z "$DO_PACKAGING" ]; then
+        make install
+        popd
+    else
+        INSTALL_DIR=$ZRPCD_BUILD_FOLDER/packager/thrift/install_tmp
+        THRIFT_DIR=$ZRPCD_BUILD_FOLDER/packager/thrift
+        rm -rf $INSTALL_DIR
+        rm -rf $THRIFT_DIR
+        make install DESTDIR=$INSTALL_DIR
+        COMMITID=`git log -n1 --format="%h"`
+
+        popd
+        $DIR_NAME/packaging.sh "thrift" $INSTALL_DIR $THRIFT_DIR $HOST_NAME $COMMITID
+    fi
 #Install ZeroMQ
+    pushd $ZRPCD_BUILD_FOLDER
     git clone https://github.com/zeromq/zeromq4-1.git
     cd zeromq4-1
     git checkout 56b71af22db3

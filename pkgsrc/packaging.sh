@@ -391,6 +391,111 @@ ccapnproto_deb_bin_control () {
     chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
 }
 
+thrift_copy_bin_files () {
+
+    rm -rf $INST_BIN_DIR/../bin
+    mkdir -p $INST_BIN_DIR/../bin
+
+    pushd $INST_BIN_DIR
+    find ./opt/quagga/lib -name *.so* | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
+    tar cf - ./opt/quagga//bin | tar xf - -C $INST_BIN_DIR/../bin
+    popd
+
+    pushd $INST_BIN_DIR/../bin
+    if [ $PACKAGE_DEB = "y" ]; then
+       find . \! -type d | cpio -o -H ustar -R 0:0 | tar -C $DEB_BIN_DIR -x
+    fi
+    popd
+}
+
+thrift_rpm_bin_spec () {
+    echo "Name: thrift" >> $RPM_SPEC_FILE
+    if [ -z "$COMMITID" ]; then
+        echo "Version: 1.0.0.$HOST_NAME" >> $RPM_SPEC_FILE
+    else
+        echo "Version: 1.0.0.$COMMITID.$HOST_NAME" >> $RPM_SPEC_FILE
+    fi
+    echo "Release: 0" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "Summary: thrift library" >> $RPM_SPEC_FILE
+    echo "Group: Applications/Internet" >> $RPM_SPEC_FILE
+    echo "License: Apache" >> $RPM_SPEC_FILE
+
+    echo "BuildRoot: $RPM_BIN_DIR/BUILD/ROOT" >> $RPM_SPEC_FILE
+    case $HOST_NAME in
+    SUSE*)
+        THRIFT_RPM_DEPS="libgobject-2_0-0"
+        ;;
+    esac
+    if [ -n "$THRIFT_RPM_DEPS" ]; then
+        echo "Requires: $THRIFT_RPM_DEPS" >> $RPM_SPEC_FILE
+    fi
+    echo >> $RPM_SPEC_FILE
+
+    echo "%description" >> $RPM_SPEC_FILE
+    printf "Library for THRIFT.\nTHRIFT_BUILD_DEPS=''\n" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%install" >> $RPM_SPEC_FILE
+    echo "rm -rf %{buildroot} && mkdir -p %{buildroot}" >> $RPM_SPEC_FILE
+    echo "cd $INST_BIN_DIR/../bin && find . \! -type d | cpio -o -H ustar -R 0:0 | tar -C %{buildroot} -x" >> $RPM_SPEC_FILE
+    echo "find %{buildroot} -type f -o -type l|sed "s,%{buildroot},," > %{_builddir}/files" >> $RPM_SPEC_FILE
+    echo "sed -ri "s/\.py$/\.py*/" %{_builddir}/files" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%clean" >> $RPM_SPEC_FILE
+    echo "rm -rf %{buildroot}" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%pre" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%postun" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%post" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%preun" >> $RPM_SPEC_FILE
+    echo >> $RPM_SPEC_FILE
+
+    echo "%files -f %{_builddir}/files" >> $RPM_SPEC_FILE
+    echo "%defattr(-,root,root)" >> $RPM_SPEC_FILE
+}
+
+thrift_deb_bin_control () {
+    echo "Package: thrift" >> $DEB_CONTROL_FILE
+    if [ -z "$COMMITID" ]; then
+        echo "Version: 1.0.0.$HOST_NAME" >> $DEB_CONTROL_FILE
+    else
+        echo "Version: 1.0.0.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+    fi
+    echo "Architecture: amd64" >> $DEB_CONTROL_FILE
+    echo "Maintainer: 6WIND <packaging@6wind.com>" >> $DEB_CONTROL_FILE
+    echo "Depends: libglib2.0-0(>=2.22.5)" >> $DEB_CONTROL_FILE
+    echo "Description: thrift library" >> $DEB_CONTROL_FILE
+    printf " Library for THRIFT.\n  THRIFT_BUILD_DEPS=''\n" >> $DEB_CONTROL_FILE
+
+    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
+    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+    printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+    chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
+
+    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
+    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
+    chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
+
+    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
+    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+    printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+    chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+}
+
 case $HOST_NAME in
 Ubuntu*)
     PACKAGE_DEB="y"
@@ -408,6 +513,9 @@ Ubuntu*)
     elif [ $1 = "c-capnproto" ]; then
         ccapnproto_copy_bin_files
         ccapnproto_deb_bin_control
+    elif [ $1 = "thrift" ]; then
+        thrift_copy_bin_files
+        thrift_deb_bin_control
     fi
 
     PKG_DIR=`dirname $0`
@@ -429,6 +537,9 @@ RedHat*|CentOS*|SUSE*)
     elif [ $1 = "c-capnproto" ]; then
         ccapnproto_copy_bin_files
         ccapnproto_rpm_bin_spec
+    elif [ $1 = "thrift" ]; then
+        thrift_copy_bin_files
+        thrift_rpm_bin_spec
     fi
 
     PKG_DIR=`dirname $0`
