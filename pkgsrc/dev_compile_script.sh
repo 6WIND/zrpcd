@@ -402,8 +402,9 @@ build_zrpcd (){
         LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install DESTDIR=$INSTALL_DIR
         if [ -d .git ]; then
             COMMITID=`git log -n1 --format="%h"`
+            COMMITID=$COMMITID".thriftv"$THRIFT_VERSION
         else
-            COMMITID=""
+            COMMITID="thriftv"$THRIFT_VERSION
         fi
     fi
     # Temporarily disable this when using the dist method

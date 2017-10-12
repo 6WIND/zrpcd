@@ -249,7 +249,7 @@ quagga_rpm_bin_spec () {
     echo "%pre" >> $RPM_SPEC_FILE
     echo "getent group quagga >/dev/null 2>&1 || groupadd -g 92 quagga >/dev/null 2>&1 || :" >> $RPM_SPEC_FILE
     echo "getent passwd quagga >/dev/null 2>&1 || useradd -u 92 -g 92 -M -r -s /sbin/nologin \\" >> $RPM_SPEC_FILE
-    echo " -c "Quagga routing suite" -d /var/run/quagga quagga >/dev/null 2>&1 || :" >> $RPM_SPEC_FILE
+    echo " -d /var/run/quagga quagga >/dev/null 2>&1 || :" >> $RPM_SPEC_FILE
     echo >> $RPM_SPEC_FILE
 
     echo "%postun" >> $RPM_SPEC_FILE
