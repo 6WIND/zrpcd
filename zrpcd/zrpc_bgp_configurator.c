@@ -3634,6 +3634,7 @@ zrpc_bgp_set_multipath(struct zrpc_vpnservice *ctxt,  gint32* _return, const af_
             zrpc_info ("disableMultipath config for afi:%d safi:%d NOK",
                        afi, safi);
         }
+      return FALSE;
     }
   if (zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
     {
