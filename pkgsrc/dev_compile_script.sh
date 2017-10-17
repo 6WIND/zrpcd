@@ -83,7 +83,7 @@ install_deps() {
     	case $HOST_NAME in
     	Ubuntu14*)
         	echo "UBUNTU 14.04 VM"
-                for pkg in automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
+                for pkg in automake bison flex g++ git libboost1.55-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget fakeroot
                 do 
                       if [ $(dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
                           apt-get install $pkg -y --force-yes
@@ -92,7 +92,7 @@ install_deps() {
       	      ;;
     	Ubuntu16.04*)
          	echo "UBUNTU 16.04 VM"
-         	for pkg in automake bison flex g++ git libboost1.58-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
+         	for pkg in automake bison flex g++ git libboost1.58-all-dev libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget fakeroot
                 do
                       if [ $(dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
                            apt-cache policy $pkg
@@ -102,7 +102,7 @@ install_deps() {
        	      ;;
         Ubuntu16*|Ubuntu17* )
                 echo "UBUNTU 16.*/17.* VM"
-                for pkg in automake bison flex g++ git  libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget
+                for pkg in automake bison flex g++ git  libevent-dev libssl-dev libtool make pkg-config gawk libreadline-dev libglib2.0-dev wget fakeroot
                 do
                       if [ $(dpkg-query -W -f='${Status}' $pkg 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
                            apt-cache policy $pkg
