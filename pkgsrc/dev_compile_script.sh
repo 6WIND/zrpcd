@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2016 Tata Consulting and Ericsson
 #
 # Redistribution and use in source and binary forms, with or without
