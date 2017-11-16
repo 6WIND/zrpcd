@@ -266,7 +266,7 @@ zrpc_debug_init (void)
 
 char dest_sys[1024];
 
-inline void zrpc_system ( char *text)
+static inline void zrpc_system ( char *text)
 {
   FILE *fp = fopen(log_file_filename, "a+");
   if (fp == NULL){
