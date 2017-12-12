@@ -3209,7 +3209,10 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
       if (do_not_parse_vrf == 0)
         {
           entry = ctxt->bgp_get_routes_list;
-          entry_next = entry->next;
+          if (entry)
+            entry_next = entry->next;
+          else
+            entry_next = NULL;
         }
       else
         {
