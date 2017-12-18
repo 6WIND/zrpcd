@@ -35,6 +35,14 @@ static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thre
 int zrpc_monitor_retry_job_in_progress = 0;
 zrpc_status zrpc_transport_current_status = ZRPC_TO_SDN_UNKNOWN;
 
+unsigned int notification_socket_errno[ZRPC_MAX_ERRNO];
+
+static void zrpc_update_notification_socket_errno(void) {
+  if (errno >= ZRPC_MAX_ERRNO)
+    return;
+  notification_socket_errno[errno]++;
+}
+
 void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean response)
 {
   if ((zrpc_transport_current_status == ZRPC_TO_SDN_UNKNOWN) ||
@@ -118,12 +126,15 @@ static int zrpc_vpnservice_bgp_updater_check_connection (struct zrpc_vpnservice 
   if (ret == 0)
     {
       /* error */
+      errno = ENOTCONN;
+      zrpc_update_notification_socket_errno();
       return -1;
     }
   else
     {
       if (ret == -1)
         {
+          zrpc_update_notification_socket_errno();
           if (errno == EAGAIN || errno == EWOULDBLOCK)
             return 0;
           /* other cases : EBADF, ECONNREFUSED, EFAULT, EINTR, EINVAL,

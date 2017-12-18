@@ -90,6 +90,25 @@ DEFUN (show_debugging_zrpc_stats,
   return CMD_SUCCESS;
 }
 
+DEFUN (show_debugging_zrpc_errno,
+       show_debugging_zrpc_errno_cmd,
+       "show debugging zrpc errno",
+       SHOW_STR
+       DEBUG_STR
+       ZRPC_STR
+       "Zrpc errno with 6644")
+{
+  int i;
+  for (i = 0 ; i < ZRPC_MAX_ERRNO; i++)
+    {
+      if (notification_socket_errno[i] > 0)
+        {
+          vty_out (vty, " %s(%u) = %u%s", strerror(i), i, notification_socket_errno[i], VTY_NEWLINE);
+        }
+    }
+  return CMD_SUCCESS;
+}
+
 DEFUN (show_debugging_zrpc,
        show_debugging_zrpc_cmd,
        "show debugging zrpc",
@@ -260,6 +279,7 @@ zrpc_debug_init (void)
   install_element (ENABLE_NODE, &debug_zrpc_cache_cmd);
   install_element (ENABLE_NODE, &no_debug_zrpc_cache_cmd);
   install_element (ENABLE_NODE, &show_debugging_zrpc_stats_cmd);
+  install_element (ENABLE_NODE, &show_debugging_zrpc_errno_cmd);
 
   zrpc_debug |= ZRPC_DEBUG;
 }

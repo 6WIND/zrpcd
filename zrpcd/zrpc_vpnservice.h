@@ -128,6 +128,9 @@ enum _zrpc_status
   };
 typedef enum _zrpc_status zrpc_status;
 
+#define ZRPC_MAX_ERRNO 132
+extern unsigned int notification_socket_errno[];
+
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_terminate_thrift_bgp_configurator_server(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_terminate_thrift_bgp_updater_client(struct zrpc_vpnservice *setup);
