@@ -276,3 +276,72 @@ void zrpc_server_socket(struct zrpc *zrpc)
   zrpc_vpnservice_setup_thrift_bgp_configurator_server(zrpc->zrpc_vpnservice);
   return;
 }
+
+gboolean zrpc_client_transport_open (ThriftTransport *transport, GError **error, gboolean *needselect)
+{
+  struct sockaddr_in pin;
+  int err;
+  ThriftSocket *tsocket = THRIFT_SOCKET (transport);
+  struct hostent *hp = NULL;
+
+  if (tsocket->sd != THRIFT_INVALID_SOCKET)
+    return FALSE;
+
+  if ((hp = gethostbyname (tsocket->hostname)) == NULL && (err = h_errno))
+    {
+      /* host lookup failed, bail out with an error */
+      g_set_error (error, THRIFT_TRANSPORT_ERROR, THRIFT_TRANSPORT_ERROR_HOST,
+                   "host lookup failed for %s:%d - %s",
+                   tsocket->hostname, tsocket->port,
+                   hstrerror (err));
+      return FALSE;
+    }
+
+  /* create a socket structure */
+  memset (&pin, 0, sizeof(pin));
+  pin.sin_family = AF_INET;
+  pin.sin_addr.s_addr = ((struct in_addr *) (hp->h_addr))->s_addr;
+  pin.sin_port = htons (tsocket->port);
+  /* create the socket */
+  if ((tsocket->sd = socket (AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+      g_set_error (error, THRIFT_TRANSPORT_ERROR, THRIFT_TRANSPORT_ERROR_SOCKET,
+                   "failed to create socket for host %s:%d - %s",
+                   tsocket->hostname, tsocket->port,
+                   strerror(errno));
+      return FALSE;
+    }
+
+  /* set non blocking */
+  set_nonblocking (tsocket->sd);
+  /* open a connection */
+  if (connect (tsocket->sd, (struct sockaddr *) &pin, sizeof(pin)) == -1)
+    {
+      if (errno == EINPROGRESS)
+        {
+          *needselect = TRUE;
+        }
+      g_set_error (error, THRIFT_TRANSPORT_ERROR, THRIFT_TRANSPORT_ERROR_CONNECT,
+                   "failed to connect to host %s:%d - %s",
+                   tsocket->hostname, tsocket->port, strerror(errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+void zrpc_client_transport_close(ThriftTransport *transport)
+{
+  ThriftSocket *tsocket = NULL;
+
+  if (!transport)
+    return;
+  tsocket = THRIFT_SOCKET (transport);
+  zrpc_log ("trying to close socket %u", tsocket->sd);
+  if (tsocket && tsocket->sd != THRIFT_INVALID_SOCKET)
+    {
+      zrpc_log ("closing socket %u", tsocket->sd);
+      close (tsocket->sd);
+    }
+  tsocket->sd = THRIFT_INVALID_SOCKET;
+}

@@ -23,6 +23,7 @@
 #include "zrpcd/zrpc_bgp_capnp.h"
 #include "zrpcd/qzcclient.capnp.h"
 #include "zrpcd/zrpc_debug.h"
+#include "zrpcd/zrpc_network.h"
 #include "zrpcd/vpnservice_types.h"
 
 static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *msg);
@@ -96,6 +97,55 @@ void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean respo
   zrpc_monitor_retry_job_in_progress = 1;
 }
 
+static int zrpc_vpnservice_get_bgp_updater_socket (struct zrpc_vpnservice *setup)
+{
+  ThriftTransport *transport = NULL;
+  ThriftSocket *tsocket = NULL;
+
+  if(!setup)
+    return 0;
+  if (setup->bgp_updater_transport)
+    transport = setup->bgp_updater_transport->transport;
+  if (transport)
+    tsocket = THRIFT_SOCKET (transport);
+  if (tsocket)
+    return tsocket->sd;
+  return 0;
+}
+
+static gboolean zrpc_vpnservice_bgp_updater_select_connection (struct zrpc_vpnservice *setup)
+{
+  int ret = 0;
+  int fd = zrpc_vpnservice_get_bgp_updater_socket(setup);
+  fd_set wrfds;
+  struct timeval tout;
+  int optval, optlen;
+
+  if (fd == 0 || fd == THRIFT_INVALID_SOCKET)
+    return FALSE;
+  if (setup->bgp_updater_client_need_select == FALSE)
+    return FALSE;
+
+  FD_ZERO(&wrfds);
+  FD_SET(fd, &wrfds);
+
+  tout.tv_sec = 0;
+  tout.tv_usec = 0;
+
+  ret = select(FD_SETSIZE, NULL, &wrfds, NULL, &tout);
+  if (ret <= 0)
+    return FALSE;
+
+  optval = -1;
+  optlen = sizeof (optval);
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &optval, (socklen_t *)&optlen) < 0)
+    return FALSE;
+  if (optval != 0)
+    return FALSE;
+
+  return TRUE;
+}
+
 /* returns status from recv with MSG_PEEK option
  * this permits knowing if socket is available or not.
  * values returned: -1 + EAGAIN => nothing to read, but socket is ok
@@ -105,23 +155,11 @@ void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean respo
  */
 static int zrpc_vpnservice_bgp_updater_check_connection (struct zrpc_vpnservice *setup)
 {
-  ThriftTransport *transport = NULL;
-  ThriftSocket *tsocket = NULL;
-  int fd = 0;
-  int ret;
+  int ret = 0;
+  int fd = zrpc_vpnservice_get_bgp_updater_socket(setup);
   char buffer[32];
 
-  if(!setup)
-    return 0;
-  if (setup->bgp_updater_transport)
-    transport = setup->bgp_updater_transport->transport;
-  if (transport)
-    tsocket = THRIFT_SOCKET (transport);
-  if (tsocket)
-    fd = tsocket->sd;
-  if (fd == 0)
-    ret = 0;
-  else
+  if (fd != 0 && fd != THRIFT_INVALID_SOCKET)
     ret = recv(fd, buffer, 32, MSG_PEEK | MSG_DONTWAIT);
   if (ret == 0)
     {
@@ -155,8 +193,21 @@ static int zrpc_vpnservice_setup_bgp_updater_client_retry (struct thread *thread
 
   setup = THREAD_ARG (thread);
   assert (setup);
-  thrift_transport_close (setup->bgp_updater_transport->transport, &error);
-  response = thrift_transport_open (setup->bgp_updater_transport->transport, &error);
+  if (zrpc_vpnservice_bgp_updater_select_connection(setup))
+    {
+      zrpc_monitor_retry_job_in_progress = 0;
+      zrpc_transport_check_response(setup, TRUE);
+      return 0;
+    }
+  zrpc_client_transport_close(setup->bgp_updater_transport->transport);
+  setup->bgp_updater_client_need_select = FALSE;
+  response = zrpc_client_transport_open (setup->bgp_updater_transport->transport,
+                                         &error, &setup->bgp_updater_client_need_select);
+  if (error)
+    {
+      zrpc_log ("%s: zrpc_client_transport_open: %s\n", __func__, error->message);
+      g_error_free (error);
+    }
   zrpc_monitor_retry_job_in_progress = 0;
   zrpc_transport_check_response(setup, response);
   return 0;
@@ -177,8 +228,15 @@ static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thre
   ret = zrpc_vpnservice_bgp_updater_check_connection (setup);
   if (ret < 0)
     {
-      thrift_transport_close (setup->bgp_updater_transport->transport, &error);
-      response = thrift_transport_open (setup->bgp_updater_transport->transport, &error);
+      zrpc_client_transport_close(setup->bgp_updater_transport->transport);
+      setup->bgp_updater_client_need_select = FALSE;
+      response = zrpc_client_transport_open (setup->bgp_updater_transport->transport,
+                                             &error, &setup->bgp_updater_client_need_select);
+      if (error)
+        {
+          zrpc_log ("%s: zrpc_client_transport_open: %s\n", __func__, error->message);
+          g_error_free (error);
+        }
       zrpc_monitor_retry_job_in_progress = 0;
       zrpc_transport_check_response(setup, response);
       return 0;
@@ -435,6 +493,8 @@ void zrpc_vpnservice_terminate_thrift_bgp_updater_client (struct zrpc_vpnservice
 {
   if(!setup)
     return;
+  if (!setup->bgp_updater_transport)
+    return;
   if(setup->bgp_updater_client)
     g_object_unref(setup->bgp_updater_client);
   setup->bgp_updater_client = NULL;
@@ -597,7 +657,15 @@ gboolean zrpc_vpnservice_setup_thrift_bgp_updater_client (struct zrpc_vpnservice
                     "input_protocol",  setup->bgp_updater_protocol,
                     "output_protocol", setup->bgp_updater_protocol,
                     NULL);
-  response = thrift_transport_open (setup->bgp_updater_transport->transport, &error);
+  zrpc_client_transport_close(setup->bgp_updater_transport->transport);
+  setup->bgp_updater_client_need_select = FALSE;
+  response = zrpc_client_transport_open (setup->bgp_updater_transport->transport,
+                                         &error, &setup->bgp_updater_client_need_select);
+  if (error)
+    {
+      zrpc_log ("%s: zrpc_client_transport_open: %s\n", __func__, error->message);
+      g_error_free (error);
+    }
   zrpc_transport_check_response(setup, response);
   return response;
 }

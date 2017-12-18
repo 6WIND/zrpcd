@@ -182,21 +182,22 @@ zrpc_bgp_updater_on_start_config_resync_notification_quick (struct zrpc_vpnservi
  * when zrpcd has started and is ready and
  * available to receive thrift configuration commands
  */
-void
-zrpc_bgp_updater_on_start_config_resync_notification (void)
+int
+zrpc_bgp_updater_on_start_config_resync_notification (struct thread *thread)
 {
   struct zrpc_vpnservice *ctxt = NULL;
   static gboolean client_ready;
 
-  zrpc_vpnservice_get_context (&ctxt);
-  if(!ctxt)
-      return;
+  ctxt = THREAD_ARG (thread);
+  assert (ctxt);
   if((ctxt->bgp_updater_client == NULL) ||
      (zrpc_transport_current_status == ZRPC_TO_SDN_UNKNOWN) ||
      (zrpc_transport_current_status == ZRPC_TO_SDN_FALSE))
     {
       if (ctxt->bgp_updater_client)
-        zrpc_vpnservice_terminate_thrift_bgp_updater_client (ctxt);
+        {
+          zrpc_vpnservice_terminate_thrift_bgp_updater_client (ctxt);
+        }
       /* start the retry mechanism */
       client_ready = zrpc_vpnservice_setup_thrift_bgp_updater_client(ctxt);
       zrpc_transport_check_response(ctxt, client_ready);
@@ -206,7 +207,8 @@ zrpc_bgp_updater_on_start_config_resync_notification (void)
             zrpc_info ("bgp->sdnc message failed to be sent");
         }
     }
-  return;
+  ctxt->bgp_update_total++;
+  return 0;
 }
 
 /*
