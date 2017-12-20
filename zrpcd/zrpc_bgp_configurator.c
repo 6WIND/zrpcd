@@ -2115,12 +2115,10 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
            entry->afc[af][saf] = 1;
          }
      }
-#if 0
    else
        ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
                                 &bgpvrf, &bgp_datatype_bgpvrf,\
                                 NULL, NULL);
-#endif
    capn_free(&rc);
   if (ret)
     return TRUE;
