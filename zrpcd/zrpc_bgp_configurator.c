@@ -244,6 +244,7 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
 #define ERROR_BGP_INTERNAL g_error_new(1, BGP_ERR_FAILED, "Error reported by BGP, check log file");
 #define ERROR_BGP_INVALID_UPDATE_DELAY g_error_new(1, BGP_ERR_PARAM, "BGP EOR update delay: out of range value 0 <= %d <= %d", delay, MAX_EOR_UPDATE_DELAY);
 #define ERROR_BGP_PEER_EXISTS g_error_new(1, BGP_ERR_PEER_EXISTS, "BGP Peer %s already configured", routerId);
+#define ERROR_BGP_INVALID_VRF_RTS g_error_new(1, BGP_ERR_PARAM, "BGP VRF: invalid rts \"%s\"", rts);
 #define BGP_ERR_INTERNAL 110
 
 /*
@@ -2156,7 +2157,8 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
    int af = 0, saf = 0;
    uint64_t bgpvrf_nid;
    struct zrpc_vpnservice_cache_bgpvrf *entry;
-   struct zrpc_rdrt *rdrt;
+   struct zrpc_rdrt *rdrt_import = NULL;
+   struct zrpc_rdrt *rdrt_export = NULL;
 
    /* setup context */
    *_return = 0;
@@ -2178,6 +2180,44 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
        *error = ERROR_BGP_RD_NOTFOUND;
        *_return = BGP_ERR_PARAM;
        return FALSE;
+     }
+
+   /* irts and erts have to be translated into u_char[8] entities, then put in a list */
+   rdrt_import = ZRPC_CALLOC (sizeof(struct zrpc_rdrt));
+   for(i = 0; i < irts->len; i++)
+     {
+       u_char tmp[8];
+       int ret;
+       const char *rts = (char *)g_ptr_array_index(irts, i);
+
+       ret = zrpc_util_str2rdrt (rts, tmp, ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET);
+       if (ret)
+         rdrt_import = zrpc_util_append_rdrt_to_list (tmp, rdrt_import);
+       else
+         {
+           *error = ERROR_BGP_INVALID_VRF_RTS;
+           zrpc_util_rdrt_free (rdrt_import);
+           return FALSE;
+         }
+     }
+
+   rdrt_export = ZRPC_CALLOC (sizeof(struct zrpc_rdrt));
+   for (i = 0; i < erts->len; i++)
+     {
+       u_char tmp[8];
+       int ret;
+       const char *rts = (char *)g_ptr_array_index(erts, i);
+
+       ret = zrpc_util_str2rdrt (rts, tmp, ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET);
+       if (ret)
+         rdrt_export = zrpc_util_append_rdrt_to_list (tmp, rdrt_export);
+       else
+         {
+           *error = ERROR_BGP_INVALID_VRF_RTS;
+           zrpc_util_rdrt_free (rdrt_import);
+           zrpc_util_rdrt_free (rdrt_export);
+           return FALSE;
+         }
      }
 
 #ifdef HAVE_THRIFT_V5
@@ -2284,35 +2324,15 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
      qzcclient_qzcgetrep_free( grep_vrf);
    }
    /* configuring bgp vrf with import and export communities */
-   /* irts and erts have to be translated into u_char[8] entities, then put in a list */
-   rdrt = ZRPC_CALLOC (sizeof(struct zrpc_rdrt));
-   for(i = 0; i < irts->len; i++)
-     {
-       u_char tmp[8];
-       int ret;
-       ret = zrpc_util_str2rdrt ((char *)g_ptr_array_index(irts, i), tmp, ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET);
-       if (ret)
-         rdrt = zrpc_util_append_rdrt_to_list (tmp, rdrt);
-     }
    if(irts->len)
-     instvrf.rt_import = rdrt;
+     instvrf.rt_import = rdrt_import;
    else
-     zrpc_util_rdrt_free (rdrt);
+     zrpc_util_rdrt_free (rdrt_import);
 
-   i = 0;
-   rdrt = ZRPC_CALLOC (sizeof(struct zrpc_rdrt));
-   for (i = 0; i < erts->len; i++)
-     {
-       u_char tmp[8];
-       int ret;
-       ret = zrpc_util_str2rdrt ((char *)g_ptr_array_index(erts, i), tmp, ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET);
-       if (ret)
-         rdrt = zrpc_util_append_rdrt_to_list (tmp, rdrt);
-     }
    if(erts->len)
-     instvrf.rt_export = rdrt;
+     instvrf.rt_export = rdrt_export;
    else  
-     zrpc_util_rdrt_free (rdrt);
+     zrpc_util_rdrt_free (rdrt_export);
 
    if ((af == 0) && (saf == 0))
      {
