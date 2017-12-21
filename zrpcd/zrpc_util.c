@@ -70,9 +70,14 @@ zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type)
     {
       if(*ptr == '.')
         dot_presence = 1;
+      else if (!isdigit ((int) *ptr))
+        return 0;
       ptr++;
       cnt++;
     }
+
+  if (cnt == 0)
+    return 0;
   /* extract as number */
   if(*ptr == ':')
     {
@@ -82,10 +87,17 @@ zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type)
         {
           if(inet_pton(AF_INET, buf_local, &addr_ipv4))
             as_val = ntohl(addr_ipv4.s_addr);
+          else
+            return 0;
         }
       else
         as_val = atol(buf_local);
+        if (as_val == 0xFFFFFFFF)
+          return 0;
     }
+  else
+    return 0;
+
   /* search for vrf val */
   remaining_length = strlen(buf) - cnt;
   ptr++;
@@ -93,9 +105,15 @@ zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type)
   cnt = 0;
   while(*ptr != '\0' && cnt < remaining_length)
     {
+      if (!isdigit ((int) *ptr))
+        return 0;
       ptr++;
       cnt++;
     }
+
+  if (cnt == 0)
+    return 0;
+
   /* extract vrf_number */
   if(*ptr == '\0')
     {
@@ -103,8 +121,11 @@ zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type)
       buf_local[cnt]='\0';
       vrf_val = atoll(buf_local);
     }
+
   if(dot_presence)
     {
+      if (vrf_val > UINT16_MAX)
+        return 0;
       /* RD_TYPE_IP */
       if (type == ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET)
         {
@@ -127,6 +148,9 @@ zrpc_util_str2rdrt (char *buf, u_char *rd_rt, int type)
     }
   else if(as_val > 0xffff)
     {
+      if (vrf_val > UINT16_MAX)
+        return 0;
+
       /* RDRT_TYPE_AS4 */
       if (type == ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET)
         {
