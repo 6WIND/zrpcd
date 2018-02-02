@@ -473,6 +473,9 @@ void zrpc_vpnservice_setup(struct zrpc_vpnservice *setup)
   ptr+=sprintf(ptr, "%s/bgpd",SBIN_DIR);
   setup->bgpd_execution_path = ZRPC_STRDUP(bgpd_location_path);
   zrpc_vpnservice_setup_bgp_context (setup);
+
+  setup->bfdd_enabled = 0;
+  setup->bfd_multihop = 0;
 }
 
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup)
@@ -541,6 +544,33 @@ void zrpc_vpnservice_setup_qzc(struct zrpc_vpnservice *setup)
     setup->qzc_subscribe_sock = qzcclient_subscribe(tm->global, \
                                                     setup->zmq_subscribe_sock, \
                                                     zrpc_vpnservice_callback);
+}
+
+void zrpc_vpnservice_terminate_qzc_bfdd(struct zrpc_vpnservice *setup)
+{
+  if(!setup)
+    return;
+
+  if(setup->qzc_bfdd_sock)
+    {
+      int val = 0;
+      qzcclient_setsockopt(setup->qzc_bfdd_sock, ZMQ_LINGER, &val, sizeof(val));
+      qzcclient_close (setup->qzc_bfdd_sock);
+      setup->qzc_bfdd_sock = NULL;
+    }
+}
+
+void zrpc_vpnservice_terminate_bfd(struct zrpc_vpnservice *setup)
+{
+  if(!setup)
+    return;
+
+  zrpc_vpnservice_terminate_qzc_bfdd(setup);
+  zrpc_kill_child (BFDD_PID, "BFD");
+  zrpc_kill_child (ZEBRA_PID, "ZEBRA");
+  setup->bfdd_enabled = 0;
+  if (setup->bfd_multihop)
+    setup->bfd_multihop = 0;
 }
 
 void zrpc_vpnservice_terminate_bgp_context(struct zrpc_vpnservice *setup)

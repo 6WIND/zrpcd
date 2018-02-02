@@ -98,18 +98,22 @@ static void zrpc_sigchild (void)
     {
       if (p == 0)
         return;
-      if (zrpc_kill_in_progress)
-        return;
-      /* Handle the death of pid p */
-      zrpc_info ("BGPD terminated (%u)",p);
+
       zrpc_vpnservice_get_context (&ctxt);
-      /* kill BGP Daemon */
       if(ctxt == NULL)
         /* nothing to be done - context not yet created */
         return;
       if(zrpc_vpnservice_get_bgp_context(ctxt) == NULL)
         /* nothing to be done - BGP config already flushed */
         return;
+      if (zrpc_vpnservice_get_bgp_context(ctxt)->proc != p)
+        return;
+
+      if (zrpc_kill_in_progress)
+        return;
+      /* Handle the death of pid p */
+      zrpc_info ("BGPD terminated (%u)",p);
+      /* kill BGP Daemon */
       zrpc_kill_in_progress = 1;
       asNumber = zrpc_vpnservice_get_bgp_context(ctxt)->asNumber;
       /* reset Thrift Context */

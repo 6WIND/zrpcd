@@ -72,6 +72,7 @@ zrpc_delete (struct zrpc *zrpc)
       ZRPC_FREE (peer);
     }
   zrpc->peer = NULL;
+  zrpc_vpnservice_terminate_bfd(zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate_bgp_context (zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate_qzc(zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate_thrift_bgp_updater_client (zrpc->zrpc_vpnservice);
@@ -97,22 +98,7 @@ zrpc_global_init (void)
   tm->zrpc_listen_address = strdup(ZRPC_LISTEN_ADDRESS);
 }
 
-static void
-zrpc_kill_bgpd()
-{
-  pid_t pid;
-  int ret;
 
-  pid = zrpc_util_get_pid_output(BGPD_PATH_BGPD_PID);
-  if (pid)
-    {
-      zrpc_log("attempt to kill BGP instance %d", pid);
-      ret = kill(pid, SIGINT);
-      if (ret == 0)
-          unlink(BGPD_PATH_BGPD_PID);
-      zrpc_log("attempt to kill BGP instance (%d) %s", pid, ret == 0 ? "OK" : "NOK");
-    }
-}
 
 /* Called from VTY commands. */
 void  zrpc_create_context (struct zrpc **zrpc_val)
@@ -134,7 +120,9 @@ void  zrpc_create_context (struct zrpc **zrpc_val)
   /* creation of capnproto context - updater */
   zrpc_vpnservice_setup_qzc(zrpc->zrpc_vpnservice);
 
-  zrpc_kill_bgpd();
+  zrpc_kill_child (BGPD_PATH_BGPD_PID, "BGP");
+  zrpc_kill_child (BFDD_PID, "BFD");
+  zrpc_kill_child (ZEBRA_PID, "ZEBRA");
   /* run bgp_configurator_server */ 
   if(zrpc_server_listen (zrpc) < 0)
     {
