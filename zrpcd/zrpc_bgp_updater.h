@@ -14,6 +14,10 @@ struct zrpc_vpnservice;
 
 gboolean
 zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 errCode, const gint8 errSubcode);
+gboolean
+zrpc_bgp_updater_peer_up (const gchar * ipAddress, const gint64 asNumber);
+gboolean
+zrpc_bgp_updater_peer_down (const gchar * ipAddress, const gint64 asNumber);
 
 int
 zrpc_bgp_updater_on_start_config_resync_notification (struct thread *thread);

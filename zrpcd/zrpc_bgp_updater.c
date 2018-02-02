@@ -245,3 +245,77 @@ zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 e
                prefix, errCode, errSubcode, response == FALSE?"NOK":"OK");
   return response;
 }
+
+/*
+ * send bfd status notification
+ */
+gboolean
+zrpc_bgp_updater_peer_up (const gchar * ipAddress, const gint64 asNumber)
+{
+  GError *error = NULL;
+  gboolean response;
+  struct zrpc_vpnservice *ctxt = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt || !ctxt->bgp_updater_client)
+      return FALSE;
+
+  response = bgp_updater_client_peer_up(ctxt->bgp_updater_client,
+                                        ipAddress, asNumber, &error);
+   if (error != NULL)
+    {
+      if (error->domain == THRIFT_TRANSPORT_ERROR &&
+          error->code == THRIFT_TRANSPORT_ERROR_SEND)
+        {
+          ctxt->bgp_update_thrift_lost_msgs++;
+          zrpc_info ("peerUp(): sent error %s", error->message);
+          response = FALSE;
+          zrpc_transport_cancel_monitor(ctxt);
+          zrpc_transport_check_response(ctxt, response);
+        }
+      g_clear_error (&error);
+      error = NULL;
+    }
+
+ if(IS_ZRPC_DEBUG_NOTIFICATION)
+    zrpc_log ("peerUp(%s, asNumber %u) %s", \
+              ipAddress, asNumber, response == FALSE?"NOK":"OK");
+  return response;
+}
+
+/*
+ * send bfd status notification
+ */
+gboolean
+zrpc_bgp_updater_peer_down (const gchar * ipAddress, const gint64 asNumber)
+{
+  GError *error = NULL;
+  gboolean response;
+  struct zrpc_vpnservice *ctxt = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt || !ctxt->bgp_updater_client)
+      return FALSE;
+
+  response = bgp_updater_client_peer_down(ctxt->bgp_updater_client,
+                                          ipAddress, asNumber, &error);
+   if (error != NULL)
+    {
+      if (error->domain == THRIFT_TRANSPORT_ERROR &&
+          error->code == THRIFT_TRANSPORT_ERROR_SEND)
+        {
+          ctxt->bgp_update_thrift_lost_msgs++;
+          zrpc_info ("peerDown(): sent error %s", error->message);
+          response = FALSE;
+          zrpc_transport_cancel_monitor(ctxt);
+          zrpc_transport_check_response(ctxt, response);
+        }
+      g_clear_error (&error);
+      error = NULL;
+    }
+
+ if(IS_ZRPC_DEBUG_NOTIFICATION)
+    zrpc_log ("peerDown(%s, asNumber %u) %s", \
+              ipAddress, asNumber, response == FALSE?"NOK":"OK");
+  return response;
+}
