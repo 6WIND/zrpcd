@@ -116,6 +116,7 @@ struct bgp_event_vrf
 {
 #define BGP_EVENT_MASK_ANNOUNCE 0x1
 #define BGP_EVENT_SHUT 0x2
+#define BGP_EVENT_BFD_STATUS 0x3
   uint8_t announce;
   struct zrpc_rd_prefix outbound_rd; /* dummy for event_shut */
   struct zrpc_prefix prefix; /* alias subtype */
@@ -132,6 +133,13 @@ struct bgp_event_shut
 {
   struct zrpc_prefix peer;
   uint8_t type, subtype;
+};
+
+struct bgp_event_bfd_status
+{
+  struct zrpc_prefix peer;
+  uint32_t as;
+  uint8_t up_down;
 };
 
 struct bgp_api_route

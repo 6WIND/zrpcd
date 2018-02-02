@@ -287,7 +287,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
   s = &ss;
   memset(s, 0, sizeof(struct bgp_event_vrf));
   qcapn_BGPEventVRFRoute_read(s, p);
-  if (s->announce != BGP_EVENT_SHUT)
+  if (s->announce != BGP_EVENT_SHUT && s->announce != BGP_EVENT_BFD_STATUS)
     {
       gchar *esi;
       gchar *macaddress = NULL;
@@ -443,7 +443,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       if (s->mac_router)
         free (s->mac_router);
     }
-  else
+  else if (s->announce == BGP_EVENT_SHUT)
     {
       t = &tt;
       memset(t, 0, sizeof(struct bgp_event_shut));
@@ -453,6 +453,20 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       zrpc_util_prefix_2str (&t->peer, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       nexthop = nh_str;
       zrpc_bgp_updater_on_notification_send_event(nexthop, t->type, t->subtype);
+    }
+  else if (s->announce == BGP_EVENT_BFD_STATUS)
+    {
+      struct bgp_event_bfd_status st;
+
+      st.as = s->label;
+      st.up_down = (uint8_t)s->prefix.u.prefix4.s_addr;
+      zrpc_util_copy_prefix (&st.peer, &s->nexthop);
+      zrpc_util_prefix_2str (&st.peer, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
+      nexthop = nh_str;
+      if (st.up_down)
+        zrpc_bgp_updater_peer_up (nexthop, (const gint64)st.as);
+      else
+        zrpc_bgp_updater_peer_down (nexthop, (const gint64)st.as);
     }
   capn_free(&rc);
   return;
