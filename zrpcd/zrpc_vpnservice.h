@@ -26,6 +26,12 @@
 #define BGPD_PATH_BGPD_PID "/opt/quagga/var/run/quagga/bgpd.pid"
 #define BGPD_PATH_QUAGGA   "/opt/quagga"
 
+#define ZMQ_BFDD_SOCK "ipc:///tmp/qzc-vpn2bfdd"
+#define BFDD_PID "/opt/quagga/var/run/quagga/bfdd.pid"
+#define BFDD_PATH "/opt/quagga/sbin/bfdd"
+#define ZEBRA_PID "/opt/quagga/var/run/quagga/zebra.pid"
+#define ZEBRA_PATH "/opt/quagga/sbin/zebra"
+
 #define ZRPC_CONFIG_FILE   "zrpcd.conf"
 
 #define ZRPC_DEFAULT_LOG_FILE "/opt/quagga/var/log/quagga/zrpcd.init.log"
@@ -96,6 +102,11 @@ struct zrpc_vpnservice
   /* bgp context */
   struct zrpc_vpnservice_bgp_context *bgp_context;
 
+  /* if bfdd is enabled */
+  uint8_t bfdd_enabled;
+  uint8_t bfd_multihop;
+
+
   /* CapnProto Path */
   char      *zmq_sock;
 
@@ -108,6 +119,7 @@ struct zrpc_vpnservice
   /* QZC internal contexts */
   struct qzcclient_sock *qzc_sock;
   struct qzcclient_sock *qzc_subscribe_sock;
+  struct qzcclient_sock *qzc_bfdd_sock;
   
   /* zrpc cache context for VRF */
   struct zrpc_vpnservice_cache_bgpvrf *bgp_vrf_list;
@@ -154,6 +166,8 @@ void zrpc_vpnservice_setup_client(struct zrpc_vpnservice_client *peer,\
 
 void zrpc_vpnservice_terminate_client(struct zrpc_vpnservice_client *peer);
 void zrpc_vpnservice_terminate_qzc(struct zrpc_vpnservice *setup);
+void zrpc_vpnservice_terminate_qzc_bfdd(struct zrpc_vpnservice *setup);
+void zrpc_vpnservice_terminate_bfd(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_setup_qzc(struct zrpc_vpnservice *setup);
 struct zrpc_vpnservice_bgp_context *zrpc_vpnservice_get_bgp_context(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup);
