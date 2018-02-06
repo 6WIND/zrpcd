@@ -752,7 +752,10 @@ void zrpc_vpnservice_terminate_thrift_bgp_configurator_server (struct zrpc_vpnse
 void zrpc_vpnservice_get_context (struct zrpc_vpnservice **setup)
 {
   if(!tm->zrpc)
-    *setup = NULL;
+    {
+      *setup = NULL;
+      return;
+    }
   *setup = tm->zrpc->zrpc_vpnservice;
 }
 
