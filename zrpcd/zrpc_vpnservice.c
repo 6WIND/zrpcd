@@ -547,13 +547,10 @@ void zrpc_vpnservice_terminate_qzc(struct zrpc_vpnservice *setup)
       qzcclient_close (setup->qzc_sock);
       setup->qzc_sock = NULL;
     }
-
-  qzmqclient_finish();
 }
 
 void zrpc_vpnservice_setup_qzc(struct zrpc_vpnservice *setup)
 {
-  qzcclient_init ();
   if(setup->zmq_subscribe_sock && setup->qzc_subscribe_sock == NULL )
     setup->qzc_subscribe_sock = qzcclient_subscribe(tm->global, \
                                                     setup->zmq_subscribe_sock, \

@@ -78,6 +78,10 @@ zrpc_delete (struct zrpc *zrpc)
   zrpc_vpnservice_terminate_thrift_bgp_updater_client (zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate_thrift_bgp_configurator_server (zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate(zrpc->zrpc_vpnservice);
+
+  /* Terminate libzmq's context */
+  qzmqclient_finish();
+
   if(zrpc->zrpc_vpnservice)
     ZRPC_FREE (zrpc->zrpc_vpnservice);
   zrpc->zrpc_vpnservice = NULL;
@@ -117,6 +121,8 @@ void  zrpc_create_context (struct zrpc **zrpc_val)
   /* creation of thrift contexts - configurator and updater */
   zrpc_server_socket(zrpc);
 
+  /* Initialize libzmq's context */
+  qzcclient_init ();
   /* creation of capnproto context - updater */
   zrpc_vpnservice_setup_qzc(zrpc->zrpc_vpnservice);
 
