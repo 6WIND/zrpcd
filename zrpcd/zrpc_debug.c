@@ -282,6 +282,7 @@ zrpc_debug_init (void)
   install_element (ENABLE_NODE, &show_debugging_zrpc_errno_cmd);
 
   zrpc_debug |= ZRPC_DEBUG;
+  zrpc_debug |= ZRPC_DEBUG_NOTIFICATION;
 }
 
 char dest_sys[1024];
