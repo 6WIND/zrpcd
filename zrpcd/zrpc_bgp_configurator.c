@@ -245,6 +245,13 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
 #define ERROR_BGP_INVALID_UPDATE_DELAY g_error_new(1, BGP_ERR_PARAM, "BGP EOR update delay: out of range value 0 <= %d <= %d", delay, MAX_EOR_UPDATE_DELAY);
 #define ERROR_BGP_PEER_EXISTS g_error_new(1, BGP_ERR_PEER_EXISTS, "BGP Peer %s already configured", routerId);
 #define ERROR_BGP_INVALID_VRF_RTS g_error_new(1, BGP_ERR_PARAM, "BGP VRF: invalid rts \"%s\"", rts);
+#define ERROR_BGP_PREFIX_NOTFOUND g_error_new(1, BGP_ERR_PARAM, "BGP prefix not found");
+#define ERROR_BGP_NEXTHOP_NOTFOUND g_error_new(1, BGP_ERR_PARAM, "BGP nexthop not found");
+#define ERROR_BGP_INVALID_ESI g_error_new(1, BGP_ERR_PARAM, "BGP: invalid esi \"%s\"", esi);
+#define ERROR_BGP_INVALID_MAC(_a) g_error_new(1, BGP_ERR_PARAM, "BGP: invalid Mac Address \"%s\"", _a);
+#define ERROR_BGP_INVALID_PREFIX g_error_new(1, BGP_ERR_PARAM, "BGP: invalid prefix \"%s\"", prefix);
+#define ERROR_BGP_INVALID_NEXTHOP(_a) g_error_new(1, BGP_ERR_PARAM, "BGP: invalid nexthop \"%s\"", (_a));
+#define ERROR_BGP_INCONSISTENCY_PREFIXAFI(_a,_b) g_error_new(1, BGP_ERR_PARAM, "BGP: prefix family (%d) != afi (%d)", (_a), (_b));
 #define BGP_ERR_INTERNAL 110
 
 /*
@@ -1120,6 +1127,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
     {
+      *error = ERROR_BGP_AS_NOT_STARTED;
       *_return = BGP_ERR_FAILED;
       return FALSE;
     }
@@ -1167,6 +1175,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
 #endif /* !HAVE_THRIFT_V1 */
   if (!is_auto_discovery && !prefix)
     {
+      *error = ERROR_BGP_PREFIX_NOTFOUND;
       *_return = BGP_ERR_PARAM;
       ret = FALSE;
       goto error;
@@ -1177,6 +1186,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
       ret = zrpc_util_str2_prefix (nexthop, &inst.nexthop);
       if (ret == 0)
         {
+          *error = ERROR_BGP_INVALID_NEXTHOP(nexthop);
           *_return = BGP_ERR_PARAM;
           ret = FALSE;
           goto error;
@@ -1184,6 +1194,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
     }
   else
     {
+      *error = ERROR_BGP_NEXTHOP_NOTFOUND;
       *_return = BGP_ERR_PARAM;
       ret = FALSE;
       goto error;
@@ -1199,6 +1210,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           ret = zrpc_util_str2_prefix (gatewayIp, &inst.gatewayIp);
           if (ret == 0)
             {
+              *error = ERROR_BGP_INVALID_NEXTHOP(gatewayIp);
               *_return = BGP_ERR_PARAM;
               ret = FALSE;
               goto error;
@@ -1206,6 +1218,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
           if (ret == 0)
             {
+              *error = ERROR_BGP_INVALID_PREFIX;
               *_return = BGP_ERR_PARAM;
               ret = FALSE;
               goto error;
@@ -1213,6 +1226,8 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           if ((inst.prefix.family == AF_INET && inst.gatewayIp.family == AF_INET6)
               || (inst.prefix.family == AF_INET && inst.gatewayIp.family == AF_INET6))
             {
+              *error = ERROR_BGP_INCONSISTENCY_PREFIXAFI(inst.gatewayIp.family,
+                                                         inst.prefix.family);
               *_return = BGP_ERR_PARAM;
               ret = FALSE;
               goto error;
@@ -1226,6 +1241,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
         }
       if (zrpc_util_str2esi (esi, NULL) == 0)
         {
+          *error = ERROR_BGP_INVALID_ESI;
           *_return = BGP_ERR_PARAM;
           return FALSE;
         }
@@ -1274,6 +1290,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
               zrpc_util_str2_prefix(prefix, &dummy);
               if (dummy.prefixlen != 0 && dummy.prefixlen != 32 && dummy.prefixlen != 128)
                 {
+                  *error = ERROR_BGP_INVALID_PREFIX;
                   *_return = BGP_ERR_PARAM;
                    ret = FALSE;
                    goto error;
@@ -1304,6 +1321,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
           if (ret == 0)
             {
+              *error = ERROR_BGP_INVALID_PREFIX;
               *_return = BGP_ERR_PARAM;
               ret = FALSE;
               goto error;
@@ -1312,6 +1330,8 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
               (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
             {
+              *error = ERROR_BGP_INCONSISTENCY_PREFIXAFI(inst.prefix.family,
+                                                         afi);
               *_return = BGP_ERR_PARAM;
               ret = FALSE;
               goto error;
@@ -1329,6 +1349,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
       ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
       if (ret == 0)
         {
+          *error = ERROR_BGP_INVALID_PREFIX;
           *_return = BGP_ERR_PARAM;
           ret = FALSE;
           goto error;
@@ -1337,6 +1358,8 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
       if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
           (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
         {
+          *error = ERROR_BGP_INCONSISTENCY_PREFIXAFI(inst.prefix.family,
+                                                     afi);
           *_return = BGP_ERR_PARAM;
           ret = FALSE;
           goto error;
@@ -1384,6 +1407,7 @@ inst_filled:
       grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
       if(grep == NULL)
         {
+          *error = ERROR_BGP_RD_NOTFOUND
           *_return = BGP_ERR_FAILED;
           return FALSE;
         }
@@ -1396,7 +1420,11 @@ inst_filled:
     {
       *_return = BGP_ERR_FAILED;
       if (is_auto_discovery)
-        *error = ERROR_BGP_INVALID_AD_PROCESSING;
+        {
+          *error = ERROR_BGP_INVALID_AD_PROCESSING;
+        } else {
+        *error = ERROR_BGP_INTERNAL;
+      }
     }
   capn_free(&rc);
  error:
@@ -1465,6 +1493,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
     {
+      *error = ERROR_BGP_AS_NOT_STARTED;
       *_return = BGP_ERR_FAILED;
       return FALSE;
     }
@@ -1504,6 +1533,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
 #endif /* !HAVE_THRIFT_V1 */
   if (!is_auto_discovery && !prefix)
   {
+    *error = ERROR_BGP_PREFIX_NOTFOUND;
     *_return = BGP_ERR_PARAM;
     ret = FALSE;
     goto error;
@@ -1519,6 +1549,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
         }
       if (zrpc_util_str2esi (esi, NULL) == 0)
         {
+          *error = ERROR_BGP_INVALID_ESI;
           *_return = BGP_ERR_PARAM;
           return FALSE;
         }
@@ -1558,6 +1589,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
               zrpc_util_str2_prefix(prefix, &dummy);
               if (dummy.prefixlen != 0 && dummy.prefixlen != 32 && dummy.prefixlen != 128)
                 {
+                  *error = ERROR_BGP_INVALID_PREFIX;
                   *_return = BGP_ERR_PARAM;
                    ret = FALSE;
                    goto error;
@@ -1588,6 +1620,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
           if (ret == 0)
             {
+              *error = ERROR_BGP_INVALID_PREFIX;
               *_return = BGP_ERR_PARAM;
               ret = FALSE;
               goto error;
@@ -1596,6 +1629,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
               (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
             {
+              *error = ERROR_BGP_INCONSISTENCY_PREFIXAFI(inst.prefix.family, afi)
               *_return = BGP_ERR_PARAM;
               ret = FALSE;
               goto error;
@@ -1613,6 +1647,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
       ret = zrpc_util_str2_prefix (prefix, (struct zrpc_prefix *) &inst.prefix);
       if (ret == 0)
         {
+          *error = ERROR_BGP_INVALID_PREFIX;
           *_return = BGP_ERR_PARAM;
           ret = FALSE;
           goto error;
@@ -1621,6 +1656,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
       if ((afi == AF_AFI_AFI_IP && inst.prefix.family == AF_INET6) ||
           (afi == AF_AFI_AFI_IPV6 && inst.prefix.family == AF_INET))
         {
+          *error = ERROR_BGP_INCONSISTENCY_PREFIXAFI(inst.prefix.family, afi)
           *_return = BGP_ERR_PARAM;
           ret = FALSE;
           goto error;
@@ -1669,6 +1705,7 @@ inst_filled:
       grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
       if(grep == NULL)
         {
+          *error = ERROR_BGP_RD_NOTFOUND
           *_return = BGP_ERR_FAILED;
           return FALSE;
         }
@@ -1681,7 +1718,11 @@ inst_filled:
     {
       *_return = BGP_ERR_FAILED;
       if (is_auto_discovery)
-        *error = ERROR_BGP_INVALID_AD_PROCESSING;
+        {
+          *error = ERROR_BGP_INVALID_AD_PROCESSING;
+        } else {
+        *error = ERROR_BGP_INTERNAL;
+      }
     }
   capn_free(&rc);
 
