@@ -30,6 +30,7 @@ struct zrpc_global
   uint16_t zrpc_notification_port;
   uint16_t zrpc_listen_port;
   char *zrpc_notification_address;
+  char *zrpc_listen_address;
 };
 
 /* Global thread strucutre. */

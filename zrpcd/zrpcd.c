@@ -94,6 +94,7 @@ zrpc_global_init (void)
   tm->zrpc_listen_port = ZRPC_LISTEN_PORT;
   tm->zrpc_notification_port = ZRPC_NOTIFICATION_PORT;
   tm->zrpc_notification_address = strdup(ZRPC_CLIENT_ADDRESS);
+  tm->zrpc_listen_address = strdup(ZRPC_LISTEN_ADDRESS);
 }
 
 static void

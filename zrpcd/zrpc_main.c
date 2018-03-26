@@ -52,8 +52,10 @@ Daemon which manages rpc configuration/updates from/to quagga\n\n\
 zrpc configuration across thrift defined model : vpnservice.\n\n\
 -D                          Disable default logging to stdout \n\
 -P, --thrift_port           Set thrift's config port number\n\
--p, --thrift_notif_port     Set thrift's notif update port number\n\
 -N, --thrift_notif_address  Set thrift's notif update specified address\n\
+-n, --thrift_notif_port     Set thrift's notif update \n\
+-I, --thrift_listen_port    Set thrift's listen config port number\n\
+-L, --thrift_listen_address Set thrift's listen config specified address\n\
 -h, --help                  Display this help and exit\n\n");
   exit (status);
 }
@@ -198,13 +200,13 @@ main (int argc, char **argv)
   if (zrpc_util_proc_find(argv[0]) != -1)
     {
       printf("%s: pid %u already present. cancel execution\r\n",argv[0], zrpc_util_proc_find(argv[0]));
-      return;
+      return 0;
     }
   /* ZRPC main init. */
   zrpc_global_init ();
 
   /* Command line argument treatment. */
-  while ((option = getopt (argc, argv, "A:P:p:N:n:Dh")) != -1)
+  while ((option = getopt (argc, argv, "A:P:p:N:L:I:n:Dh")) != -1)
     {
       switch (option)
 	{
@@ -218,7 +220,7 @@ main (int argc, char **argv)
           else
             vty_port = tmp_port;
 	  break;
-	case 'p':
+	case 'I':
 	  tmp_port = atoi (optarg);
 	  if (tmp_port < 0 || tmp_port > 0xffff)
 	    tm->zrpc_listen_port = 0;
@@ -231,6 +233,11 @@ main (int argc, char **argv)
           tm->zrpc_notification_address = strdup(optarg);
           break;
 	  /* listenon implies -n */
+	case 'L':
+          if(tm->zrpc_listen_address)
+            free(tm->zrpc_listen_address);
+          tm->zrpc_listen_address = strdup(optarg);
+          break;
 	case 'n':
 	  tmp_port = atoi (optarg);
 	  if (tmp_port <= 0 || tmp_port > 0xffff)

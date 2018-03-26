@@ -676,6 +676,7 @@ void zrpc_vpnservice_setup_thrift_bgp_configurator_server (struct zrpc_vpnservic
      listens for client connections */
   setup->bgp_configurator_server_transport =
     g_object_new (THRIFT_TYPE_SERVER_SOCKET,
+                  "hostname",  tm->zrpc_listen_address,
                   "port", setup->zrpc_listen_port,
                   NULL);
   /* Create an instance of our handler, which provides the service's
