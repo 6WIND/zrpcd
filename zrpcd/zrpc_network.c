@@ -214,6 +214,10 @@ zrpc_read_packet (struct thread *thread)
   return 0;
 }
 
+
+static gboolean
+zrpc_server_socket_listen (ThriftServerTransport *transport, GError **error);
+
 int
 zrpc_server_listen (struct zrpc *zrpc)
 {
@@ -221,7 +225,7 @@ zrpc_server_listen (struct zrpc *zrpc)
   GError *error = NULL;
   gboolean ret;
 
-  ret = thrift_server_socket_listen( zrpc->zrpc_vpnservice->bgp_configurator_server_transport, &error);
+  ret = zrpc_server_socket_listen (zrpc->zrpc_vpnservice->bgp_configurator_server_transport, &error);
   if(ret == TRUE)
     {
       ThriftServerSocket *tsocket = \
@@ -344,4 +348,59 @@ void zrpc_client_transport_close(ThriftTransport *transport)
       close (tsocket->sd);
     }
   tsocket->sd = THRIFT_INVALID_SOCKET;
+}
+
+static gboolean
+zrpc_server_socket_listen (ThriftServerTransport *transport, GError **error)
+{
+  int enabled = 1; /* for setsockopt() */
+  struct sockaddr_in pin;
+  ThriftServerSocket *tsocket = THRIFT_SERVER_SOCKET (transport);
+  struct in_addr server_addr;
+
+  /* create a address structure */
+  memset (&pin, 0, sizeof(pin));
+  pin.sin_family = AF_INET;
+  inet_pton (AF_INET, tm->zrpc_listen_address, &server_addr);
+  pin.sin_addr.s_addr = server_addr.s_addr;
+  pin.sin_port = htons(tsocket->port);
+
+  /* create a socket */
+  if ((tsocket->sd = socket (AF_INET, SOCK_STREAM, 0)) == -1)
+  {
+    g_set_error (error, THRIFT_SERVER_SOCKET_ERROR,
+                 THRIFT_SERVER_SOCKET_ERROR_SOCKET,
+                 "failed to create socket - %s", strerror (errno));
+    return FALSE;
+  }
+
+  if (setsockopt(tsocket->sd, SOL_SOCKET, SO_REUSEADDR, &enabled,
+                 sizeof(enabled)) == -1)
+  {
+    g_set_error (error, THRIFT_SERVER_SOCKET_ERROR,
+                 THRIFT_SERVER_SOCKET_ERROR_SETSOCKOPT,
+                 "unable to set SO_REUSEADDR - %s", strerror(errno));
+    return FALSE;
+  }
+
+  /* bind to the socket */
+  if (bind(tsocket->sd, (struct sockaddr *) &pin, sizeof(pin)) == -1)
+  {
+    g_set_error (error, THRIFT_SERVER_SOCKET_ERROR,
+                 THRIFT_SERVER_SOCKET_ERROR_BIND,
+                 "failed to bind to port %d - %s",
+                 tsocket->port, strerror(errno));
+    return FALSE;
+  }
+
+  if (listen(tsocket->sd, tsocket->backlog) == -1)
+  {
+    g_set_error (error, THRIFT_SERVER_SOCKET_ERROR,
+                 THRIFT_SERVER_SOCKET_ERROR_LISTEN,
+                 "failed to listen to port %d - %s",
+                 tsocket->port, strerror(errno));
+    return FALSE;
+  }
+
+  return TRUE;
 }

@@ -193,6 +193,7 @@ main (int argc, char **argv)
   int tmp_port;
   int option = 0;
   char vtydisplay[20];
+  struct in_addr server_addr;
 
   /* Set umask before anything for security */
   umask (0027);
@@ -234,6 +235,12 @@ main (int argc, char **argv)
           break;
 	  /* listenon implies -n */
 	case 'L':
+          if (inet_pton (AF_INET, (const char *)optarg, &server_addr) != 1)
+            {
+              printf ("Invalid ip address %s\r\n", optarg);
+              return -1;
+            }
+
           if(tm->zrpc_listen_address)
             free(tm->zrpc_listen_address);
           tm->zrpc_listen_address = strdup(optarg);
