@@ -15,7 +15,7 @@
 #define ZRPC_LISTEN_PORT	 7644
 #define ZRPC_NOTIFICATION_PORT 6644
 #define ZRPC_CLIENT_ADDRESS "0.0.0.0"
-#define ZRPC_LISTEN_ADDRESS "127.0.0.1"
+#define ZRPC_LISTEN_ADDRESS "0.0.0.0"
 
 #define ZMQ_SOCK "ipc:///tmp/qzc-vpn2bgp"
 #define ZMQ_NOTIFY "ipc:///tmp/qzc-notify"
