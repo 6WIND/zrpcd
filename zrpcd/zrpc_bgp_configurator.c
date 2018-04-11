@@ -175,7 +175,7 @@ gboolean
 instance_bgp_configurator_handler_disable_bfd_failover(BgpConfiguratorIf *iface, gint32* _return,
                                                        GError **error);
 gboolean
-instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, gint8* _return,
+instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, peer_status_type* _return,
                                                   const gchar * ipAddress, const gint64 asNumber,
                                                   GError **error);
 
@@ -4439,7 +4439,7 @@ instance_bgp_configurator_handler_disable_bfd_failover(BgpConfiguratorIf *iface,
 }
 
 gboolean
-instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, gint8* _return,
+instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, peer_status_type* _return,
                                                   const gchar * ipAddress, const gint64 asNumber,
                                                   GError **error)
 {
@@ -4471,8 +4471,8 @@ instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, gint
   c_peer  = zrpc_bgp_configurator_find_peer (ctxt, ipAddress, ret, 0);
   if(c_peer == NULL || c_peer->peer_nid == 0 || c_peer->asNumber != asNumber)
     {
-      *error = ERROR_BGP_PEER_NOTFOUND;
-      return FALSE;
+      *_return = PEER_STATUS_TYPE_PEER_NOTCONFIGURED;
+      return TRUE;
     }
   peer_nid = c_peer->peer_nid;
   /* retrieve peer context */
@@ -4485,7 +4485,13 @@ instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, gint
     }
   memset (&peer, 0, sizeof(struct peer));
   qcapn_BGPPeerStatus_read (&peer, grep_peer->data);
-  *_return = peer.status;
+
+  if (peer.status == BGP_PEER_STATUS_UP)
+      *_return = PEER_STATUS_TYPE_PEER_UP;
+  else if (peer.status == BGP_PEER_STATUS_DOWN)
+      *_return = PEER_STATUS_TYPE_PEER_DOWN;
+  else
+      *_return = PEER_STATUS_TYPE_PEER_UNKNOWN;
 
   return TRUE;
 }

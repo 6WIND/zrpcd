@@ -84,6 +84,15 @@ enum protocol_type {
      PROTOCOL_ANY = 4   // for getRoutes() only
 }
 
+ // peer status type
+ // used for getPeerStatus()
+ enum peer_status_type {
+     PEER_UP = 0,
+     PEER_DOWN = 1,
+     PEER_UNKNOWN = 2,
+     PEER_NOTCONFIGURED = 3
+ }
+
  // FIB update
  struct Update {
      1: i32 type, // either BGP_RT_ADD or RT_DEL
@@ -223,7 +232,7 @@ enum protocol_type {
      i32 sendEOR(),
      i32 enableBFDFailover(1:bfdConfigData bfdConfig),
      i32 disableBFDFailover(),
-     byte getPeerStatus(1:string ipAddress, 2:i64 asNumber),
+     peer_status_type getPeerStatus(1:string ipAddress, 2:i64 asNumber),
  }
  
  service BgpUpdater {
