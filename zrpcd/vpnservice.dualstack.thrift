@@ -121,7 +121,7 @@ enum protocol_type {
      4: optional i32 more
  }
 
- struct bfdConfigData {
+ struct BfdConfigData {
      1: byte bfdConfigDataVersion,
      2: optional i32  bfdRxInterval,
      3: optional byte bfdFailureThreshold,
@@ -230,7 +230,7 @@ enum protocol_type {
      i32 multipaths(1:string rd, 2:i32 maxPath),
      i32 enableEORDelay(1:i32 delay),
      i32 sendEOR(),
-     i32 enableBFDFailover(1:bfdConfigData bfdConfig),
+     i32 enableBFDFailover(1:BfdConfigData bfdConfig),
      i32 disableBFDFailover(),
      peer_status_type getPeerStatus(1:string ipAddress, 2:i64 asNumber),
  }
