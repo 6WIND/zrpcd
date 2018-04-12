@@ -170,7 +170,7 @@ instance_bgp_configurator_send_eor(BgpConfiguratorIf *iface, gint32* _return, GE
 
 gboolean
 instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, gint32* _return,
-                                                      const bfdConfigData * bfdConfig, GError **error);
+                                                      const BfdConfigData * bfdConfig, GError **error);
 gboolean
 instance_bgp_configurator_handler_disable_bfd_failover(BgpConfiguratorIf *iface, gint32* _return,
                                                        GError **error);
@@ -4126,7 +4126,7 @@ zrpc_sync_bfd_conf_to_bgpd (struct zrpc_vpnservice *ctxt,
 
 gboolean
 instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, gint32* _return,
-                                                      const bfdConfigData * bfdConfig, GError **error)
+                                                      const BfdConfigData * bfdConfig, GError **error)
 {
   struct zrpc_vpnservice *ctxt = NULL;
   struct zrpc_vpnservice_bgp_context *bgp_ctxt;
@@ -4139,7 +4139,7 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
   pid_t pid;
   int ret;
   struct QZCReply *rep;
-  bfdConfigData default_bfd_config = {
+  BfdConfigData default_bfd_config = {
                                        .bfdConfigDataVersion = 1,
                                        .bfdRxInterval = DEFAULT_BFD_RX_INTERVAL, /* in ms */
                                        .bfdFailureThreshold = DEFAULT_BFD_FAILURE_THRESHOLD,
@@ -4148,7 +4148,7 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
                                        .bfdDebounceUp = DEFAULT_BFD_DEBOUNCE_UP,  /* in ms */
                                        .bfdMultihop = false,
                                      };
-  bfdConfigData *bfd_config = &default_bfd_config;
+  BfdConfigData *bfd_config = &default_bfd_config;
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
