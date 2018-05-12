@@ -932,9 +932,6 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
         return FALSE;
       }
   }
-  zrpc_debug_set_log_file_with_level (zrpc_vpnservice_get_bgp_context(ctxt)->logFile,
-                                      zrpc_vpnservice_get_bgp_context(ctxt)->logLevel);
-
   /* from bgp_master, inject configuration, and send zmq message to BGP */
   {
     struct capn_ptr bgp;
