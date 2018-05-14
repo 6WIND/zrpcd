@@ -62,6 +62,9 @@ start () {
         local nb;
         log_rotate
 
+        touch $LOGFILE
+        chown quagga:quagga $LOGFILE
+        chmod u=rwx,go=rwx $LOGFILE
         $BIN >> $LOGFILE 2>&1 &
         ret=$!
         sleep 1

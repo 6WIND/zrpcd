@@ -45,7 +45,9 @@ PACKAGE_DEB="n"
 
 zrpc_copy_bin_files () {
     mkdir -p $INST_BIN_DIR/opt/quagga/var/log/quagga
-    touch $INST_BIN_DIR/opt/quagga/var/log/quagga/zrpcd.init.log
+    if [ -f $INST_BIN_DIR/opt/quagga/var/log/quagga/zrpcd.init.log ]; then
+          touch $INST_BIN_DIR/opt/quagga/var/log/quagga/zrpcd.init.log
+    fi
     touch $INST_BIN_DIR/opt/quagga/var/log/quagga/.dummyzrpc
     mkdir -p $INST_BIN_DIR/opt/quagga/var/run/quagga
     touch $INST_BIN_DIR/opt/quagga/var/run/quagga/.dummyzrpc
