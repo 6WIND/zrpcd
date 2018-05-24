@@ -149,7 +149,7 @@ install_deps() {
 #Clean the directory
     rm -rf c-capnproto $THRIFT_FOLDER_NAME zeromq4-1 quagga zrpcd
 #Install thrift
-    git clone http://git-wip-us.apache.org/repos/asf/thrift.git
+    git clone https://github.com/apache/thrift.git
     cd $THRIFT_FOLDER_NAME
     git checkout 0.10.0
     wget https://issues.apache.org/jira/secure/attachment/12840512/0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
