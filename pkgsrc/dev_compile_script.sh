@@ -253,6 +253,8 @@ install_deps() {
     popd
 
     cp $INSTALL_DIR/opt/quagga/etc/bgpd.conf.sample4 $INSTALL_DIR/opt/quagga/etc/bgpd.conf
+    cp $INSTALL_DIR/opt/quagga/etc/bfdd.conf.sample $INSTALL_DIR/opt/quagga/etc/bfdd.conf
+    cp $INSTALL_DIR/opt/quagga/etc/zebra.conf.sample $INSTALL_DIR/opt/quagga/etc/zebra.conf
     mkdir $INSTALL_DIR/opt/quagga/var/run/quagga -p
     mkdir $INSTALL_DIR/opt/quagga/var/log/quagga -p
     if [ -z "$DO_PACKAGING" ]; then
