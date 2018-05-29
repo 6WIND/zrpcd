@@ -489,7 +489,7 @@ OPTIONS:
   -a/--archive [path to archive.tar.gz], give explicitly the source archive to be used instead \
       of producing one with make dist.
   -d/--install-deps, compile and install zrpcd's dependencies.
-  -v/--version, define the thrift API to use with: 1 = l3vpn, 2 = evpn, 4 = ipv6
+  -v/--version, define the thrift API to use with: 1 = l3vpn, 2 = evpn, 4 = ipv6, 5 = dualstack
   -h help, prints this help text
 EOF
 }
