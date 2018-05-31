@@ -4178,6 +4178,27 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
                                      };
   BfdConfigData *bfd_config = &default_bfd_config;
 
+  if (bfdConfig)
+    {
+      if (IS_ZRPC_DEBUG)
+        zrpc_info ("enableBFDFailover. bfd parameters from ODL (proc %d, bfdConfigDataVersion %d, "
+                   "bfdRxInterval %u, bfdFailureThreshold %d, bfdTxInterval %u, "
+                   "bfdDebounceDown %u, bfdDebounceUp %u, bfdMultihop %s)",
+                   pid,
+                   bfdConfig->bfdConfigDataVersion,
+                   bfdConfig->bfdRxInterval,
+                   bfdConfig->bfdFailureThreshold,
+                   bfdConfig->bfdTxInterval,
+                   bfdConfig->bfdDebounceDown,
+                   bfdConfig->bfdDebounceUp,
+                   bfdConfig->bfdMultihop == true?"true":"false");
+    }
+  else
+    {
+      if (IS_ZRPC_DEBUG)
+        zrpc_info ("enableBFDFailover: parameter from ODL is NULL");
+    }
+
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
   {
