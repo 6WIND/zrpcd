@@ -390,6 +390,12 @@ zrpc_debug_set_log_with_level (char *logFileName, char *logLevel)
 }
 
 void
+zrpc_debug_configure_syslog (int on)
+{
+  log_syslog = on;
+}
+
+void
 zrpc_debug_configure_stdout (int on)
 {
   log_stdout = on;

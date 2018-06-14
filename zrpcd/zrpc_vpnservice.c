@@ -572,6 +572,8 @@ void zrpc_vpnservice_setup_bgp_context(struct zrpc_vpnservice *setup)
   zrpc_debug_set_log_with_level(setup->bgp_context->logFile, setup->bgp_context->logLevel);
   if (zrpc_disable_stdout)
     zrpc_debug_configure_stdout (0);
+  if (zrpc_disable_syslog)
+    zrpc_debug_configure_syslog (0);
 }
 
 #define ERROR_BGP_MULTIPATH_SET g_error_new(1, BGP_ERR_ACTIVE, "BGP multipath already configured for afi/safi");
