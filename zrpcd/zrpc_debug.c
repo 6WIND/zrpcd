@@ -36,14 +36,14 @@ typedef enum
   ZRPC_LOG_LEVEL_DEBUG
 } zrpc_log_level_t;
 
-const char *zrpc_log_level_str[]={"emergencies",
-                            "alerts",
-                            "critical",
-                            "errors",
-                            "warnings",
-                            "notifications",
-                            "informational",
-                            "debugging"};
+const char *zrpc_log_level_str[]={"Emergency",
+                            "Alert",
+                            "Critical",
+                            "Error",
+                            "Warning",
+                            "Notice",
+                            "Informational",
+                            "Debug"};
 
 unsigned int log_stdout = 1;
 unsigned int log_syslog = 1;
