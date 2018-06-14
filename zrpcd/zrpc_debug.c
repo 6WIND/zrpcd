@@ -46,6 +46,7 @@ const char *zrpc_log_level_str[]={"emergencies",
 
 unsigned int log_stdout = 1;
 unsigned int log_file = 0;
+unsigned int record_priority = 1;
 FILE *log_file_fp = NULL;
 char *log_file_filename = NULL;
 zrpc_log_level_t log_level = ZRPC_LOG_LEVEL_DEBUG;
@@ -319,13 +320,17 @@ zrpc_log(const char *format, ...)
   va_end(argptr);
 
   if (log_stdout)
-    fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
+    fprintf(stderr, "%s %s ZRPC: %s\r\n",
+            buffer, record_priority ?
+            zrpc_log_level_str[ZRPC_LOG_LEVEL_DEBUG] : "", dest);
   if (!log_file_filename)
     return;
   //log_file_fp = fopen (log_file_filename, "a");
   //if (log_file_fp == NULL)
   //  return ;
-  sprintf(dest_sys, "%s ZRPC: %s", buffer, dest);
+  sprintf(dest_sys, "%s %s ZRPC: %s",
+            buffer, record_priority ?
+            zrpc_log_level_str[ZRPC_LOG_LEVEL_DEBUG] : "", dest);
   zrpc_system (dest_sys);
   //fprintf (log_file_fp, "%s ZRPC: %s\r\n", buffer, dest);
   //fclose (log_file_fp);
@@ -347,15 +352,18 @@ zrpc_info(const char *format, ...)
   time (&t);
   tm_info = localtime(&t);
   strftime(buffer, 26, "%Y/%m/%d %H:%M:%S", tm_info);
-
   va_start(argptr, format);
   vsprintf(dest, format, argptr);
   va_end(argptr);
   if (log_stdout)
-    fprintf(stderr, "%s ZRPC: %s\r\n", buffer, dest);
+    fprintf(stderr, "%s %s ZRPC: %s\r\n",
+            buffer, record_priority ?
+            zrpc_log_level_str[ZRPC_LOG_LEVEL_INFORMATIONAL] : "", dest);
   if (!log_file_filename)
     return;
-  sprintf(dest_sys, "%s ZRPC: %s", buffer, dest);
+  sprintf(dest_sys, "%s %s ZRPC: %s",
+            buffer, record_priority ?
+            zrpc_log_level_str[ZRPC_LOG_LEVEL_INFORMATIONAL] : "", dest);
   zrpc_system (dest_sys);
 }
 
