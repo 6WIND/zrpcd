@@ -15,7 +15,7 @@ static const capn_text capn_val0 = {0, ""};
 
 capn_ptr qcapn_new_BGP(struct capn_segment *s)
 {
-    return capn_new_struct(s, 34, 5);
+    return capn_new_struct(s, 34, 6);
 }
 
 void qcapn_BGP_write(const struct bgp *s, capn_ptr p)
@@ -57,6 +57,7 @@ void qcapn_BGP_write(const struct bgp *s, capn_ptr p)
     { capn_text tp = { .str = s->notify_zmq_url, .len = s->notify_zmq_url ? strlen(s->notify_zmq_url) : 0 }; capn_set_text(p, 2, tp); }
     { capn_text tp = { .str = s->logFile, .len = s->logFile ? strlen(s->logFile) : 0 }; capn_set_text(p, 3, tp); }
     { capn_text tp = { .str = s->logLevel, .len = s->logLevel ? strlen(s->logLevel) : 0 }; capn_set_text(p, 4, tp); }
+    { capn_text tp = { .str = s->logLevelSyslog, .len = s->logLevelSyslog ? strlen(s->logLevelSyslog) : 0 }; capn_set_text(p, 5, tp); }
 }
 
 void qcapn_BGPAfiSafi_write(const struct bgp *s, capn_ptr p, address_family_t afi, subsequent_address_family_t safi)
@@ -866,6 +867,7 @@ void qcapn_BGP_read(struct bgp *s, capn_ptr p)
     { capn_text tp = capn_get_text(p, 2, capn_val0); free(s->notify_zmq_url); s->notify_zmq_url = strdup(tp.str); }
     { capn_text tp = capn_get_text(p, 3, capn_val0); free(s->logFile); s->logFile = strdup(tp.str); }
     { capn_text tp = capn_get_text(p, 4, capn_val0); free(s->logLevel); s->logLevel = strdup(tp.str); }
+    { capn_text tp = capn_get_text(p, 5, capn_val0); free(s->logLevelSyslog); s->logLevelSyslog = strdup(tp.str); }
 }
 
 void qcapn_BGPAfiSafi_read(struct bgp *s, capn_ptr p, address_family_t afi, subsequent_address_family_t safi)

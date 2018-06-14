@@ -77,6 +77,7 @@ struct bgp
 
   char *logFile;
   char *logLevel;
+  char *logLevelSyslog;
 
 #define MAX_EOR_UPDATE_DELAY 3600
   u_int16_t v_update_delay;
