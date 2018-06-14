@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
+#include <syslog.h>
 
 #include "vty.h"
 #include "command.h"
@@ -45,8 +46,9 @@ const char *zrpc_log_level_str[]={"emergencies",
                             "debugging"};
 
 unsigned int log_stdout = 1;
-unsigned int log_file = 0;
+unsigned int log_syslog = 1;
 unsigned int record_priority = 1;
+unsigned int log_facility = LOG_DAEMON;
 FILE *log_file_fp = NULL;
 char *log_file_filename = NULL;
 zrpc_log_level_t log_level = ZRPC_LOG_LEVEL_DEBUG;
@@ -284,6 +286,8 @@ zrpc_debug_init (void)
 
   zrpc_debug |= ZRPC_DEBUG;
   zrpc_debug |= ZRPC_DEBUG_NOTIFICATION;
+
+  openlog("zrpcd", LOG_CONS|LOG_NDELAY|LOG_PID, log_facility);
 }
 
 char dest_sys[1024];
@@ -323,6 +327,8 @@ zrpc_log(const char *format, ...)
     fprintf(stderr, "%s %s ZRPC: %s\r\n",
             buffer, record_priority ?
             zrpc_log_level_str[ZRPC_LOG_LEVEL_DEBUG] : "", dest);
+  if (log_syslog)
+    syslog(ZRPC_LOG_LEVEL_DEBUG | log_facility, "%s", dest);
   if (!log_file_filename)
     return;
   //log_file_fp = fopen (log_file_filename, "a");
@@ -359,6 +365,8 @@ zrpc_info(const char *format, ...)
     fprintf(stderr, "%s %s ZRPC: %s\r\n",
             buffer, record_priority ?
             zrpc_log_level_str[ZRPC_LOG_LEVEL_INFORMATIONAL] : "", dest);
+  if (log_syslog)
+    syslog(ZRPC_LOG_LEVEL_INFORMATIONAL | log_facility, "%s", dest);
   if (!log_file_filename)
     return;
   sprintf(dest_sys, "%s %s ZRPC: %s",
