@@ -706,14 +706,23 @@ zrpc_bgp_set_log_config(struct zrpc_vpnservice *ctxt,
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
+  if (inst.logLevelSyslog)
+    free ( inst.logLevelSyslog);
   if (inst.logLevel)
     free ( inst.logLevel);
   if (inst.logFile)
     free ( inst.logFile);
-  if(bgp_ctxt->logLevel)
+  if(bgp_ctxt->logLevel) {
     inst.logLevel = strdup (bgp_ctxt->logLevel);
-  else
+    if (zrpc_disable_syslog)
+      inst.logLevelSyslog = strdup ("Disabled");
+    else
+      inst.logLevelSyslog = strdup (bgp_ctxt->logLevel);
+
+  } else {
     inst.logLevel = NULL;
+    inst.logLevelSyslog = NULL;
+  }
   if(bgp_ctxt->logFile)
     inst.logFile = strdup (bgp_ctxt->logFile);
   qcapn_BGP_write(&inst, bgp);
@@ -729,6 +738,8 @@ zrpc_bgp_set_log_config(struct zrpc_vpnservice *ctxt,
     free (inst.notify_zmq_url);
   if (inst.logLevel)
     free ( inst.logLevel);
+  if (inst.logLevelSyslog)
+    free ( inst.logLevelSyslog);
   if (inst.logFile)
     free ( inst.logFile);
   return TRUE;
@@ -956,6 +967,8 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
       free (inst.logFile);
     if (inst.logLevel)
       free (inst.logLevel);
+    if (inst.logLevelSyslog)
+      free (inst.logLevelSyslog);
 
     /* set new configuration */
     bgp_ctxt = zrpc_vpnservice_get_bgp_context(ctxt);
@@ -965,10 +978,16 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
     inst.notify_zmq_url = ZRPC_STRDUP(ctxt->zmq_subscribe_sock);
 
     /* log file and log level */
-    if (bgp_ctxt->logLevel)
+    if (bgp_ctxt->logLevel) {
       inst.logLevel = ZRPC_STRDUP(bgp_ctxt->logLevel);
-    else
+      if (zrpc_disable_syslog)
+        inst.logLevelSyslog = ZRPC_STRDUP("Disabled");
+      else
+        inst.logLevelSyslog = ZRPC_STRDUP(bgp_ctxt->logLevel);
+    } else {
       inst.logLevel = NULL;
+      inst.logLevelSyslog = NULL;
+    }
     if (bgp_ctxt->logFile)
       inst.logFile = ZRPC_STRDUP(bgp_ctxt->logFile);
 
@@ -1003,6 +1022,11 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
       {
         ZRPC_FREE(inst.logLevel);
         inst.logLevel = NULL;
+      }
+    if (inst.logLevelSyslog)
+      {
+        ZRPC_FREE(inst.logLevelSyslog);
+        inst.logLevelSyslog = NULL;
       }
 
     capn_free(&rc);
@@ -3068,6 +3092,8 @@ instance_bgp_configurator_handler_enable_graceful_restart (BgpConfiguratorIf *if
     ZRPC_FREE (inst.logFile);
   if (inst.logLevel)
     ZRPC_FREE (inst.logLevel);
+  if (inst.logLevelSyslog)
+    ZRPC_FREE (inst.logLevelSyslog);
   return TRUE;
 }
 
@@ -3910,6 +3936,8 @@ instance_bgp_configurator_enable_eor_delay(BgpConfiguratorIf *iface, gint32* _re
     free (inst.logFile);
   if (inst.logLevel)
     free (inst.logLevel);
+  if (inst.logLevelSyslog)
+    free (inst.logLevelSyslog);
   if(IS_ZRPC_DEBUG)
     {
       zrpc_info ("EOenableEORDelay (%d) OK", delay);
