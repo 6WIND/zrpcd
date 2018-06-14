@@ -29,7 +29,7 @@ extern unsigned long zrpc_debug;
 extern void zrpc_debug_init (void);
 extern void zrpc_debug_reset (void);
 extern void
-zrpc_debug_set_log_file_with_level (char *logFileName, char *logLevel);
+zrpc_debug_set_log_with_level (char *logFileName, char *logLevel);
 extern void
 zrpc_debug_configure_stdout (int on);
 extern void

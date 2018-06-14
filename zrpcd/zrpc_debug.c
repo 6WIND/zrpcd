@@ -375,8 +375,11 @@ zrpc_info(const char *format, ...)
   zrpc_system (dest_sys);
 }
 
+/* this fuction will configure file logging, and level logging for
+ * all target : stdout, file or syslog
+ */
 void
-zrpc_debug_set_log_file_with_level (char *logFileName, char *logLevel)
+zrpc_debug_set_log_with_level (char *logFileName, char *logLevel)
 {
   log_level = zrpc_level_match(logLevel);
   
