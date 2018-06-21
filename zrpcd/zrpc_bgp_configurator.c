@@ -436,6 +436,22 @@ zrpc_bgp_configurator_find_vrf(struct zrpc_vpnservice *ctxt, struct zrpc_rd_pref
   return NULL;
 }
 
+static const char *
+zrpc_bgp_configurator_get_peer_name(struct zrpc_vpnservice *ctxt,
+                                    uint64_t peer_nid)
+{
+  struct zrpc_vpnservice_cache_peer *entry_bgppeer, *entry_bgppeer_next, *entry;
+  int i,j;
+
+  /* lookup in cache context, first */
+  for (entry_bgppeer = ctxt->bgp_peer_list; entry_bgppeer; entry_bgppeer = entry_bgppeer_next)
+    {
+      if (peer_nid == entry_bgppeer->peer_nid)
+        return entry_bgppeer->peerIp;
+    }
+  return NULL;
+}
+
 /*
  * lookup routine that searches for a matching peer
  * it searches first in the zrpc cache, then if not found,
@@ -1886,6 +1902,8 @@ zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
    struct peer peer;
    struct capn rc;
    struct capn_segment *cs;
+   char *peername;
+   char peername_nid[64];
 
    if (!ctxt || !peer_nid)
      return;
@@ -1912,17 +1930,22 @@ zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
    cs = capn_root(&rc).seg;
    peer_ctxt = qcapn_new_BGPPeer(cs);
    qcapn_BGPPeer_write(&peer, peer_ctxt);
+   peername = zrpc_bgp_configurator_get_peer_name(ctxt, peer_nid);
+   if (!peername) {
+     sprintf(peername_nid, "%llx", (long long unsigned int)peer_nid);
+     peername = peername_nid;
+   }
    if(qzcclient_setelem (ctxt->qzc_sock, &peer_nid, 2, \
                          &peer_ctxt, &bgp_datatype_create_bgp_2, \
                          NULL, NULL))
      {
        if (IS_ZRPC_DEBUG)
-         zrpc_info ("BFD sync to peer(%llx) OK", (long long unsigned int)peer_nid);
+         zrpc_info ("BFD sync to peer %s OK", peername);
      }
    else
      {
        if(IS_ZRPC_DEBUG)
-         zrpc_info ("BFD sync to peer(%llx) NOK", (long long unsigned int)peer_nid);
+         zrpc_info ("BFD sync to peer(%s) NOK", peername);
      }
    if (peer.host)
      ZRPC_FREE (peer.host);
