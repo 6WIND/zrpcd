@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #include <arpa/inet.h>
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_util.h"
@@ -555,6 +556,22 @@ zrpc_util_get_pid_output (const char *path)
 }
 
 #endif /* HAVE_FCNTL */
+
+void zrpc_kill_child(const char *pidfile, const char *process_name)
+{
+  pid_t pid;
+  int ret;
+
+  pid = zrpc_util_get_pid_output(pidfile);
+  if (pid)
+    {
+      ret = kill(pid, SIGINT);
+      if (ret == 0)
+          unlink(pidfile);
+      zrpc_log("Kill %s instance (%d) %s", process_name,
+               pid, ret == 0 ? "OK" : "NOK");
+    }
+}
 
 uint32_t zrpc_util_proc_find(const char* name) 
 {

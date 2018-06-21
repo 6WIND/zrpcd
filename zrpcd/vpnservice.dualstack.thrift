@@ -84,6 +84,15 @@ enum protocol_type {
      PROTOCOL_ANY = 4   // for getRoutes() only
 }
 
+ // peer status type
+ // used for getPeerStatus()
+ enum peer_status_type {
+     PEER_UP = 0,
+     PEER_DOWN = 1,
+     PEER_UNKNOWN = 2,
+     PEER_NOTCONFIGURED = 3
+ }
+
  // FIB update
  struct Update {
      1: i32 type, // either BGP_RT_ADD or RT_DEL
@@ -111,7 +120,17 @@ enum protocol_type {
      2: optional list<Update> updates,
      4: optional i32 more
  }
- 
+
+ struct BfdConfigData {
+     1: byte bfdConfigDataVersion,
+     2: optional i32  bfdRxInterval,
+     3: optional byte bfdFailureThreshold,
+     4: optional i32  bfdTxInterval,
+     5: optional i32  bfdDebounceDown,
+     6: optional i32  bfdDebounceUp,
+     7: optional bool bfdMultihop
+ }
+
  service BgpConfigurator {
      /*
       * startBgp() starts a bgp instance on the bgp VM. Graceful 
@@ -211,6 +230,9 @@ enum protocol_type {
      i32 multipaths(1:string rd, 2:i32 maxPath),
      i32 enableEORDelay(1:i32 delay),
      i32 sendEOR(),
+     i32 enableBFDFailover(1:BfdConfigData bfdConfig),
+     i32 disableBFDFailover(),
+     peer_status_type getPeerStatus(1:string ipAddress, 2:i64 asNumber),
  }
  
  service BgpUpdater {
@@ -228,6 +250,8 @@ enum protocol_type {
    oneway void onStartConfigResyncNotification(),
    // relay to odl a bgp Notification we got from peer 
    oneway void onNotificationSendEvent(1:string prefix, 
-                                       2:byte errCode, 3:byte errSubcode)
+                                       2:byte errCode, 3:byte errSubcode),
+   oneway void peerDown(1:string ipAddress, 2:i64 asNumber),
+   oneway void peerUp(1:string ipAddress, 2:i64 asNumber)
 
 } 

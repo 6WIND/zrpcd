@@ -287,7 +287,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
   s = &ss;
   memset(s, 0, sizeof(struct bgp_event_vrf));
   qcapn_BGPEventVRFRoute_read(s, p);
-  if (s->announce != BGP_EVENT_SHUT)
+  if (s->announce != BGP_EVENT_SHUT && s->announce != BGP_EVENT_BFD_STATUS)
     {
       gchar *esi;
       gchar *macaddress = NULL;
@@ -443,7 +443,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       if (s->mac_router)
         free (s->mac_router);
     }
-  else
+  else if (s->announce == BGP_EVENT_SHUT)
     {
       t = &tt;
       memset(t, 0, sizeof(struct bgp_event_shut));
@@ -453,6 +453,20 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       zrpc_util_prefix_2str (&t->peer, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       nexthop = nh_str;
       zrpc_bgp_updater_on_notification_send_event(nexthop, t->type, t->subtype);
+    }
+  else if (s->announce == BGP_EVENT_BFD_STATUS)
+    {
+      struct bgp_event_bfd_status st;
+
+      st.as = s->label;
+      st.up_down = (uint8_t)s->prefix.u.prefix4.s_addr;
+      zrpc_util_copy_prefix (&st.peer, &s->nexthop);
+      zrpc_util_prefix_2str (&st.peer, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
+      nexthop = nh_str;
+      if (st.up_down)
+        zrpc_bgp_updater_peer_up (nexthop, (const gint64)st.as);
+      else
+        zrpc_bgp_updater_peer_down (nexthop, (const gint64)st.as);
     }
   capn_free(&rc);
   return;
@@ -473,6 +487,9 @@ void zrpc_vpnservice_setup(struct zrpc_vpnservice *setup)
   ptr+=sprintf(ptr, "%s/bgpd",SBIN_DIR);
   setup->bgpd_execution_path = ZRPC_STRDUP(bgpd_location_path);
   zrpc_vpnservice_setup_bgp_context (setup);
+
+  setup->bfdd_enabled = 0;
+  setup->bfd_multihop = 0;
 }
 
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup)
@@ -530,17 +547,41 @@ void zrpc_vpnservice_terminate_qzc(struct zrpc_vpnservice *setup)
       qzcclient_close (setup->qzc_sock);
       setup->qzc_sock = NULL;
     }
-
-  qzmqclient_finish();
 }
 
 void zrpc_vpnservice_setup_qzc(struct zrpc_vpnservice *setup)
 {
-  qzcclient_init ();
   if(setup->zmq_subscribe_sock && setup->qzc_subscribe_sock == NULL )
     setup->qzc_subscribe_sock = qzcclient_subscribe(tm->global, \
                                                     setup->zmq_subscribe_sock, \
                                                     zrpc_vpnservice_callback);
+}
+
+void zrpc_vpnservice_terminate_qzc_bfdd(struct zrpc_vpnservice *setup)
+{
+  if(!setup)
+    return;
+
+  if(setup->qzc_bfdd_sock)
+    {
+      int val = 0;
+      qzcclient_setsockopt(setup->qzc_bfdd_sock, ZMQ_LINGER, &val, sizeof(val));
+      qzcclient_close (setup->qzc_bfdd_sock);
+      setup->qzc_bfdd_sock = NULL;
+    }
+}
+
+void zrpc_vpnservice_terminate_bfd(struct zrpc_vpnservice *setup)
+{
+  if(!setup)
+    return;
+
+  zrpc_vpnservice_terminate_qzc_bfdd(setup);
+  zrpc_kill_child (BFDD_PID, "BFD");
+  zrpc_kill_child (ZEBRA_PID, "ZEBRA");
+  setup->bfdd_enabled = 0;
+  if (setup->bfd_multihop)
+    setup->bfd_multihop = 0;
 }
 
 void zrpc_vpnservice_terminate_bgp_context(struct zrpc_vpnservice *setup)
@@ -708,7 +749,10 @@ void zrpc_vpnservice_terminate_thrift_bgp_configurator_server (struct zrpc_vpnse
 void zrpc_vpnservice_get_context (struct zrpc_vpnservice **setup)
 {
   if(!tm->zrpc)
-    *setup = NULL;
+    {
+      *setup = NULL;
+      return;
+    }
   *setup = tm->zrpc->zrpc_vpnservice;
 }
 

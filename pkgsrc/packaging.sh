@@ -180,6 +180,24 @@ quagga_copy_bin_files () {
         echo "debug bgp fsm" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
     fi
 
+    if [ -f $INST_BIN_DIR/opt/quagga/etc/bfdd.conf ]; then
+        sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+        echo "service advanced-vty" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+        echo "debug bfd zebra" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+        echo "debug bfd fsm" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+    else
+	touch $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+    fi
+
+    if [ -f $INST_BIN_DIR/opt/quagga/etc/zebra.conf ]; then
+        sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+        echo "debug zebra events" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+        echo "debug zebra fpm" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+        echo "debug zebra packet" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+    else
+	touch $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+    fi
+
     rm -rf $INST_BIN_DIR/../bin
     mkdir -p $INST_BIN_DIR/../bin
 
@@ -190,6 +208,8 @@ quagga_copy_bin_files () {
     find ./opt/quagga/include | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
 
     tar cf - ./opt/quagga/etc/bgpd.conf | tar xf - -C $INST_BIN_DIR/../bin
+    tar cf - ./opt/quagga/etc/bfdd.conf | tar xf - -C $INST_BIN_DIR/../bin
+    tar cf - ./opt/quagga/etc/zebra.conf | tar xf - -C $INST_BIN_DIR/../bin
     tar cf - ./opt/quagga/sbin | tar xf - -C $INST_BIN_DIR/../bin
     popd
 

@@ -20,6 +20,7 @@
 #include "zrpcd/qzmqclient.h"
 #include "zrpcd/qzcclient.h"
 #include "zrpcd/qzcclient.capnp.h"
+#include "zrpcd/zrpc_bfd_capnp.h"
 
 
 #ifndef MAX
@@ -167,6 +168,17 @@ instance_bgp_configurator_enable_eor_delay(BgpConfiguratorIf *iface, gint32* _re
 gboolean
 instance_bgp_configurator_send_eor(BgpConfiguratorIf *iface, gint32* _return, GError **error);
 
+gboolean
+instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, gint32* _return,
+                                                      const BfdConfigData * bfdConfig, GError **error);
+gboolean
+instance_bgp_configurator_handler_disable_bfd_failover(BgpConfiguratorIf *iface, gint32* _return,
+                                                       GError **error);
+gboolean
+instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, peer_status_type* _return,
+                                                  const gchar * ipAddress, const gint64 asNumber,
+                                                  GError **error);
+
 static void instance_bgp_configurator_handler_finalize(GObject *object);
 
 /*
@@ -252,6 +264,37 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
 #define ERROR_BGP_INVALID_PREFIX g_error_new(1, BGP_ERR_PARAM, "BGP: invalid prefix \"%s\"", prefix);
 #define ERROR_BGP_INVALID_NEXTHOP(_a) g_error_new(1, BGP_ERR_PARAM, "BGP: invalid nexthop \"%s\"", (_a));
 #define ERROR_BGP_INCONSISTENCY_PREFIXAFI(_a,_b) g_error_new(1, BGP_ERR_PARAM, "BGP: prefix family (%d) != afi (%d)", (_a), (_b));
+#define ERROR_BGP_BFD_ENABLED g_error_new(1, BGP_ERR_ACTIVE, "BFD already enabled")
+#define ERROR_BGP_BFD_NOT_ENABLED g_error_new(1, BGP_ERR_INACTIVE, "BFD not enabled")
+#define ERROR_BGP_INVALID_BFD_CONFIG_DATA_VERSION \
+            g_error_new(1, BGP_ERR_PARAM, \
+                        "BFD config data: invalid version %d, only version 1 is supported", \
+                        bfdConfig->bfdConfigDataVersion)
+#define ERROR_BGP_INVALID_BFD_RX_INTERVAL g_error_new(1, BGP_ERR_PARAM, \
+                                                      "BFD rx interval: out of range value %d <= %d <= %d", \
+                                                      MIN_BFD_RX_INTERVAL, \
+                                                      bfdConfig->bfdRxInterval, \
+                                                      MAX_BFD_RX_INTERVAL)
+#define ERROR_BGP_INVALID_BFD_TX_INTERVAL g_error_new(1, BGP_ERR_PARAM, \
+                                                      "BFD tx interval: out of range value %d <= %d <= %d", \
+                                                      MIN_BFD_TX_INTERVAL, \
+                                                      bfdConfig->bfdTxInterval, \
+                                                      MAX_BFD_TX_INTERVAL)
+#define ERROR_BGP_INVALID_BFD_FAILURE_THRESHOLD g_error_new(1, BGP_ERR_PARAM, \
+                                                            "BFD failure threshold: out of range value %d <= %d <= %d", \
+                                                            MIN_BFD_FAILURE_THRESHOLD, \
+                                                            bfdConfig->bfdFailureThreshold, \
+                                                            MAX_BFD_FAILURE_THRESHOLD)
+#define ERROR_BGP_INVALID_BFD_DEBOUNCE_DOWN g_error_new(1, BGP_ERR_PARAM, \
+                                                        "BFD debounceDown: out of range value %d <= %d <= %d", \
+                                                        MIN_BFD_DEBOUNCE_DOWN, \
+                                                        bfdConfig->bfdDebounceDown, \
+                                                        MAX_BFD_DEBOUNCE_DOWN)
+#define ERROR_BGP_INVALID_BFD_DEBOUNCE_UP g_error_new(1, BGP_ERR_PARAM, \
+                                                      "BFD debounceUp: out of range value %d <= %d <= %d", \
+                                                      MIN_BFD_DEBOUNCE_UP, \
+                                                      bfdConfig->bfdDebounceUp, \
+                                                      MAX_BFD_DEBOUNCE_UP)
 #define BGP_ERR_INTERNAL 110
 
 /*
@@ -294,6 +337,13 @@ uint64_t bgp_ctxttype_afisafi_set_bgp_vrf_3= 0xac25a73c3ff455c0;
 uint64_t bgp_ctxtype_bgpvrfroute = 0xac25a73c3ff455c0;
 /* functions using this node identifier : get_bgp_vrf_2, get_bgp_vrf_3 */
 uint64_t bgp_itertype_bgpvrfroute = 0xeb8ab4f58b7753ee;
+
+/* bfd well known number. identifier used to recognize peer qzc */
+uint64_t bfd_wkn = 0x37b64fdb20888a51;
+/* bfdd context */
+uint64_t bfd_nid;
+/* bfd datatype */
+uint64_t bfd_datatype_bfd = 0xfd0316f1800aebfd; /* get_bfd_1, set_bfd_1 */
 
 static const char* af_flag_str[] = {
   "SendCommunity",
@@ -1004,6 +1054,15 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
     else
       inst.flags &= ~BGP_FLAG_GR_PRESERVE_FWD;
     inst.flags |= BGP_FLAG_ASPATH_MULTIPATH_RELAX;
+    if (ctxt->bfdd_enabled)
+      inst.flags |= BGP_FLAG_BFD_SYNC;
+    else
+      inst.flags &= ~BGP_FLAG_BFD_SYNC;
+    if (ctxt->bfd_multihop)
+      inst.flags |= BGP_FLAG_BFD_MULTIHOP;
+    else
+      inst.flags &= ~BGP_FLAG_BFD_MULTIHOP;
+
     capn_init_malloc(&rc);
     cs = capn_root(&rc).seg;
     bgp = qcapn_new_BGP(cs);
@@ -1818,6 +1877,60 @@ instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _re
   return TRUE;
 }
 
+static void
+zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
+                                uint64_t peer_nid)
+ {
+   capn_ptr peer_ctxt;
+   struct QZCGetRep *grep_peer;
+   struct peer peer;
+   struct capn rc;
+   struct capn_segment *cs;
+
+   if (!ctxt || !peer_nid)
+     return;
+
+   if (!ctxt->bfdd_enabled)
+     return;
+
+   /* retrieve peer context */
+   grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 2, \
+                                  NULL, NULL, NULL, NULL);
+   if(grep_peer == NULL)
+       return;
+
+   memset(&peer, 0, sizeof(struct peer));
+   qcapn_BGPPeer_read(&peer, grep_peer->data);
+   qzcclient_qzcgetrep_free( grep_peer);
+
+   peer.flags |=  (PEER_FLAG_BFD | PEER_FLAG_BFD_SYNC);
+   if (ctxt->bfd_multihop)
+     peer.flags |= PEER_FLAG_MULTIHOP;
+
+   /* prepare QZCSetRequest context */
+   capn_init_malloc(&rc);
+   cs = capn_root(&rc).seg;
+   peer_ctxt = qcapn_new_BGPPeer(cs);
+   qcapn_BGPPeer_write(&peer, peer_ctxt);
+   if(qzcclient_setelem (ctxt->qzc_sock, &peer_nid, 2, \
+                         &peer_ctxt, &bgp_datatype_create_bgp_2, \
+                         NULL, NULL))
+     {
+       if (IS_ZRPC_DEBUG)
+         zrpc_info ("BFD sync to peer(%llx) OK", (long long unsigned int)peer_nid);
+     }
+   else
+     {
+       if(IS_ZRPC_DEBUG)
+         zrpc_info ("BFD sync to peer(%llx) NOK", (long long unsigned int)peer_nid);
+     }
+   if (peer.host)
+     ZRPC_FREE (peer.host);
+   if (peer.desc)
+     ZRPC_FREE (peer.desc);
+   capn_free(&rc);
+ }
+
 /*
  * Create a BGP neighbor for a given routerId, and asNumber
  * If Peer fails to be created, an error is returned.
@@ -2048,6 +2161,11 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
      }
 #endif /* HAVE_THRIFT_V2 */
 #endif /* !HAVE_THRIFT_V1 */
+
+  /* set peer PEER_FLAG_BFD_SYNC if bfd is enabled */
+  if (ctxt->bfdd_enabled)
+    zrpc_sync_bfd_conf_to_bgp_peer (ctxt, peer_nid);
+
   if (ret)
     return TRUE;
   else
@@ -3986,6 +4104,447 @@ instance_bgp_configurator_send_eor(BgpConfiguratorIf *iface, gint32* _return, GE
 
   return TRUE;
 }
+
+static void
+zrpc_sync_bfd_conf_to_bgpd (struct zrpc_vpnservice *ctxt,
+                            struct zrpc_vpnservice_bgp_context *bgp_ctxt)
+{
+  struct capn rc;
+  struct capn_segment *cs;
+  struct bgp inst;
+  struct QZCGetRep *grep;
+  struct capn_ptr bgp;
+
+  if (!ctxt || !bgp_ctxt || !bgp_ctxt->asNumber)
+    return;
+
+  /* get bgp_master configuration */
+  grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+  if(grep == NULL)
+      return;
+
+  memset(&inst, 0, sizeof(struct bgp));
+  qcapn_BGP_read(&inst, grep->data);
+  qzcclient_qzcgetrep_free( grep);
+
+  capn_init_malloc(&rc);
+  cs = capn_root(&rc).seg;
+  bgp = qcapn_new_BGP(cs);
+  /* set bfd sync flag */
+  if (ctxt->bfdd_enabled)
+    inst.flags |= BGP_FLAG_BFD_SYNC;
+  else
+    inst.flags &= ~BGP_FLAG_BFD_SYNC;
+  if (ctxt->bfd_multihop)
+    inst.flags |= BGP_FLAG_BFD_MULTIHOP;
+  else
+    inst.flags &= ~BGP_FLAG_BFD_MULTIHOP;
+
+  qcapn_BGP_write(&inst, bgp);
+  qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 1,          \
+                     &bgp, &bgp_datatype_bgp, NULL, NULL);
+  capn_free(&rc);
+  if (inst.notify_zmq_url)
+    free (inst.notify_zmq_url);
+  if (inst.logLevel)
+    free ( inst.logLevel);
+  if (inst.logFile)
+    free ( inst.logFile);
+}
+
+gboolean
+instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, gint32* _return,
+                                                      const BfdConfigData * bfdConfig, GError **error)
+{
+  struct zrpc_vpnservice *ctxt = NULL;
+  struct zrpc_vpnservice_bgp_context *bgp_ctxt;
+  char *bfdd_parmList[] =  {(char *)BFDD_PATH,
+                            (char *)"-Z",
+                            (char *)ZMQ_BFDD_SOCK,
+                            NULL};
+  char *zebra_parmList[] =  {(char *)ZEBRA_PATH,
+                             NULL};
+  pid_t pid;
+  int ret;
+  struct QZCReply *rep;
+  BfdConfigData default_bfd_config = {
+                                       .bfdConfigDataVersion = 1,
+                                       .bfdRxInterval = DEFAULT_BFD_RX_INTERVAL, /* in ms */
+                                       .bfdFailureThreshold = DEFAULT_BFD_FAILURE_THRESHOLD,
+                                       .bfdTxInterval = DEFAULT_BFD_TX_INTERVAL, /* in ms */
+                                       .bfdDebounceDown = DEFAULT_BFD_DEBOUNCE_DOWN, /* in ms */
+                                       .bfdDebounceUp = DEFAULT_BFD_DEBOUNCE_UP,  /* in ms */
+                                       .bfdMultihop = false,
+                                     };
+  BfdConfigData *bfd_config = &default_bfd_config;
+
+  if (bfdConfig)
+    {
+      if (IS_ZRPC_DEBUG)
+        zrpc_info ("enableBFDFailover. bfd parameters from ODL (proc %d, bfdConfigDataVersion %d, "
+                   "bfdRxInterval %u, bfdFailureThreshold %d, bfdTxInterval %u, "
+                   "bfdDebounceDown %u, bfdDebounceUp %u, bfdMultihop %s)",
+                   pid,
+                   bfdConfig->bfdConfigDataVersion,
+                   bfdConfig->bfdRxInterval,
+                   bfdConfig->bfdFailureThreshold,
+                   bfdConfig->bfdTxInterval,
+                   bfdConfig->bfdDebounceDown,
+                   bfdConfig->bfdDebounceUp,
+                   bfdConfig->bfdMultihop == true?"true":"false");
+    }
+  else
+    {
+      if (IS_ZRPC_DEBUG)
+        zrpc_info ("enableBFDFailover: parameter from ODL is NULL");
+    }
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt)
+  {
+    *error = ERROR_BGP_INTERNAL;
+    return FALSE;
+  }
+
+  if (ctxt->bfdd_enabled)
+    {
+      *error = ERROR_BGP_BFD_ENABLED;
+      return FALSE;
+    }
+
+  if (bfdConfig)
+    {
+      if (bfdConfig->bfdConfigDataVersion != 1)
+        {
+          *error = ERROR_BGP_INVALID_BFD_CONFIG_DATA_VERSION;
+          return FALSE;
+        }
+
+      if (bfdConfig->bfdRxInterval == 0)
+        bfd_config->bfdRxInterval = DEFAULT_BFD_RX_INTERVAL;
+      else if (bfdConfig->bfdRxInterval < MIN_BFD_RX_INTERVAL ||
+          bfdConfig->bfdRxInterval > MAX_BFD_RX_INTERVAL)
+        {
+          *error = ERROR_BGP_INVALID_BFD_RX_INTERVAL;
+          return FALSE;
+        }
+      else
+        bfd_config->bfdRxInterval = bfdConfig->bfdRxInterval;
+
+      if (bfdConfig->bfdTxInterval == 0)
+        bfd_config->bfdTxInterval = DEFAULT_BFD_TX_INTERVAL;
+      else if (bfdConfig->bfdTxInterval < MIN_BFD_TX_INTERVAL ||
+          bfdConfig->bfdTxInterval > MAX_BFD_TX_INTERVAL)
+        {
+          *error = ERROR_BGP_INVALID_BFD_TX_INTERVAL;
+          return FALSE;
+        }
+      else
+        bfd_config->bfdTxInterval = bfdConfig->bfdTxInterval;
+
+      if (bfdConfig->bfdFailureThreshold == 0)
+        bfd_config->bfdFailureThreshold = DEFAULT_BFD_FAILURE_THRESHOLD;
+      else if (bfdConfig->bfdFailureThreshold < MIN_BFD_FAILURE_THRESHOLD ||
+          bfdConfig->bfdFailureThreshold > MAX_BFD_FAILURE_THRESHOLD)
+        {
+          *error = ERROR_BGP_INVALID_BFD_FAILURE_THRESHOLD;
+          return FALSE;
+        }
+      else
+        bfd_config->bfdFailureThreshold = bfdConfig->bfdFailureThreshold;
+
+      if (bfdConfig->bfdDebounceDown == 0)
+        bfd_config->bfdDebounceDown = DEFAULT_BFD_DEBOUNCE_DOWN;
+      else if (bfdConfig->bfdDebounceDown < MIN_BFD_DEBOUNCE_DOWN ||
+          bfdConfig->bfdDebounceDown > MAX_BFD_DEBOUNCE_DOWN)
+        {
+          *error = ERROR_BGP_INVALID_BFD_DEBOUNCE_DOWN;
+          return FALSE;
+        }
+      else
+        bfd_config->bfdDebounceDown = bfdConfig->bfdDebounceDown;
+
+      if (bfdConfig->bfdDebounceUp == 0)
+        bfd_config->bfdDebounceUp = DEFAULT_BFD_DEBOUNCE_UP;
+      else if (bfdConfig->bfdDebounceUp < MIN_BFD_DEBOUNCE_UP ||
+          bfdConfig->bfdDebounceUp > MAX_BFD_DEBOUNCE_UP)
+        {
+          *error = ERROR_BGP_INVALID_BFD_DEBOUNCE_UP;
+          return FALSE;
+        }
+      else
+        bfd_config->bfdDebounceUp = bfdConfig->bfdDebounceUp;
+
+      bfd_config->bfdMultihop = bfdConfig->bfdMultihop;
+    }
+
+  /* run zebra process */
+  if ((pid = fork()) == -1)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+  else if (pid == 0)
+    {
+      ret = execve((const char *)ZEBRA_PATH, zebra_parmList, NULL);
+      /* return not expected */
+      if(IS_ZRPC_DEBUG)
+        zrpc_log ("execve failed: zebra return not expected (%d)", errno);
+      exit(1);
+    }
+
+  /* run BFDD process */
+  if ((pid = fork()) == -1)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+  else if (pid == 0)
+    {
+      ret = execve((const char *)BFDD_PATH, bfdd_parmList, NULL);
+      /* return not expected */
+      if(IS_ZRPC_DEBUG)
+        zrpc_log ("execve failed: bfdd return not expected (%d)", errno);
+      exit(1);
+    }
+
+  ctxt->qzc_bfdd_sock = qzcclient_connect(ZMQ_BFDD_SOCK);
+  if (ctxt->qzc_bfdd_sock == NULL)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+  /* send ping msg. wait for pong */
+  rep = qzcclient_do(ctxt->qzc_bfdd_sock, NULL);
+  if( rep == NULL || rep->which != QZCReply_pong)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      if (rep)
+        qzcclient_qzcreply_free (rep);
+      return FALSE;
+    }
+  if (rep)
+    qzcclient_qzcreply_free (rep);
+
+  if (IS_ZRPC_DEBUG)
+    zrpc_info ("enableBFDFailover. bfdd called (proc %d, bfdConfigDataVersion %d, "
+               "bfdRxInterval %u, bfdFailureThreshold %d, bfdTxInterval %u, "
+               "bfdDebounceDown %u, bfdDebounceUp %u, bfdMultihop %s)",
+               pid,
+               bfd_config->bfdConfigDataVersion,
+               bfd_config->bfdRxInterval,
+               bfd_config->bfdFailureThreshold,
+               bfd_config->bfdTxInterval,
+               bfd_config->bfdDebounceDown,
+               bfd_config->bfdDebounceUp,
+               bfd_config->bfdMultihop == true?"true":"false");
+
+  /* check well known number against node identifier */
+  bfd_nid = qzcclient_wkn(ctxt->qzc_bfdd_sock, &bfd_wkn);
+
+  {
+    struct capn_ptr bfd;
+    struct capn rc;
+    struct capn_segment *cs;
+    struct bfd inst;
+
+    /* set new configuration */
+    memset(&inst, 0, sizeof(struct bfd));
+    bgp_ctxt = zrpc_vpnservice_get_bgp_context(ctxt);
+    /* log file and log level */
+    if (bgp_ctxt && bgp_ctxt->logLevel)
+      inst.logLevel = ZRPC_STRDUP(bgp_ctxt->logLevel);
+    else
+      inst.logLevel = NULL;
+    if (bgp_ctxt && bgp_ctxt->logFile)
+      inst.logFile = ZRPC_STRDUP(bgp_ctxt->logFile);
+
+    inst.config_data_version = bfd_config->bfdConfigDataVersion;
+    if (bfd_config->bfdRxInterval)
+      inst.rx_interval = bfd_config->bfdRxInterval;
+    else
+      inst.rx_interval = 500;
+
+    if (bfd_config->bfdFailureThreshold)
+      inst.failure_threshold = bfd_config->bfdFailureThreshold;
+    else
+      inst.failure_threshold = 3;
+
+    if (bfd_config->bfdTxInterval)
+      inst.tx_interval = bfd_config->bfdTxInterval;
+    else
+      inst.tx_interval = 60;
+
+    if (bfd_config->bfdDebounceDown)
+      inst.debounce_down = bfd_config->bfdDebounceDown;
+    else
+      inst.debounce_down = 100;
+
+    if (bfd_config->bfdDebounceUp)
+      inst.debounce_up = bfd_config->bfdDebounceUp;
+    else
+      inst.debounce_up = 5;
+
+    if (bfd_config->bfdMultihop == true)
+      inst.multihop = 1;
+    else
+      inst.multihop = 0;
+
+    capn_init_malloc(&rc);
+    cs = capn_root(&rc).seg;
+    bfd = qcapn_new_BFD(cs);
+    qcapn_BFD_write(&inst, bfd);
+    ret = qzcclient_setelem (ctxt->qzc_bfdd_sock, &bfd_nid, 1, \
+                             &bfd, &bfd_datatype_bfd, \
+                             NULL, NULL);
+    if (inst.logFile)
+      {
+        ZRPC_FREE(inst.logFile);
+        inst.logFile = NULL;
+      }
+    if (inst.logLevel)
+      {
+        ZRPC_FREE(inst.logLevel);
+        inst.logLevel = NULL;
+      }
+
+    capn_free(&rc);
+  }
+
+  if (ret)
+    {
+      if (IS_ZRPC_DEBUG)
+        zrpc_info ("enableBFDFailover(%d, %u, %d, %u, %u, %u, %s) OK",
+                   bfd_config->bfdConfigDataVersion,
+                   bfd_config->bfdRxInterval,
+                   bfd_config->bfdFailureThreshold,
+                   bfd_config->bfdTxInterval,
+                   bfd_config->bfdDebounceDown,
+                   bfd_config->bfdDebounceUp,
+                   bfd_config->bfdMultihop == true?"true":"false");
+      ctxt->bfdd_enabled = 1;
+      if (bfd_config->bfdMultihop == true)
+        ctxt->bfd_multihop = 1;
+      else
+        ctxt->bfd_multihop = 0;
+
+      /* If bgp is started, sync bfd config */
+      if (bgp_ctxt && bgp_ctxt->asNumber)
+        zrpc_sync_bfd_conf_to_bgpd (ctxt, bgp_ctxt);
+
+      return TRUE;
+    }
+  else
+    {
+      if (IS_ZRPC_DEBUG)
+        zrpc_info ("enableBFDFailover(%d, %u, %d, %u, %u, %u, %s) NOK",
+                   bfd_config->bfdConfigDataVersion,
+                   bfd_config->bfdRxInterval,
+                   bfd_config->bfdFailureThreshold,
+                   bfd_config->bfdTxInterval,
+                   bfd_config->bfdDebounceDown,
+                   bfd_config->bfdDebounceUp,
+                   bfd_config->bfdMultihop == true?"true":"false");
+      return FALSE;
+    }
+}
+
+gboolean
+instance_bgp_configurator_handler_disable_bfd_failover(BgpConfiguratorIf *iface, gint32* _return,
+                                                       GError **error)
+{
+  struct zrpc_vpnservice *ctxt = NULL;
+  struct zrpc_vpnservice_bgp_context *bgp_ctxt;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if (!ctxt)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+  if (!ctxt->bfdd_enabled)
+    {
+      *error = ERROR_BGP_BFD_NOT_ENABLED;
+      return FALSE;
+    }
+
+  ctxt->bfdd_enabled = 0;
+  if (ctxt->bfd_multihop)
+    ctxt->bfd_multihop = 0;
+
+  bgp_ctxt = zrpc_vpnservice_get_bgp_context(ctxt);
+  /* If bgp is started, sync bfd config */
+  if (bgp_ctxt && bgp_ctxt->asNumber)
+    zrpc_sync_bfd_conf_to_bgpd (ctxt, bgp_ctxt);
+
+  zrpc_vpnservice_terminate_qzc_bfdd(ctxt);
+  zrpc_kill_child (BFDD_PID, "BFD");
+  zrpc_kill_child (ZEBRA_PID, "ZEBRA");
+
+  if (IS_ZRPC_DEBUG)
+    zrpc_info ("disableBFDFailover() OK");
+
+  return TRUE;
+}
+
+gboolean
+instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, peer_status_type* _return,
+                                                  const gchar * ipAddress, const gint64 asNumber,
+                                                  GError **error)
+{
+  struct zrpc_vpnservice *ctxt = NULL;
+  uint64_t peer_nid;
+  struct QZCGetRep *grep_peer;
+  struct peer peer;
+  struct zrpc_vpnservice_cache_peer *c_peer;
+  const gchar *peerIp = ipAddress;
+  gint32 *ret;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if (!ctxt)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+  if (zrpc_vpnservice_get_bgp_context(ctxt) == NULL || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+    {
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+  if (ipAddress == NULL)
+    {
+      *error = ERROR_BGP_PEER_NOTFOUND;
+      return FALSE;
+    }
+  /* if peer not found, return an error */
+  c_peer  = zrpc_bgp_configurator_find_peer (ctxt, ipAddress, ret, 0);
+  if(c_peer == NULL || c_peer->peer_nid == 0 || c_peer->asNumber != asNumber)
+    {
+      *_return = PEER_STATUS_TYPE_PEER_NOTCONFIGURED;
+      return TRUE;
+    }
+  peer_nid = c_peer->peer_nid;
+  /* retrieve peer context */
+  grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 4, \
+                                 NULL, NULL, NULL, NULL);
+  if (grep_peer == NULL)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+  memset (&peer, 0, sizeof(struct peer));
+  qcapn_BGPPeerStatus_read (&peer, grep_peer->data);
+
+  if (peer.status == BGP_PEER_STATUS_UP)
+      *_return = PEER_STATUS_TYPE_PEER_UP;
+  else if (peer.status == BGP_PEER_STATUS_DOWN)
+      *_return = PEER_STATUS_TYPE_PEER_DOWN;
+  else
+      *_return = PEER_STATUS_TYPE_PEER_UNKNOWN;
+
+  return TRUE;
+}
+
 static void
   instance_bgp_configurator_handler_finalize(GObject *object)
 {
@@ -4075,6 +4634,15 @@ instance_bgp_configurator_handler_class_init (InstanceBgpConfiguratorHandlerClas
 
  bgp_configurator_handler_class->send_e_o_r =
    instance_bgp_configurator_send_eor;
+
+ bgp_configurator_handler_class->enable_b_f_d_failover =
+   instance_bgp_configurator_handler_enable_bfd_failover;
+
+ bgp_configurator_handler_class->disable_b_f_d_failover =
+   instance_bgp_configurator_handler_disable_bfd_failover;
+
+ bgp_configurator_handler_class->get_peer_status =
+   instance_bgp_configurator_handler_get_peer_status;
 }
 
 /* InstanceBgpConfiguratorHandler's instance initializer (constructor) */

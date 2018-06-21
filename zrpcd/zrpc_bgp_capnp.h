@@ -49,6 +49,8 @@ struct bgp
 #define BGP_FLAG_DELETING                 (1 << 15) /* not taken into account */
 #define BGP_FLAG_RR_ALLOW_OUTBOUND_POLICY (1 << 16) /* not taken into account */
 #define BGP_FLAG_GR_PRESERVE_FWD          (1 << 17)
+#define BGP_FLAG_BFD_SYNC                 (1 << 18)
+#define BGP_FLAG_BFD_MULTIHOP             (1 << 19)
 
   /* BGP Per AF flags */
   u_int16_t af_flags[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
@@ -115,6 +117,7 @@ struct bgp_event_vrf
 {
 #define BGP_EVENT_MASK_ANNOUNCE 0x1
 #define BGP_EVENT_SHUT 0x2
+#define BGP_EVENT_BFD_STATUS 0x3
   uint8_t announce;
   struct zrpc_rd_prefix outbound_rd; /* dummy for event_shut */
   struct zrpc_prefix prefix; /* alias subtype */
@@ -131,6 +134,13 @@ struct bgp_event_shut
 {
   struct zrpc_prefix peer;
   uint8_t type, subtype;
+};
+
+struct bgp_event_bfd_status
+{
+  struct zrpc_prefix peer;
+  uint32_t as;
+  uint8_t up_down;
 };
 
 struct bgp_api_route
@@ -174,6 +184,9 @@ struct peer
 #define PEER_FLAG_LOCAL_AS_NO_PREPEND       (1 << 7) /* local-as no-prepend */
 #define PEER_FLAG_LOCAL_AS_REPLACE_AS       (1 << 8) /* local-as no-prepend replace-as */
 #define PEER_FLAG_USE_CONFIGURED_SOURCE     (1 << 9) /* use configured source-only */
+#define PEER_FLAG_MULTIHOP                  (1 << 10) /* multihop */
+#define PEER_FLAG_BFD                       (1 << 11) /* fall-over bfd */
+#define PEER_FLAG_BFD_SYNC                  (1 << 12) /* fall-over bfd sync */
 
   int ttl;			/* TTL of TCP connection to the peer. */
 
@@ -204,7 +217,11 @@ struct peer
 
   /* allowas-in. */
   char allowas_in[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
-
+  /* BGP peer status */
+  uint8_t status;
+#define BGP_PEER_STATUS_UP      0
+#define BGP_PEER_STATUS_DOWN    1
+#define BGP_PEER_STATUS_UNKNOWN 2
 };
 
 /* BGP graceful restart  */
@@ -241,6 +258,7 @@ void qcapn_BGPPeerAfiSafi_write(const struct peer *s, capn_ptr p, address_family
 void qcapn_BGPPeerAfiSafi_read(struct peer *s, capn_ptr p, address_family_t afi, subsequent_address_family_t safi);
 capn_ptr qcapn_new_AfiSafiKey(struct capn_segment *s);
 capn_ptr qcapn_new_BGPPeerAfiSafi(struct capn_segment *s);
+void qcapn_BGPPeerStatus_read (struct peer *s, capn_ptr p);
 
 void qcapn_BGPEventVRFRoute_read(struct bgp_event_vrf *s, capn_ptr p);
 //void qcapn_BGPEventVRFRoute_write(const struct bgp_event_vrf *s, capn_ptr p);
