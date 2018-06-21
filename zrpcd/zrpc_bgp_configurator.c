@@ -4352,10 +4352,16 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
     memset(&inst, 0, sizeof(struct bfd));
     bgp_ctxt = zrpc_vpnservice_get_bgp_context(ctxt);
     /* log file and log level */
-    if (bgp_ctxt && bgp_ctxt->logLevel)
+    if (bgp_ctxt && bgp_ctxt->logLevel) {
+      if (zrpc_disable_syslog)
+        inst.logLevelSyslog = ZRPC_STRDUP("Disabled");
+      else
+        inst.logLevelSyslog = ZRPC_STRDUP(bgp_ctxt->logLevel);
       inst.logLevel = ZRPC_STRDUP(bgp_ctxt->logLevel);
-    else
+    } else {
       inst.logLevel = NULL;
+      inst.logLevelSyslog = NULL;
+    }
     if (bgp_ctxt && bgp_ctxt->logFile)
       inst.logFile = ZRPC_STRDUP(bgp_ctxt->logFile);
 
@@ -4406,6 +4412,11 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
       {
         ZRPC_FREE(inst.logLevel);
         inst.logLevel = NULL;
+      }
+    if (inst.logLevelSyslog)
+      {
+        ZRPC_FREE(inst.logLevelSyslog);
+        inst.logLevelSyslog = NULL;
       }
 
     capn_free(&rc);

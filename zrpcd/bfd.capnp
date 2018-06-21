@@ -20,4 +20,5 @@ struct BFD $ctype("struct bfd") $cgen
 
 	logFile			 @7 :Text;
 	logLevel		 @8 :Text;
+	logLevelSyslog		 @9 :Text;
 }

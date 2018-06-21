@@ -43,6 +43,7 @@ struct bfd
 
   char *logFile;
   char *logLevel;
+  char *logLevelSyslog;
 };
 
 capn_ptr qcapn_new_BFD(struct capn_segment *s);
