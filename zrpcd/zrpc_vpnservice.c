@@ -454,6 +454,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       nexthop = nh_str;
       zrpc_bgp_updater_on_notification_send_event(nexthop, t->type, t->subtype);
     }
+#ifdef HAVE_THRIFT_V5
   else if (s->announce == BGP_EVENT_BFD_STATUS)
     {
       struct bgp_event_bfd_status st;
@@ -468,6 +469,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       else
         zrpc_bgp_updater_peer_down (nexthop, (const gint64)st.as);
     }
+#endif
   capn_free(&rc);
   return;
 }
