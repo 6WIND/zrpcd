@@ -168,6 +168,7 @@ instance_bgp_configurator_enable_eor_delay(BgpConfiguratorIf *iface, gint32* _re
 gboolean
 instance_bgp_configurator_send_eor(BgpConfiguratorIf *iface, gint32* _return, GError **error);
 
+#ifdef HAVE_THRIFT_V5
 gboolean
 instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, gint32* _return,
                                                       const BfdConfigData * bfdConfig, GError **error);
@@ -178,6 +179,7 @@ gboolean
 instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, peer_status_type* _return,
                                                   const gchar * ipAddress, const gint64 asNumber,
                                                   GError **error);
+#endif
 
 static void instance_bgp_configurator_handler_finalize(GObject *object);
 
@@ -264,6 +266,8 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
 #define ERROR_BGP_INVALID_PREFIX g_error_new(1, BGP_ERR_PARAM, "BGP: invalid prefix \"%s\"", prefix);
 #define ERROR_BGP_INVALID_NEXTHOP(_a) g_error_new(1, BGP_ERR_PARAM, "BGP: invalid nexthop \"%s\"", (_a));
 #define ERROR_BGP_INCONSISTENCY_PREFIXAFI(_a,_b) g_error_new(1, BGP_ERR_PARAM, "BGP: prefix family (%d) != afi (%d)", (_a), (_b));
+
+#ifdef HAVE_THRIFT_V5
 #define ERROR_BGP_BFD_ENABLED g_error_new(1, BGP_ERR_ACTIVE, "BFD already enabled")
 #define ERROR_BGP_BFD_NOT_ENABLED g_error_new(1, BGP_ERR_INACTIVE, "BFD not enabled")
 #define ERROR_BGP_INVALID_BFD_CONFIG_DATA_VERSION \
@@ -295,6 +299,7 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
                                                       MIN_BFD_DEBOUNCE_UP, \
                                                       bfdConfig->bfdDebounceUp, \
                                                       MAX_BFD_DEBOUNCE_UP)
+#endif
 #define BGP_ERR_INTERNAL 110
 
 /*
@@ -338,12 +343,14 @@ uint64_t bgp_ctxtype_bgpvrfroute = 0xac25a73c3ff455c0;
 /* functions using this node identifier : get_bgp_vrf_2, get_bgp_vrf_3 */
 uint64_t bgp_itertype_bgpvrfroute = 0xeb8ab4f58b7753ee;
 
+#ifdef HAVE_THRIFT_V5
 /* bfd well known number. identifier used to recognize peer qzc */
 uint64_t bfd_wkn = 0x37b64fdb20888a51;
 /* bfdd context */
 uint64_t bfd_nid;
 /* bfd datatype */
 uint64_t bfd_datatype_bfd = 0xfd0316f1800aebfd; /* get_bfd_1, set_bfd_1 */
+#endif
 
 static const char* af_flag_str[] = {
   "SendCommunity",
@@ -1893,6 +1900,7 @@ instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _re
   return TRUE;
 }
 
+#ifdef HAVE_THRIFT_V5
 static void
 zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
                                 uint64_t peer_nid)
@@ -1953,6 +1961,7 @@ zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
      ZRPC_FREE (peer.desc);
    capn_free(&rc);
  }
+#endif
 
 /*
  * Create a BGP neighbor for a given routerId, and asNumber
@@ -2185,9 +2194,11 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
 #endif /* HAVE_THRIFT_V2 */
 #endif /* !HAVE_THRIFT_V1 */
 
+#ifdef HAVE_THRIFT_V5
   /* set peer PEER_FLAG_BFD_SYNC if bfd is enabled */
   if (ctxt->bfdd_enabled)
     zrpc_sync_bfd_conf_to_bgp_peer (ctxt, peer_nid);
+#endif
 
   if (ret)
     return TRUE;
@@ -4128,6 +4139,7 @@ instance_bgp_configurator_send_eor(BgpConfiguratorIf *iface, gint32* _return, GE
   return TRUE;
 }
 
+#ifdef HAVE_THRIFT_V5
 static void
 zrpc_sync_bfd_conf_to_bgpd (struct zrpc_vpnservice *ctxt,
                             struct zrpc_vpnservice_bgp_context *bgp_ctxt)
@@ -4578,6 +4590,7 @@ instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, peer
 
   return TRUE;
 }
+#endif
 
 static void
   instance_bgp_configurator_handler_finalize(GObject *object)
@@ -4669,6 +4682,7 @@ instance_bgp_configurator_handler_class_init (InstanceBgpConfiguratorHandlerClas
  bgp_configurator_handler_class->send_e_o_r =
    instance_bgp_configurator_send_eor;
 
+#ifdef HAVE_THRIFT_V5
  bgp_configurator_handler_class->enable_b_f_d_failover =
    instance_bgp_configurator_handler_enable_bfd_failover;
 
@@ -4677,6 +4691,7 @@ instance_bgp_configurator_handler_class_init (InstanceBgpConfiguratorHandlerClas
 
  bgp_configurator_handler_class->get_peer_status =
    instance_bgp_configurator_handler_get_peer_status;
+#endif
 }
 
 /* InstanceBgpConfiguratorHandler's instance initializer (constructor) */

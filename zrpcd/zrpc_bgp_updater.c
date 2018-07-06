@@ -246,6 +246,7 @@ zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 e
   return response;
 }
 
+#ifdef HAVE_THRIFT_V5
 /*
  * send bfd status notification
  */
@@ -319,3 +320,4 @@ zrpc_bgp_updater_peer_down (const gchar * ipAddress, const gint64 asNumber)
               ipAddress, asNumber, response == FALSE?"NOK":"OK");
   return response;
 }
+#endif
