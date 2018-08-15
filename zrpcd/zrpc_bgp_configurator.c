@@ -2116,6 +2116,18 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
          zrpc_info ("createPeer(%s,%u) NOK (capnproto error 7)", routerId, asNumber);
       return FALSE;
      }
+   ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId,        \
+                                      AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN,
+                                      PEER_FLAG_SOFT_RECONFIG, TRUE,
+                                      error);
+   if (ret == FALSE && *_return == BGP_ERR_INTERNAL)
+     {
+       *_return = BGP_ERR_FAILED;
+       *error = ERROR_BGP_INTERNAL;
+       if(IS_ZRPC_DEBUG)
+         zrpc_info ("createPeer(%s,%u) NOK (capnproto error 8)", routerId, asNumber);
+      return FALSE;
+     }
 #if !defined(HAVE_THRIFT_V1)
    if(entry->enableAddressFamily[ADDRESS_FAMILY_L2VPN][SUBSEQUENT_ADDRESS_FAMILY_EVPN])
      {
@@ -2159,6 +2171,18 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
              zrpc_info ("createPeer(%s,%u) NOK (capnproto error 11)", routerId, asNumber);
            return FALSE;
          }
+       ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, routerId,    \
+                                          AF_AFI_AFI_IPV6, AF_SAFI_SAFI_MPLS_VPN,
+                                          PEER_FLAG_SOFT_RECONFIG, TRUE,
+                                          error);
+       if (ret == FALSE && *_return == BGP_ERR_INTERNAL)
+         {
+           *_return = BGP_ERR_FAILED;
+           *error = ERROR_BGP_INTERNAL;
+           if(IS_ZRPC_DEBUG)
+             zrpc_info ("createPeer(%s,%u) NOK (capnproto error 12)", routerId, asNumber);
+           return FALSE;
+         }
      }
 #if !defined(HAVE_THRIFT_V2)
    if(entry->enableAddressFamily[ADDRESS_FAMILY_IPV6][SUBSEQUENT_ADDRESS_FAMILY_LABELED_UNICAST])
@@ -2172,7 +2196,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
            *_return = BGP_ERR_FAILED;
            *error = ERROR_BGP_INTERNAL;
            if(IS_ZRPC_DEBUG)
-             zrpc_info ("createPeer(%s,%u) NOK (capnproto error 12)", routerId, asNumber);
+             zrpc_info ("createPeer(%s,%u) NOK (capnproto error 13)", routerId, asNumber);
            return FALSE;
          }
      }
@@ -2187,7 +2211,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
            *_return = BGP_ERR_FAILED;
            *error = ERROR_BGP_INTERNAL;
            if(IS_ZRPC_DEBUG)
-             zrpc_info ("createPeer(%s,%u) NOK (capnproto error 13)", routerId, asNumber);
+             zrpc_info ("createPeer(%s,%u) NOK (capnproto error 14)", routerId, asNumber);
            return FALSE;
          }
      }
@@ -3077,8 +3101,7 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
              zrpc_info ("enableAddressFamily(%s, %u, %u) NOK (capnproto error 3)", peerIp, afi, safi);
          }
      }
-   if (ret == TRUE && 
-       ((afi == AF_AFI_AFI_L2VPN && safi == AF_SAFI_SAFI_EVPN)))
+   if (ret == TRUE)
      {
        ret = zrpc_bgp_peer_af_flag_config(ctxt, _return, peerIp,
                                           afi, safi,
