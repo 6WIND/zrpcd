@@ -44,19 +44,15 @@ COMMITID=$5
 PACKAGE_DEB="n"
 
 zrpc_copy_bin_files () {
-    mkdir -p $INST_BIN_DIR/opt/quagga/var/log/quagga
-    if [ ! -f $INST_BIN_DIR/opt/quagga/var/log/quagga/zrpcd.init.log ]; then
-          touch $INST_BIN_DIR/opt/quagga/var/log/quagga/zrpcd.init.log
+    if [ $DEV_PACKAGE = "n" ]; then
+        mkdir -p $INST_BIN_DIR/opt/quagga/var/log/quagga
+        if [ -f $INST_BIN_DIR/opt/quagga/var/log/quagga/zrpcd.init.log ]; then
+              touch $INST_BIN_DIR/opt/quagga/var/log/quagga/zrpcd.init.log
+        fi
     fi
-    touch $INST_BIN_DIR/opt/quagga/var/log/quagga/.dummyzrpc
-    mkdir -p $INST_BIN_DIR/opt/quagga/var/run/quagga
-    touch $INST_BIN_DIR/opt/quagga/var/run/quagga/.dummyzrpc
-
-    pushd $INST_BIN_DIR/../bin
     if [ $PACKAGE_DEB = "y" ]; then
        find . \! -type d | cpio -o -H ustar -R 0:0 | tar -C $DEB_BIN_DIR -x
     fi
-    popd
 }
 
 zrpc_rpm_bin_spec () {
@@ -126,101 +122,127 @@ zrpc_rpm_bin_spec () {
 }
 
 zrpc_deb_bin_control () {
-
-    echo "Package: zrpc" >> $DEB_CONTROL_FILE
-    if [ -z "$COMMITID" ]; then
-        echo "Version: 0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
+    if [ $DEV_PACKAGE = "y" ]; then
+        echo "Package: zrpc-dev" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Source: zrpc-dev (0.2.HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Source: zrpc-dev (0.2.$COMMITID.$HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 0.2.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
+        echo "Bugs : https://github.com/6WIND/zrpcd/issues" >> $DEB_CONTROL_FILE
     else
-        echo "Version: 0.2.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        echo "Package: zrpc" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Version: 0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Version: 0.2.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
     fi
-    echo "Architecture: amd64" >> $DEB_CONTROL_FILE
     echo "Maintainer: 6WIND <packaging@6wind.com>" >> $DEB_CONTROL_FILE
-    echo "Depends: thrift(>=0.9), zmq(>=4.1.0), libglib2.0-0(>=2.22.5), quagga(>=1.1.0), c-capnproto(>=1.0.0)" >> $DEB_CONTROL_FILE
-    echo "Description: Zebra Remote Procedure Call" >> $DEB_CONTROL_FILE
-    printf " ZRPC provides a Thrift API and handles RPC to configure Quagga framework.\n" >> $DEB_CONTROL_FILE
-
-    if [ -f $INST_BIN_DIR/preinst ]; then
-        mv $INST_BIN_DIR/preinst $DEB_BIN_DIR/DEBIAN/
-        rm -f $DEB_BIN_DIR/preinst
+    if [ $DEV_PACKAGE = "y" ]; then     
+        echo "Vcs-Git: https://github.com/6WIND/zrpcd" >> $DEB_CONTROL_FILE
+        echo "Architecture: amd64" >> $DEB_CONTROL_FILE
+        echo "Depends: thrift-dev(>=0.9), zmq-dev(>=4.1.0), quagga-dev(>=1.1.0), c-capnproto-dev(>=1.0.0)" >> $DEB_CONTROL_FILE
+        echo "Section: net" >> $DEB_CONTROL_FILE
+        echo "Priority : optional" >> $DEB_CONTROL_FILE
+        echo "Multi-Arch: same" >> $DEB_CONTROL_FILE
+        echo "Description: Zebra Remote Procedure Call" >> $DEB_CONTROL_FILE
+    printf " ZRPC-DEV provides source necessary to develop under ZRPC.\n" >> $DEB_CONTROL_FILE
+    else
+        echo "Depends: thrift(>=0.9), zmq(>=4.1.0), libglib2.0-0(>=2.22.5), quagga(>=1.1.0), c-capnproto(>=1.0.0)" >> $DEB_CONTROL_FILE
+        echo "Description: Zebra Remote Procedure Call" >> $DEB_CONTROL_FILE
+        printf " ZRPC provides a Thrift API and handles RPC to configure Quagga framework.\n" >> $DEB_CONTROL_FILE
     fi
+    if [ $DEV_PACKAGE = "n" ]; then
+        if [ -f $INST_BIN_DIR/preinst ]; then
+            mv $INST_BIN_DIR/preinst $DEB_BIN_DIR/DEBIAN/
+            rm -f $DEB_BIN_DIR/preinst
+        fi
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+    fi
 }
 
 quagga_copy_bin_files () {
 
-    if [ -f $INST_BIN_DIR/opt/quagga/etc/bgpd.conf ]; then
-        sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+    if [ $DEV_PACKAGE = "n" ]; then
+        if [ -f $INST_BIN_DIR/opt/quagga/etc/bgpd.conf ]; then
+            sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+        else
+            echo "hostname bgpd" > $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "password sdncbgpc" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "service advanced-vty" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "log stdout" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "line vty" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo " exec-timeout 0 0 " >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "debug bgp " >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "debug bgp updates" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "debug bgp events" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "debug bgp fsm" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+        fi
+
+        if [ -f $INST_BIN_DIR/opt/quagga/etc/bfdd.conf ]; then
+            sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+            echo "service advanced-vty" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+            echo "debug bfd zebra" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+            echo "debug bfd fsm" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+        else
+	    touch $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+        fi
+
+        if [ -f $INST_BIN_DIR/opt/quagga/etc/zebra.conf ]; then
+            sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+            echo "debug zebra events" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+            echo "debug zebra fpm" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+            echo "debug zebra packet" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+        else
+    	    touch $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+        fi
+
+        rm -rf $INST_BIN_DIR/../bin
+        mkdir -p $INST_BIN_DIR/../bin
+
+        pushd $INST_BIN_DIR
+        find ./opt/quagga/lib -name *.so* | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
+        find ./opt/quagga/lib -name *.a | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
+        find ./opt/quagga/bin | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
+        find ./opt/quagga/include | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
+
+        tar cf - ./opt/quagga/etc/bgpd.conf | tar xf - -C $INST_BIN_DIR/../bin
+        tar cf - ./opt/quagga/etc/bfdd.conf | tar xf - -C $INST_BIN_DIR/../bin
+        tar cf - ./opt/quagga/etc/zebra.conf | tar xf - -C $INST_BIN_DIR/../bin
+        tar cf - ./opt/quagga/sbin | tar xf - -C $INST_BIN_DIR/../bin
+        popd
+
+        mkdir -p $INST_BIN_DIR/../bin/opt/quagga/var/log/quagga
+        touch $INST_BIN_DIR/../bin/opt/quagga/var/log/quagga/.dummyqbgp
+        mkdir -p $INST_BIN_DIR/../bin/opt/quagga/var/run/quagga
+        touch $INST_BIN_DIR/../bin/opt/quagga/var/run/quagga/.dummyqbgp
+
+        pushd $INST_BIN_DIR/../bin
     else
-        echo "hostname bgpd" > $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-        echo "password sdncbgpc" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-        echo "service advanced-vty" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-        echo "log stdout" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-        echo "line vty" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-        echo " exec-timeout 0 0 " >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-        echo "debug bgp " >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-        echo "debug bgp updates" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-        echo "debug bgp events" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-        echo "debug bgp fsm" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+        pushd $INST_BIN_DIR/../src
     fi
 
-    if [ -f $INST_BIN_DIR/opt/quagga/etc/bfdd.conf ]; then
-        sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
-        echo "service advanced-vty" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
-        echo "debug bfd zebra" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
-        echo "debug bfd fsm" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
-    else
-	touch $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
-    fi
-
-    if [ -f $INST_BIN_DIR/opt/quagga/etc/zebra.conf ]; then
-        sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/zebra.conf
-        echo "debug zebra events" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
-        echo "debug zebra fpm" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
-        echo "debug zebra packet" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
-    else
-	touch $INST_BIN_DIR/opt/quagga/etc/zebra.conf
-    fi
-
-    rm -rf $INST_BIN_DIR/../bin
-    mkdir -p $INST_BIN_DIR/../bin
-
-    pushd $INST_BIN_DIR
-    find ./opt/quagga/lib -name *.so* | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
-    find ./opt/quagga/lib -name *.a | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
-    find ./opt/quagga/bin | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
-    find ./opt/quagga/include | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
-
-    tar cf - ./opt/quagga/etc/bgpd.conf | tar xf - -C $INST_BIN_DIR/../bin
-    tar cf - ./opt/quagga/etc/bfdd.conf | tar xf - -C $INST_BIN_DIR/../bin
-    tar cf - ./opt/quagga/etc/zebra.conf | tar xf - -C $INST_BIN_DIR/../bin
-    tar cf - ./opt/quagga/sbin | tar xf - -C $INST_BIN_DIR/../bin
-    popd
-
-    mkdir -p $INST_BIN_DIR/../bin/opt/quagga/var/log/quagga
-    touch $INST_BIN_DIR/../bin/opt/quagga/var/log/quagga/.dummyqbgp
-    mkdir -p $INST_BIN_DIR/../bin/opt/quagga/var/run/quagga
-    touch $INST_BIN_DIR/../bin/opt/quagga/var/run/quagga/.dummyqbgp
-
-    pushd $INST_BIN_DIR/../bin
     if [ $PACKAGE_DEB = "y" ]; then
-       cd $INST_BIN_DIR/../bin
        find . \! -type d | cpio -o -H ustar -R 0:0 | tar -C $DEB_BIN_DIR -x
     fi
     popd
@@ -290,12 +312,23 @@ quagga_rpm_bin_spec () {
 }
 
 quagga_deb_bin_control () {
-
-    echo "Package: quagga" >> $DEB_CONTROL_FILE
-    if [ -z "$COMMITID" ]; then
-        echo "Version: 1.1.0.$HOST_NAME" >> $DEB_CONTROL_FILE
+    if [ $DEV_PACKAGE = "y" ]; then
+        echo "Package: quagga-dev" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Source: quagga-dev (1.1.0.HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 1.1.0.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Source: quagga-dev (1.1.0.$COMMITID.$HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 1.1.0.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
+        echo "Bugs : https://github.com/6WIND/quagga/issues" >> $DEB_CONTROL_FILE
     else
-        echo "Version: 1.1.0.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        echo "Package: quagga" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Version: 1.1.0.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Version: 1.1.0.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
     fi
     echo "Architecture: amd64" >> $DEB_CONTROL_FILE
     echo "Maintainer: 6WIND <packaging@6wind.com>" >> $DEB_CONTROL_FILE
@@ -303,27 +336,29 @@ quagga_deb_bin_control () {
     echo "Description: Quagga Routing Suite" >> $DEB_CONTROL_FILE
     printf " Quagga is an advanced routing software package that provides a suite of TCP/IP based routing protocols.\n" >> $DEB_CONTROL_FILE
 
-    if [ -f $INST_BIN_DIR/preinst ]; then
-        cp $INST_BIN_DIR/preinst $DEB_BIN_DIR/DEBIAN/
+    if [ $DEV_PACKAGE = "n" ]; then
+        if [ -f $INST_BIN_DIR/preinst ]; then
+            cp $INST_BIN_DIR/preinst $DEB_BIN_DIR/DEBIAN/
+        fi
+
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
+
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
+
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
     fi
-
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
-
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
-
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
 }
 
 ccapnproto_copy_bin_files () {
@@ -383,47 +418,64 @@ ccapnproto_rpm_bin_spec () {
 }
 
 ccapnproto_deb_bin_control () {
-    echo "Package: c-capnproto" >> $DEB_CONTROL_FILE
-    if [ -z "$COMMITID" ]; then
-        echo "Version: 1.0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
+    if [ $DEV_PACKAGE = "y" ]; then
+        echo "Package: c-capnproto-dev" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Source: c-capnproto-dev (1.0.2.HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 1.0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Source: c-capnproto-dev (1.0.2.$COMMITID.$HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 1.0.2.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
+        echo "Bugs : https://github.com/opensourcerouting/c-capnproto/issues" >> $DEB_CONTROL_FILE
     else
-        echo "Version: 1.0.2.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        echo "Package: c-capnproto" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Version: 1.0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Version: 1.0.2.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
     fi
     echo "Architecture: amd64" >> $DEB_CONTROL_FILE
     echo "Maintainer: 6WIND <packaging@6wind.com>" >> $DEB_CONTROL_FILE
     echo "Description: c-ccapnproto library" >> $DEB_CONTROL_FILE
     printf " Library for CCAPNPROTO.\n  CCAPNPROTO_BUILD_DEPS=''\n" >> $DEB_CONTROL_FILE
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
+    if [ $DEV_PACKAGE = "n" ]; then
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+    fi
 }
 
 thrift_copy_bin_files () {
 
-    rm -rf $INST_BIN_DIR/../bin
-    mkdir -p $INST_BIN_DIR/../bin
+    if [ $DEV_PACKAGE = "n" ]; then
+        rm -rf $INST_BIN_DIR/../bin
+        mkdir -p $INST_BIN_DIR/../bin
 
-    pushd $INST_BIN_DIR
-    find ./opt/quagga/lib -name *.so* | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
-    tar cf - ./opt/quagga//bin | tar xf - -C $INST_BIN_DIR/../bin
-    popd
-
-    pushd $INST_BIN_DIR/../bin
+        pushd $INST_BIN_DIR
+        find ./opt/quagga/lib -name *.so* | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
+        tar cf - ./opt/quagga//bin | tar xf - -C $INST_BIN_DIR/../bin
+        popd
+        pushd $INST_BIN_DIR/../bin
+    else
+        pushd $INST_BIN_DIR/../src
+    fi
     if [ $PACKAGE_DEB = "y" ]; then
        find . \! -type d | cpio -o -H ustar -R 0:0 | tar -C $DEB_BIN_DIR -x
     fi
@@ -487,11 +539,23 @@ thrift_rpm_bin_spec () {
 }
 
 thrift_deb_bin_control () {
-    echo "Package: thrift" >> $DEB_CONTROL_FILE
-    if [ -z "$COMMITID" ]; then
-        echo "Version: 1.0.0.$HOST_NAME" >> $DEB_CONTROL_FILE
+    if [ $DEV_PACKAGE = "y" ]; then
+        echo "Package: thrift-dev" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Source: thrift-dev (1.0.0.HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 1.0.0.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Source: thrift-dev (1.0.0.$COMMITID.$HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 1.0.0.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
+        echo "Bugs : https://jira.apache.org/jira/projects/THRIFT/issues" >> $DEB_CONTROL_FILE
     else
-        echo "Version: 1.0.0.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        echo "Package: thrift" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Version: 1.0.0.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Version: 1.0.0.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
     fi
     echo "Architecture: amd64" >> $DEB_CONTROL_FILE
     echo "Maintainer: 6WIND <packaging@6wind.com>" >> $DEB_CONTROL_FILE
@@ -499,36 +563,41 @@ thrift_deb_bin_control () {
     echo "Description: thrift library" >> $DEB_CONTROL_FILE
     printf " Library for THRIFT.\n  THRIFT_BUILD_DEPS=''\n" >> $DEB_CONTROL_FILE
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
+    if [ $DEV_PACKAGE = "n" ]; then
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+    fi
 }
 
 zmq_copy_bin_files () {
 
-    rm -rf $INST_BIN_DIR/../bin
-    mkdir -p $INST_BIN_DIR/../bin
+    if [ $DEV_PACKAGE = "n" ]; then
+        rm -rf $INST_BIN_DIR/../bin
+        mkdir -p $INST_BIN_DIR/../bin
 
-    pushd $INST_BIN_DIR
-    find ./opt/quagga/lib -name *.so* | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
-    tar cf - ./opt/quagga/bin | tar xf - -C $INST_BIN_DIR/../bin
-    popd
-
-    pushd $INST_BIN_DIR/../bin
+        pushd $INST_BIN_DIR
+        find ./opt/quagga/lib -name *.so* | xargs tar cf - | tar xf - -C $INST_BIN_DIR/../bin
+        tar cf - ./opt/quagga/bin | tar xf - -C $INST_BIN_DIR/../bin
+        popd
+        pushd $INST_BIN_DIR/../bin
+    else
+        pushd $INST_BIN_DIR/../src
+    fi
     if [ $PACKAGE_DEB = "y" ]; then
        find . \! -type d | cpio -o -H ustar -R 0:0 | tar -C $DEB_BIN_DIR -x
     fi
@@ -584,57 +653,79 @@ zmq_rpm_bin_spec () {
 }
 
 zmq_deb_bin_control () {
-    echo "Package: zmq" >> $DEB_CONTROL_FILE
-    if [ -z "$COMMITID" ]; then
-        echo "Version: 4.1.3.$HOST_NAME" >> $DEB_CONTROL_FILE
+    if [ $DEV_PACKAGE = "y" ]; then
+        echo "Package: zmq-dev" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Source: zmq-dev (4.1.3.HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 4.1.3.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Source: zmq-dev (4.1.3.$COMMITID.$HOST_NAME)" >> $DEB_CONTROL_FILE
+            echo "Version: 4.1.3.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
+        echo "Bugs : https://github.com/zeromq/libzmq/issues" >> $DEB_CONTROL_FILE
     else
-        echo "Version: 4.1.3.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        echo "Package: zmq" >> $DEB_CONTROL_FILE
+        if [ -z "$COMMITID" ]; then
+            echo "Version: 4.1.3.$HOST_NAME" >> $DEB_CONTROL_FILE
+        else
+            echo "Version: 4.1.3.$COMMITID.$HOST_NAME" >> $DEB_CONTROL_FILE
+        fi
     fi
     echo "Architecture: amd64" >> $DEB_CONTROL_FILE
     echo "Maintainer: 6WIND <packaging@6wind.com>" >> $DEB_CONTROL_FILE
     echo "Description: ZMQ library" >> $DEB_CONTROL_FILE
     printf " Zero Message Queue Library.\n  ZMQ_BUILD_DEPS=''\n" >> $DEB_CONTROL_FILE
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
+    if [ $DEV_PACKAGE = "n" ]; then
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/prerm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/prerm
 
-    printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
-    chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+        printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'set -e\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'if [ "$1" = "remove" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postrm
+        chmod a+x $DEB_BIN_DIR/DEBIAN/postrm
+    fi
 }
 
+if [ $6 = "dev" ]; then
+    DEV_PACKAGE="y"
+else
+    DEV_PACKAGE="n"
+fi
 case $HOST_NAME in
 Ubuntu*)
     PACKAGE_DEB="y"
-    DEB_BIN_DIR=$3/deb/bin
+    if [ $DEV_PACKAGE = "y" ]; then
+        DEB_BIN_DIR=$3/deb/src
+    else
+        DEB_BIN_DIR=$3/deb/bin
+    fi
     mkdir -p $DEB_BIN_DIR/DEBIAN
     DEB_CONTROL_FILE=$DEB_BIN_DIR/DEBIAN/control
     rm -f $DEB_CONTROL_FILE
-
-    if [ $1 = "zrpc" ]; then
+    if [ $1 = "zrpc" -o $1 = "zrpc-dev" ]; then
         zrpc_copy_bin_files
         zrpc_deb_bin_control
-    elif [ $1 = "quagga" ]; then
+    elif [ $1 = "quagga" -o $1 = "quagga-dev" ]; then
         quagga_copy_bin_files
         quagga_deb_bin_control
-    elif [ $1 = "c-capnproto" ]; then
+    elif [ $1 = "c-capnproto" -o $1 = "c-capnproto-dev" ]; then
         ccapnproto_copy_bin_files
         ccapnproto_deb_bin_control
-    elif [ $1 = "thrift" ]; then
+    elif [ $1 = "thrift" -o $1 = "thrift-dev" ]; then
         thrift_copy_bin_files
         thrift_deb_bin_control
-    elif [ $1 = "zmq" ]; then
+    elif [ $1 = "zmq" -o $1 = "zmq-dev" ]; then
         zmq_copy_bin_files
         zmq_deb_bin_control
     fi
