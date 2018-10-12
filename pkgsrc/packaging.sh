@@ -176,7 +176,7 @@ zrpc_rpm_bin_spec () {
 
 zrpc_deb_bin_control () {
     if [ $DEV_PACKAGE = "y" ]; then
-        echo "Package: zrpc-dev" >> $DEB_CONTROL_FILE
+        echo "Package: zrpc-src" >> $DEB_CONTROL_FILE
         if [ -z "$COMMITID" ]; then
             echo "Source: zrpc-dev (0.2.HOST_NAME)" >> $DEB_CONTROL_FILE
             echo "Version: 0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
@@ -379,7 +379,7 @@ quagga_rpm_bin_spec () {
 
 quagga_deb_bin_control () {
     if [ $DEV_PACKAGE = "y" ]; then
-        echo "Package: quagga-dev" >> $DEB_CONTROL_FILE
+        echo "Package: quagga-src" >> $DEB_CONTROL_FILE
         if [ -z "$COMMITID" ]; then
             echo "Source: quagga-dev (1.1.0.HOST_NAME)" >> $DEB_CONTROL_FILE
             echo "Version: 1.1.0.$HOST_NAME" >> $DEB_CONTROL_FILE
@@ -503,7 +503,7 @@ ccapnproto_rpm_bin_spec () {
 
 ccapnproto_deb_bin_control () {
     if [ $DEV_PACKAGE = "y" ]; then
-        echo "Package: c-capnproto-dev" >> $DEB_CONTROL_FILE
+        echo "Package: c-capnproto-src" >> $DEB_CONTROL_FILE
         if [ -z "$COMMITID" ]; then
             echo "Source: c-capnproto-dev (1.0.2.HOST_NAME)" >> $DEB_CONTROL_FILE
             echo "Version: 1.0.2.$HOST_NAME" >> $DEB_CONTROL_FILE
@@ -639,7 +639,7 @@ thrift_rpm_bin_spec () {
 
 thrift_deb_bin_control () {
     if [ $DEV_PACKAGE = "y" ]; then
-        echo "Package: thrift-dev" >> $DEB_CONTROL_FILE
+        echo "Package: thrift-src" >> $DEB_CONTROL_FILE
         if [ -z "$COMMITID" ]; then
             echo "Source: thrift-dev (1.0.0.HOST_NAME)" >> $DEB_CONTROL_FILE
             echo "Version: 1.0.0.$HOST_NAME" >> $DEB_CONTROL_FILE
@@ -764,7 +764,7 @@ zmq_rpm_bin_spec () {
 
 zmq_deb_bin_control () {
     if [ $DEV_PACKAGE = "y" ]; then
-        echo "Package: zmq-dev" >> $DEB_CONTROL_FILE
+        echo "Package: zmq-src" >> $DEB_CONTROL_FILE
         if [ -z "$COMMITID" ]; then
             echo "Source: zmq-dev (4.1.3.HOST_NAME)" >> $DEB_CONTROL_FILE
             echo "Version: 4.1.3.$HOST_NAME" >> $DEB_CONTROL_FILE
@@ -807,7 +807,7 @@ zmq_deb_bin_control () {
     fi
 }
 
-substr="-dev"
+substr="-src"
 if [[  ${1} =~ $substr ]]; then
     DEV_PACKAGE="y"
 else
@@ -827,19 +827,19 @@ Ubuntu*)
     mkdir -p $DEB_BIN_DIR/DEBIAN
     DEB_CONTROL_FILE=$DEB_BIN_DIR/DEBIAN/control
     rm -f $DEB_CONTROL_FILE
-    if [ $1 = "zrpc" -o $1 = "zrpc-dev" ]; then
+    if [ $1 = "zrpc" -o $1 = "zrpc-src" ]; then
         zrpc_copy_bin_files $1
         zrpc_deb_bin_control
-    elif [ $1 = "quagga" -o $1 = "quagga-dev" ]; then
+    elif [ $1 = "quagga" -o $1 = "quagga-src" ]; then
         quagga_copy_bin_files $1
         quagga_deb_bin_control
-    elif [ $1 = "c-capnproto" -o $1 = "c-capnproto-dev" ]; then
+    elif [ $1 = "c-capnproto" -o $1 = "c-capnproto-src" ]; then
         ccapnproto_copy_bin_files $1
         ccapnproto_deb_bin_control
-    elif [ $1 = "thrift" -o $1 = "thrift-dev" ]; then
+    elif [ $1 = "thrift" -o $1 = "thrift-src" ]; then
         thrift_copy_bin_files $1
         thrift_deb_bin_control
-    elif [ $1 = "zmq" -o $1 = "zmq-dev" ]; then
+    elif [ $1 = "zmq" -o $1 = "zmq-src" ]; then
         zmq_copy_bin_files $1
         zmq_deb_bin_control
     fi
@@ -860,7 +860,7 @@ RedHat*|CentOS*|SUSE*)
     RPM_SPEC_FILE=$RPM_BIN_DIR/SPECS/rpm.spec
     rm -f $RPM_SPEC_FILE
 
-    if [ $1 = "zrpc" -o $1 = "zrpc-dev" ]; then
+    if [ $1 = "zrpc" -o $1 = "zrpc-src" ]; then
         if [ -z "$COMMITID" ]; then
             version="0.2.$HOST_NAME"
         else
@@ -868,7 +868,7 @@ RedHat*|CentOS*|SUSE*)
         fi
         zrpc_copy_bin_files $1
         zrpc_rpm_bin_spec $1
-    elif [ $1 = "quagga" -o $1 = "quagga-dev" ]; then
+    elif [ $1 = "quagga" -o $1 = "quagga-src" ]; then
         if [ -z "$COMMITID" ]; then
             version="1.1.0.$HOST_NAME"
         else
@@ -876,7 +876,7 @@ RedHat*|CentOS*|SUSE*)
         fi
         quagga_copy_bin_files $1
         quagga_rpm_bin_spec $1
-    elif [ $1 = "c-capnproto" -o $1 = "c-capnproto-dev" ]; then
+    elif [ $1 = "c-capnproto" -o $1 = "c-capnproto-src" ]; then
         if [ -z "$COMMITID" ]; then
             version="1.0.2.$HOST_NAME"
         else
@@ -884,7 +884,7 @@ RedHat*|CentOS*|SUSE*)
         fi
         ccapnproto_copy_bin_files $1
         ccapnproto_rpm_bin_spec $1
-    elif [ $1 = "thrift" -o $1 = "thrift-dev" ]; then
+    elif [ $1 = "thrift" -o $1 = "thrift-src" ]; then
         if [ -z "$COMMITID" ]; then
             version="1.1.0.$HOST_NAME"
         else
@@ -892,7 +892,7 @@ RedHat*|CentOS*|SUSE*)
         fi
         thrift_copy_bin_files $1
         thrift_rpm_bin_spec $1
-    elif [ $1 = "zmq" -o $1 = "zmq-dev" ]; then
+    elif [ $1 = "zmq" -o $1 = "zmq-src" ]; then
         if [ -z "$COMMITID" ]; then
             version="4.1.3.$HOST_NAME"
         else
