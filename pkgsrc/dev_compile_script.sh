@@ -36,10 +36,16 @@ THRIFT_FOLDER_NAME=thrift
 THRIFT_BUILD_FOLDER=$ZRPCD_BUILD_FOLDER/$THRIFT_FOLDER_NAME
 
 DIR_NAME=`dirname $0`
+DIR_PATH=`pwd`
+
+THRIFT_TAG=0.10.0
+ZMQ_TAG=56b71af22db3
+CCAPNPROTO_TAG=c-capnproto-0.2
+ZEROMQFOLDERNAME=zeromq4-1
 
 export_variables (){
     #these are required by quagga
-    export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/zeromq4-1/include"
+    export ZEROMQ_CFLAGS="-I"$ZRPCD_BUILD_FOLDER"/$ZEROMQFOLDERNAME/include"
     export ZEROMQ_LIBS="-L"$ZRPCD_BUILD_FOLDER"/zeromq4-1/.libs/ -lzmq"
     export CAPN_C_CFLAGS='-I'$ZRPCD_BUILD_FOLDER'/c-capnproto/lib'
     export CAPN_C_LIBS='-L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c'
@@ -151,7 +157,7 @@ install_deps() {
 #Install thrift
     git clone https://github.com/apache/thrift.git
     cd $THRIFT_FOLDER_NAME
-    git checkout 0.10.0
+    git checkout $THRIFT_TAG
     wget https://issues.apache.org/jira/secure/attachment/12840512/0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
     patch -p1 < 0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
     wget https://issues.apache.org/jira/secure/attachment/12840511/0002-THRIFT-3986-using-autoreconf-i-fails-because-of-miss.patch
@@ -176,13 +182,20 @@ install_deps() {
         COMMITID=`git log -n1 --format="%h"`
 
         popd
-        $DIR_NAME/packaging.sh "thrift" $INSTALL_DIR $THRIFT_DIR $HOST_NAME $COMMITID
+        $DIR_NAME/packaging.sh "thrift" $INSTALL_DIR $THRIFT_DIR $HOST_NAME $COMMITID bin
+        rm -rf $ZRPCD_BUILD_FOLDER/packager/thrift/bin
+        rm -rf $ZRPCD_BUILD_FOLDER/packager/thrift/src
+        mkdir -p $ZRPCD_BUILD_FOLDER/packager/thrift/src
+        pushd $ZRPCD_BUILD_FOLDER/thrift
+        git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/thrift/src/thrift-src.tar $THRIFT_TAG
+        popd
+        $DIR_NAME/packaging.sh "thrift-src" $ZRPCD_BUILD_FOLDER/packager/thrift/src/ $THRIFT_DIR $HOST_NAME $COMMITID dev
     fi
 #Install ZeroMQ
     pushd $ZRPCD_BUILD_FOLDER
     git clone https://github.com/zeromq/zeromq4-1.git
-    cd zeromq4-1
-    git checkout 56b71af22db3
+    cd $ZEROMQFOLDERNAME
+    git checkout $ZMQ_TAG
     autoreconf -i
     ./configure --without-libsodium --prefix=/opt/quagga
     make
@@ -196,15 +209,23 @@ install_deps() {
         rm -rf $ZMQ_DIR
         make install DESTDIR=$INSTALL_DIR
         COMMITID=`git log -n1 --format="%h"`
-
         popd
-        $DIR_NAME/packaging.sh "zmq" $INSTALL_DIR $ZMQ_DIR $HOST_NAME $COMMITID
+        cd $DIR_PATH
+        ./$DIR_NAME/packaging.sh "zmq" $INSTALL_DIR $ZMQ_DIR $HOST_NAME $COMMITID bin
+        rm -rf $ZRPCD_BUILD_FOLDER/packager/zmq/src
+        rm -rf $ZRPCD_BUILD_FOLDER/packager/zmq/bin
+        mkdir -p $ZRPCD_BUILD_FOLDER/packager/zmq/src
+        pushd $ZRPCD_BUILD_FOLDER/$ZEROMQFOLDERNAME
+        git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/zmq/src/zmq-src.tar $ZMQ_TAG
+        popd
+        cd $DIR_PATH
+        ./$DIR_NAME/packaging.sh "zmq-src" $ZRPCD_BUILD_FOLDER/packager/zmq/src $ZMQ_DIR $HOST_NAME $COMMITID dev
     fi
 #Install C-capnproto
      pushd $ZRPCD_BUILD_FOLDER
      git clone https://github.com/opensourcerouting/c-capnproto
      cd c-capnproto
-     git checkout c-capnproto-0.2
+     git checkout $CCAPNPROTO_TAG
      mkdir -p gtest/googletest
      autoreconf -fiv
      ./configure --prefix=/opt/quagga --without-gtest
@@ -221,7 +242,16 @@ install_deps() {
          COMMITID=`git log -n1 --format="%h"`
 
          popd
-         $DIR_NAME/packaging.sh "c-capnproto" $INSTALL_DIR $CCAPNPROTO_DIR $HOST_NAME $COMMITID
+         cd $DIR_PATH
+         ./$DIR_NAME/packaging.sh "c-capnproto" $INSTALL_DIR $CCAPNPROTO_DIR $HOST_NAME $COMMITID bin
+         rm -rf $ZRPCD_BUILD_FOLDER/packager/c-capnproto/bin
+         rm -rf $ZRPCD_BUILD_FOLDER/packager/c-capnproto/src
+         mkdir -p $ZRPCD_BUILD_FOLDER/packager/c-capnproto/src
+         pushd $ZRPCD_BUILD_FOLDER/c-capnproto
+         git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/c-capnproto/src/c-capnproto-src.tar $CCAPNPROTO_TAG
+         popd
+         cd $DIR_PATH
+         ./$DIR_NAME/packaging.sh "c-capnproto-src" $ZRPCD_BUILD_FOLDER/packager/c-capnproto/src $CCAPNPROTO_DIR $HOST_NAME $COMMITID dev
      fi
 #Install Quagga
 
@@ -317,7 +347,15 @@ install_deps() {
             fi
             ;;
         esac
-        $DIR_NAME/packaging.sh "quagga" $INSTALL_DIR $QUAGGA_DIR $HOST_NAME $COMMITID
+        cd $DIR_PATH
+        ./$DIR_NAME/packaging.sh "quagga" $INSTALL_DIR $QUAGGA_DIR $HOST_NAME $COMMITID bin
+        rm -rf $ZRPCD_BUILD_FOLDER/packager/quagga/src
+        mkdir -p $ZRPCD_BUILD_FOLDER/packager/quagga/src
+        pushd $ZRPCD_BUILD_FOLDER/quagga
+        git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/quagga/src/quagga-src.tar quagga_mpbgp_capnp
+        popd
+        cd $DIR_PATH
+        ./$DIR_NAME/packaging.sh "quagga-src" $ZRPCD_BUILD_FOLDER/packager/quagga/src $QUAGGA_DIR $HOST_NAME $COMMITID dev
     fi
 }
 build_zrpcd (){
@@ -397,12 +435,12 @@ build_zrpcd (){
     fi
     touch NEWS README
     autoreconf -i
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/$ZEROMQFOLDERNAME/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -lzmq -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/ -lcapnp_c -L'$ZRPCD_BUILD_FOLDER'/quagga/lib/.libs/ -lzebra' PATH=$PATH:$THRIFT_PATH ./configure --prefix=/opt/quagga --enable-user=quagga --enable-group=quagga --enable-vty-group=quagga --localstatedir=/opt/quagga/var/run/quagga --with-thrift-version=$THRIFT_VERSION
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make
     if [ -z "$DO_PACKAGING" ]; then
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/$ZEROMQFOLDERNAME/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install
     else
-        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/zeromq4-1/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install DESTDIR=$INSTALL_DIR
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$THRIFT_LIB_PATH:$ZRPCD_BUILD_FOLDER/$ZEROMQFOLDERNAME/.libs/:$ZRPCD_BUILD_FOLDER/c-capnproto/.libs/:$ZRPCD_BUILD_FOLDER/quagga/lib/.libs/ PATH=$PATH:$THRIFT_PATH make install DESTDIR=$INSTALL_DIR
         if [ -d .git ]; then
             COMMITID=`git log -n1 --format="%h"`
             COMMITID=$COMMITID".thriftv"$THRIFT_VERSION
@@ -466,7 +504,13 @@ build_zrpcd (){
             fi
 	    ;;
         esac
-        $DIR_NAME/packaging.sh "zrpc" $INSTALL_DIR $ZRPC_DIR $HOST_NAME $COMMITID
+        $DIR_NAME/packaging.sh "zrpc" $INSTALL_DIR $ZRPC_DIR $HOST_NAME $COMMITID bin
+        rm -rf $ZRPCD_BUILD_FOLDER'/packager/zrpc/bin'
+        rm -rf $ZRPCD_BUILD_FOLDER'/packager/zrpc/deb'
+        rm -rf $ZRPCD_BUILD_FOLDER'/packager/zrpc/src'
+        mkdir $ZRPCD_BUILD_FOLDER'/packager/zrpc/src'
+        git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/zrpc/src/zrpc-src.tar master
+        $DIR_NAME/packaging.sh "zrpc-src" $ZRPCD_BUILD_FOLDER/packager/zrpc/src/ $ZRPC_DIR $HOST_NAME $COMMITID dev
     else
         echo "hostname bgpd" > /opt/quagga/etc/bgpd.conf
         echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
