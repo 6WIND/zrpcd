@@ -29,6 +29,7 @@ struct zrpc_global
   /* zrpcd parameters */
   uint16_t zrpc_notification_port;
   uint16_t zrpc_listen_port;
+  uint16_t zrpc_select_time;
   char *zrpc_notification_address;
   char *zrpc_listen_address;
 };

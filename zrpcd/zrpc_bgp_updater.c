@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include "config.h"
 
+#include "zrpc_global.h"
 #include "zrpcd/zrpc_thrift_wrapper.h"
 #include "zrpcd/bgp_updater.h"
 #include "zrpcd/bgp_configurator.h"
@@ -20,6 +21,72 @@
 extern zrpc_status zrpc_transport_current_status;
 extern void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
 extern void zrpc_transport_cancel_monitor(struct zrpc_vpnservice *setup);
+
+static bool zrpc_bgp_updater_handle_response(struct zrpc_vpnservice *ctxt,
+                                             bool *response,
+                                             GError **perror,
+                                             const char *name)
+{
+  bool should_retry = FALSE;
+  GError *error = NULL;
+
+    if (perror != NULL)
+      {
+        error = *perror;
+        if (error && error->domain == THRIFT_TRANSPORT_ERROR &&
+            error->code == THRIFT_TRANSPORT_ERROR_SEND)
+          {
+            /* errors that are worth to be retried */
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+              int fd = zrpc_vpnservice_get_bgp_updater_socket(ctxt);
+              fd_set wrfds;
+              struct timeval tout;
+              int optval, optlen;
+
+              zlog_info ("%s: sent error %s (%d), using select (%d sec) to retry",
+                         name, error->message, errno, tm->zrpc_select_time);
+              FD_ZERO(&wrfds);
+              FD_SET(fd, &wrfds);
+
+              tout.tv_sec = 0;
+              tout.tv_usec = tm->zrpc_select_time * 1000 * 1000;
+              optval = -1;
+              optlen = sizeof (optval);
+              ctxt->bgp_update_thrift_retries++;
+              ctxt->bgp_updater_select_in_progress = TRUE;
+              if ((select(FD_SETSIZE, NULL, &wrfds, NULL, &tout) <= 0) ||
+                  (getsockopt(fd, SOL_SOCKET, SO_ERROR, &optval, (socklen_t *)&optlen) < 0) ||
+                  (optval != 0)) {
+                ctxt->bgp_updater_select_in_progress = FALSE;
+                zlog_info ("%s: sent error %s (%d), resetting connection",
+                           name, error->message, errno);
+                ctxt->bgp_update_thrift_lost_msgs++;
+                zrpc_transport_cancel_monitor(ctxt);
+                should_retry = FALSE;
+                *response = FALSE;
+                zrpc_transport_check_response(ctxt, FALSE);
+              } else {
+                ctxt->bgp_updater_select_in_progress = FALSE;
+                ctxt->bgp_update_thrift_retries_successfull++;
+                should_retry = TRUE;
+              }
+            } else {
+              zlog_info ("%s: sent error %s (%d), resetting connection",
+                         name, error->message, errno);
+              /* other errors fall in error */
+              ctxt->bgp_update_thrift_lost_msgs++;
+              zrpc_transport_cancel_monitor(ctxt);
+              should_retry = FALSE;
+              *response = FALSE;
+              zrpc_transport_check_response(ctxt, FALSE);
+            }
+            g_clear_error (&error);
+            error = NULL;
+          }
+      }
+    return should_retry;
+}
+
 /*
  * update push route notification message
  * sent when a vpnv4 route is pushed
@@ -34,43 +101,38 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
                                        const gint32 l3label, const gint32 l2label, const gchar * routermac,
                                        const gchar * gatewayIp, const af_afi afi)
 {
-  GError *error = NULL;
+  GError *error = NULL, **perror;
   gboolean response;
   struct zrpc_vpnservice *ctxt = NULL;
+  int thrift_tries;
 
+  perror = &error;
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
+
+  for (thrift_tries = 0; thrift_tries < 2; thrift_tries++) {
 #if defined(HAVE_THRIFT_V1)
-  response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, rd, prefix, prefixlen, nexthop,
-                                                          l3label, &error);
+    response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, rd, prefix, prefixlen, nexthop,
+                                                            l3label, &error);
 #else
-  response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, p_type,
-                                                          rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress, 
+    response = bgp_updater_client_send_on_update_push_route(ctxt->bgp_updater_client, p_type,
+                                                            rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress,
 #if defined(HAVE_THRIFT_V4)
-                                                          l3label, l2label, routermac, afi, &error);
+                                                            l3label, l2label, routermac, afi, &error);
 #else
 #if defined(HAVE_THRIFT_V2)
-                                                          l3label, l2label, routermac, &error);
+                                                            l3label, l2label, routermac, &error);
 #else
-                                                          l3label, l2label, routermac, gatewayIp, afi, &error);
+                                                            l3label, l2label, routermac, gatewayIp, afi, &error);
 #endif /* HAVE_THRIFT_V2 */
 #endif /* HAVE_THRIFT_V4 */
 #endif /* HAVE_THRIFT_V1 */
-  if (error != NULL)
-    {
-      if (error->domain == THRIFT_TRANSPORT_ERROR &&
-          error->code == THRIFT_TRANSPORT_ERROR_SEND)
-        {
-          ctxt->bgp_update_thrift_lost_msgs++;
-          zrpc_info ("onUpdatePushRoute(): sent error %s", error->message);
-          zrpc_transport_cancel_monitor(ctxt);
-          response = FALSE;
-          zrpc_transport_check_response(ctxt, FALSE);
-        }
-      g_clear_error (&error);
-      error = NULL;
-    }
+    if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, perror, "onUpdatePushRoute()") == FALSE)
+      break;
+    error = NULL;
+  }
+
   if(IS_ZRPC_DEBUG_NOTIFICATION)
   {
     char ethtag_str[20];
@@ -102,38 +164,33 @@ zrpc_bgp_updater_on_update_withdraw_route (const protocol_type p_type, const gch
                                            const gchar * nexthop,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, 
                                            const gint32 l3label, const gint32 l2label, const af_afi afi)
 {
-  GError *error = NULL;
+  GError *error = NULL, **perror;
   gboolean response;
   struct zrpc_vpnservice *ctxt = NULL;
+  int thrift_tries;
 
+  perror = &error;
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
+
+  for (thrift_tries = 0; thrift_tries < 2; thrift_tries++) {
 #if defined(HAVE_THRIFT_V1)
-  response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, rd, prefix, prefixlen, nexthop, l3label, &error);
+    response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, rd, prefix,
+                                                           prefixlen, nexthop, l3label, &error);
 #else
-  response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, p_type,
-                                                         rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress,
+    response = bgp_updater_client_on_update_withdraw_route(ctxt->bgp_updater_client, p_type,
+                                                           rd, prefix, prefixlen, nexthop, ethtag, esi, macaddress,
 #if defined(HAVE_THRIFT_V2)
-                                                         l3label, l2label, &error);
+                                                           l3label, l2label, &error);
 #else
-                                                         l3label, l2label, afi, &error);
+                                                           l3label, l2label, afi, &error);
 #endif /* HAVE_THRIFT_V2 */
 #endif /* HAVE_THRIFT_V1 */
-  if (error != NULL)
-    {
-      if (error->domain == THRIFT_TRANSPORT_ERROR &&
-          error->code == THRIFT_TRANSPORT_ERROR_SEND)
-        {
-          ctxt->bgp_update_thrift_lost_msgs++;
-          zrpc_info ("onUpdateWithdrawRoute(): sent error %s", error->message);
-          zrpc_transport_cancel_monitor(ctxt);
-          response = FALSE;
-          zrpc_transport_check_response(ctxt, FALSE);
-        }
-      g_clear_error (&error);
-      error = NULL;
-    }
+    if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, perror, "onUpdateWithdrawRoute()") == FALSE)
+      break;
+    error = NULL;
+  }
   if(IS_ZRPC_DEBUG_NOTIFICATION)
     {
       char ethtag_str[20];
@@ -153,25 +210,16 @@ gboolean
 zrpc_bgp_updater_on_start_config_resync_notification_quick (struct zrpc_vpnservice *ctxt, gboolean restart)
 {
   gboolean response;
-  GError *error = NULL;
-  response = bgp_updater_client_on_start_config_resync_notification(ctxt->bgp_updater_client, &error);
-  if (error != NULL)
-    {
-      if (error->domain == THRIFT_TRANSPORT_ERROR &&
-          error->code == THRIFT_TRANSPORT_ERROR_SEND)
-        {
-          zrpc_info ("onStartConfigResyncNotification(): sent error %s", error->message);
-          response = FALSE;
-          ctxt->bgp_update_lost_msgs++;
-          if (restart == TRUE)
-            {
-              zrpc_transport_cancel_monitor(ctxt);
-              zrpc_transport_check_response(ctxt, FALSE);
-            }
-        }
-      g_clear_error (&error);
-      error = NULL;
-    }
+  GError *error = NULL, **perror;
+  int thrift_tries;
+
+  perror = &error;
+  for (thrift_tries = 0; thrift_tries < 2; thrift_tries++) {
+    response = bgp_updater_client_on_start_config_resync_notification(ctxt->bgp_updater_client, &error);
+    if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, perror, "onStartConfigResyncNotification()") == FALSE)
+      break;
+    error = NULL;
+  }
   if(IS_ZRPC_DEBUG_NOTIFICATION)
     zrpc_info ("onStartConfigResyncNotification() %s", response == FALSE?"NOK":"OK");
   return response;
@@ -217,29 +265,22 @@ zrpc_bgp_updater_on_start_config_resync_notification (struct thread *thread)
 gboolean
 zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 errCode, const gint8 errSubcode)
 {
-  GError *error = NULL;
+  GError *error = NULL, **perror;
   gboolean response;
   struct zrpc_vpnservice *ctxt = NULL;
+  int thrift_tries;
 
+  perror = &error;
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
       return FALSE;
-  response = bgp_updater_client_on_notification_send_event(ctxt->bgp_updater_client, \
-                                                           prefix, errCode, errSubcode, &error); 
-   if (error != NULL)
-    {
-      if (error->domain == THRIFT_TRANSPORT_ERROR &&
-          error->code == THRIFT_TRANSPORT_ERROR_SEND)
-        {
-          ctxt->bgp_update_thrift_lost_msgs++;
-          zrpc_info ("onNotificationSendEvent(): sent error %s", error->message);
-          response = FALSE;
-          zrpc_transport_cancel_monitor(ctxt);
-          zrpc_transport_check_response(ctxt, response);
-        }
-      g_clear_error (&error);
-      error = NULL;
-    }
+  for (thrift_tries = 0; thrift_tries < 2; thrift_tries++) {
+    response = bgp_updater_client_on_notification_send_event(ctxt->bgp_updater_client, \
+                                                             prefix, errCode, errSubcode, &error); 
+    if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, perror, "onNotificationSendEvent()") == FALSE)
+      break;
+    error = NULL;
+  }
  if(IS_ZRPC_DEBUG_NOTIFICATION)
     zrpc_log ("onNotificationSendEvent(%s, errCode %d, errSubCode %d) %s", \
                prefix, errCode, errSubcode, response == FALSE?"NOK":"OK");

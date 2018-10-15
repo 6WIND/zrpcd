@@ -16,6 +16,7 @@
 #define ZRPC_NOTIFICATION_PORT 6644
 #define ZRPC_CLIENT_ADDRESS "0.0.0.0"
 #define ZRPC_LISTEN_ADDRESS "0.0.0.0"
+#define ZRPC_SELECT_TIME_SEC 10
 
 #define ZMQ_SOCK "ipc:///tmp/qzc-vpn2bgp"
 #define ZMQ_NOTIFY "ipc:///tmp/qzc-notify"
@@ -95,6 +96,7 @@ struct zrpc_vpnservice
   BgpUpdaterIf *bgp_updater_client;
   struct thread *bgp_updater_client_thread;
   gboolean bgp_updater_client_need_select;
+  gboolean bgp_updater_select_in_progress;
   ThriftSocket *bgp_updater_socket;
   ThriftFramedTransport *bgp_updater_transport;
   ThriftProtocol *bgp_updater_protocol;
@@ -132,6 +134,8 @@ struct zrpc_vpnservice
   u_int32_t bgp_update_retries;
   u_int32_t bgp_update_total;
   u_int32_t bgp_update_thrift_lost_msgs;
+  u_int32_t bgp_update_thrift_retries;
+  u_int32_t bgp_update_thrift_retries_successfull;
 };
 
 enum _zrpc_status
@@ -176,5 +180,5 @@ void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup);
 gboolean zrpc_vpnservice_set_bgp_context_multipath (struct zrpc_vpnservice_bgp_context *bgp,
                                                     address_family_t afi, subsequent_address_family_t safi,
                                                     uint8_t on, gint32* _return, GError **error);
-
+extern int zrpc_vpnservice_get_bgp_updater_socket (struct zrpc_vpnservice *setup);
 #endif /* _ZRPC_VPNSERVICE_H */

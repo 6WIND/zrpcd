@@ -56,6 +56,7 @@ zrpc configuration across thrift defined model : vpnservice.\n\n\
 -P, --thrift_port           Set thrift's config port number\n\
 -N, --thrift_notif_address  Set thrift's notif update specified address\n\
 -n, --thrift_notif_port     Set thrift's notif update \n\
+-s, --select_timeout_max    Set thrift's select timeout max calue in seconds\n\
 -I, --thrift_listen_port    Set thrift's listen config port number\n\
 -L, --thrift_listen_address Set thrift's listen config specified address\n\
 -h, --help                  Display this help and exit\n\n");
@@ -197,7 +198,7 @@ main (int argc, char **argv)
 {
   struct thread thread;
   struct zrpc *zrpc;
-  int tmp_port;
+  int tmp_port, tmp_select;
   int option = 0;
   char vtydisplay[20];
   struct in_addr server_addr;
@@ -213,8 +214,9 @@ main (int argc, char **argv)
   /* ZRPC main init. */
   zrpc_global_init ();
 
+  tm->zrpc_select_time = ZRPC_SELECT_TIME_SEC;
   /* Command line argument treatment. */
-  while ((option = getopt (argc, argv, "A:P:p:N:L:I:n:DSh")) != -1)
+  while ((option = getopt (argc, argv, "A:P:p:N:L:I:n:DSh:s")) != -1)
     {
       switch (option)
 	{
@@ -261,6 +263,13 @@ main (int argc, char **argv)
 	    tm->zrpc_notification_port = ZRPC_NOTIFICATION_PORT;
 	  else
 	    tm->zrpc_notification_port = tmp_port;
+	  break;
+        case 's':
+	  tmp_select = atoi (optarg);
+	  if (tmp_select <= 0 || tmp_select > 0xffff)
+	    tm->zrpc_select_time = ZRPC_SELECT_TIME_SEC;
+	  else
+	    tm->zrpc_select_time = tmp_select;
 	  break;
 	case 'h':
 	  zrpc_usage (0);
