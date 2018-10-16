@@ -911,6 +911,9 @@ RedHat*|CentOS*|SUSE*)
              --define "_rpmdir $PKG_DIR" \
              --define '_rpmfilename %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm' \
              --define 'debug_package %{nil}' $RPM_SPEC_FILE
+    if [ $DEV_PACKAGE = "y" ]; then
+        cp -f $RPM_BIN_DIR/SRPMS/$1*.src.rpm $PKG_DIR/
+    fi
     ;;
 *)
     echo "unsupported distribution $HOST_NAME"
