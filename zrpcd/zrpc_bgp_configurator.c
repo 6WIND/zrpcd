@@ -4235,6 +4235,8 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
                                        .bfdMultihop = false,
                                      };
   BfdConfigData *bfd_config = &default_bfd_config;
+  uint32_t pid_c;
+  char path_c[64] = {0};
 
   if (bfdConfig)
     {
@@ -4336,35 +4338,53 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
       bfd_config->bfdMultihop = bfdConfig->bfdMultihop;
     }
 
-  /* run zebra process */
-  if ((pid = fork()) == -1)
-    {
-      *error = ERROR_BGP_INTERNAL;
-      return FALSE;
-    }
-  else if (pid == 0)
-    {
-      ret = execve((const char *)ZEBRA_PATH, zebra_parmList, NULL);
-      /* return not expected */
-      if(IS_ZRPC_DEBUG)
-        zrpc_log ("execve failed: zebra return not expected (%d)", errno);
-      exit(1);
-    }
+  pid_c = zrpc_util_get_pid_output(ZEBRA_PID);
+  if (pid_c)
+  {
+    snprintf(path_c, sizeof(path_c), "/proc/%d/stat", pid_c);
+    ret = access(path_c, F_OK);
+  }
+  if (pid_c == 0 || ret != 0)
+  {
+    /* run zebra process only when doesn't exist */
+    if ((pid = fork()) == -1)
+      {
+        *error = ERROR_BGP_INTERNAL;
+        return FALSE;
+      }
+    else if (pid == 0)
+      {
+        ret = execve((const char *)ZEBRA_PATH, zebra_parmList, NULL);
+        /* return not expected */
+        if (IS_ZRPC_DEBUG)
+          zrpc_log ("execve failed: zebra return not expected (%d)", errno);
+        exit(1);
+      }
+  }
 
-  /* run BFDD process */
-  if ((pid = fork()) == -1)
-    {
-      *error = ERROR_BGP_INTERNAL;
-      return FALSE;
-    }
-  else if (pid == 0)
-    {
-      ret = execve((const char *)BFDD_PATH, bfdd_parmList, NULL);
-      /* return not expected */
-      if(IS_ZRPC_DEBUG)
-        zrpc_log ("execve failed: bfdd return not expected (%d)", errno);
-      exit(1);
-    }
+  pid_c = zrpc_util_get_pid_output(BFDD_PID);
+  if (pid_c)
+  {
+    snprintf(path_c, sizeof(path_c), "/proc/%d/stat", pid_c);
+    ret = access(path_c, F_OK);
+  }
+  if (pid_c == 0 || ret != 0)
+  {
+    /* run BFDD process only when doesn't exist */
+    if ((pid = fork()) == -1)
+      {
+        *error = ERROR_BGP_INTERNAL;
+        return FALSE;
+      }
+    else if (pid == 0)
+      {
+        ret = execve((const char *)BFDD_PATH, bfdd_parmList, NULL);
+        /* return not expected */
+        if (IS_ZRPC_DEBUG)
+          zrpc_log ("execve failed: bfdd return not expected (%d)", errno);
+        exit(1);
+      }
+  }
 
   ctxt->qzc_bfdd_sock = qzcclient_connect(ZMQ_BFDD_SOCK);
   if (ctxt->qzc_bfdd_sock == NULL)
@@ -4547,9 +4567,6 @@ instance_bgp_configurator_handler_disable_bfd_failover(BgpConfiguratorIf *iface,
     zrpc_sync_bfd_conf_to_bgpd (ctxt, bgp_ctxt);
 
   zrpc_vpnservice_terminate_qzc_bfdd(ctxt);
-  zrpc_kill_child (BFDD_PID, "BFD");
-  zrpc_kill_child (ZEBRA_PID, "ZEBRA");
-
   if (IS_ZRPC_DEBUG)
     zrpc_info ("disableBFDFailover() OK");
 

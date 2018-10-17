@@ -82,7 +82,8 @@ static void  zrpc_sighup (void)
 static void zrpc_sigint (void)
 {
   zrpc_log ("Terminating on signal");
-
+  zrpc_kill_child (BFDD_PID, "BFD");
+  zrpc_kill_child (ZEBRA_PID, "ZEBRA");
   zrpc_terminate ();
   zrpc_debug_flush ();
   zrpc_exit (0);
