@@ -187,6 +187,8 @@ install_deps() {
         rm -rf $ZRPCD_BUILD_FOLDER/packager/thrift/src
         mkdir -p $ZRPCD_BUILD_FOLDER/packager/thrift/src
         pushd $ZRPCD_BUILD_FOLDER/thrift
+        echo "XXXX path is" $(pwd)
+        cd $PATH_TO_ZRPC
         git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/thrift/src/thrift-src.tar $THRIFT_TAG
         popd
         $DIR_NAME/packaging.sh "thrift-src" $ZRPCD_BUILD_FOLDER/packager/thrift/src/ $THRIFT_DIR $HOST_NAME $COMMITID dev
@@ -546,6 +548,8 @@ BUILD_FROM_DIST=""
 DIST_ARCHIVE=""
 DO_PACKAGING=""
 THRIFT_VERSION="1"
+PATH_TO_ZRPC=""
+
 parse_cmdline() {
     while [ $# -gt 0 ]
     do
@@ -585,6 +589,7 @@ parse_cmdline() {
         esac
     done
 }
+export PATH_TO_ZRPC=$(pwd)
 parse_cmdline $@
 if [ -n "$INSTALL_DEPS" ]; then
     install_deps
