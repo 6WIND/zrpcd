@@ -509,7 +509,7 @@ build_zrpcd (){
         rm -rf $ZRPCD_BUILD_FOLDER'/packager/zrpc/deb'
         rm -rf $ZRPCD_BUILD_FOLDER'/packager/zrpc/src'
         mkdir $ZRPCD_BUILD_FOLDER'/packager/zrpc/src'
-        git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/zrpc/src/zrpc-src.tar master
+        git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/zrpc/src/zrpc-src.tar origin/master
         $DIR_NAME/packaging.sh "zrpc-src" $ZRPCD_BUILD_FOLDER/packager/zrpc/src/ $ZRPC_DIR $HOST_NAME $COMMITID dev
     else
         echo "hostname bgpd" > /opt/quagga/etc/bgpd.conf
