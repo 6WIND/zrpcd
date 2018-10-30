@@ -120,8 +120,10 @@ struct zrpc_vpnservice
 
   /* QZC internal contexts */
   struct qzcclient_sock *qzc_sock;
+  struct qzcclient_sock **p_qzc_sock;
   struct qzcclient_sock *qzc_subscribe_sock;
   struct qzcclient_sock *qzc_bfdd_sock;
+  struct qzcclient_sock **p_qzc_bfdd_sock;
   
   /* zrpc cache context for VRF */
   struct zrpc_vpnservice_cache_bgpvrf *bgp_vrf_list;

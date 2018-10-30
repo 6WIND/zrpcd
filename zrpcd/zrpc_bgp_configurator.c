@@ -585,7 +585,7 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
   capn_write8(afisafi_ctxt, 0, af);
   capn_write8(afisafi_ctxt, 1, saf);
   /* retrieve peer context */
-  grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 3, \
+  grep_peer = qzcclient_getelem (ctxt->p_qzc_sock, &peer_nid, 3, \
                                  &afisafi_ctxt, &bgp_ctxttype_afisafi,\
                                  NULL, NULL);
   if(grep_peer == NULL)
@@ -607,7 +607,7 @@ zrpc_bgp_afi_config(struct zrpc_vpnservice *ctxt,  gint32* _return, const gchar 
   peer_ctxt = qcapn_new_BGPPeerAfiSafi(cs);
   /* set address family for peer */
   qcapn_BGPPeerAfiSafi_write(&peer, peer_ctxt, af, saf);
-  ret = qzcclient_setelem (ctxt->qzc_sock, &peer_nid, 3, \
+  ret = qzcclient_setelem (ctxt->p_qzc_sock, &peer_nid, 3, \
                            &peer_ctxt, &bgp_datatype_peer_3, \
                            &afisafi_ctxt, &bgp_ctxttype_afisafi);
   if(ret == 0)
@@ -702,7 +702,7 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
   capn_write8(afisafi_ctxt, 0, af);
   capn_write8(afisafi_ctxt, 1, saf);
   /* retrieve peer context */
-  grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 3,
+  grep_peer = qzcclient_getelem (ctxt->p_qzc_sock, &peer_nid, 3,
                                  &afisafi_ctxt, &bgp_ctxttype_afisafi,
                                  NULL, NULL);
   if(grep_peer == NULL)
@@ -726,7 +726,7 @@ zrpc_bgp_peer_af_flag_config(struct zrpc_vpnservice *ctxt,  gint32* _return,
   peer_ctxt = qcapn_new_BGPPeerAfiSafi(cs);
   /* set address family for peer */
   qcapn_BGPPeerAfiSafi_write(&peer, peer_ctxt, af, saf);
-  ret = qzcclient_setelem (ctxt->qzc_sock, &peer_nid, 3, &peer_ctxt,
+  ret = qzcclient_setelem (ctxt->p_qzc_sock, &peer_nid, 3, &peer_ctxt,
                            &bgp_datatype_peer_3, &afisafi_ctxt, &bgp_ctxttype_afisafi);
   if(ret == 0)
     {
@@ -760,7 +760,7 @@ zrpc_bgp_set_log_config(struct zrpc_vpnservice *ctxt,
   struct capn_ptr bgp;
 
   /* get bgp_master configuration */
-  grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+  grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
   if(grep == NULL)
     {
       *_return = BGP_ERR_FAILED;
@@ -799,7 +799,7 @@ zrpc_bgp_set_log_config(struct zrpc_vpnservice *ctxt,
   if(bgp_ctxt->logFile)
     inst.logFile = strdup (bgp_ctxt->logFile);
   qcapn_BGP_write(&inst, bgp);
-  qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 1,          \
+  qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1,          \
                      &bgp, &bgp_datatype_bgp, NULL, NULL);
   if(IS_ZRPC_DEBUG)
     zrpc_info ("setLogConfig(%s, %s) OK", 
@@ -856,7 +856,7 @@ zrpc_bgp_set_multihops(struct zrpc_vpnservice *ctxt,  gint32* _return, const gch
     }
   peer_nid =c_peer->peer_nid;
   /* retrieve peer context */
-  grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 2, \
+  grep_peer = qzcclient_getelem (ctxt->p_qzc_sock, &peer_nid, 2, \
                                  NULL, NULL, NULL, NULL);
   if(grep_peer == NULL)
     {
@@ -872,7 +872,7 @@ zrpc_bgp_set_multihops(struct zrpc_vpnservice *ctxt,  gint32* _return, const gch
   cs = capn_root(&rc).seg;
   peer_ctxt = qcapn_new_BGPPeer(cs);
   qcapn_BGPPeer_write(&peer, peer_ctxt);
-  if(qzcclient_setelem (ctxt->qzc_sock, &peer_nid, \
+  if(qzcclient_setelem (ctxt->p_qzc_sock, &peer_nid, \
                         2, &peer_ctxt, &bgp_datatype_create_bgp_2, \
                         NULL, NULL))
     {
@@ -977,8 +977,10 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
       *_return = BGP_ERR_FAILED;
       return FALSE;
     }
+
+  ctxt->p_qzc_sock = &ctxt->qzc_sock;
   /* send ping msg. wait for pong */
-  rep = qzcclient_do(ctxt->qzc_sock, NULL);
+  rep = qzcclient_do(ctxt->p_qzc_sock, NULL);
   if( rep == NULL || rep->which != QZCReply_pong)
     {
       *_return = BGP_ERR_FAILED;
@@ -989,7 +991,7 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
   if (rep)
     qzcclient_qzcreply_free (rep);
   /* check well known number agains node identifier */
-  bgp_bm_nid = qzcclient_wkn(ctxt->qzc_sock, &bgp_bm_wkn);
+  bgp_bm_nid = qzcclient_wkn(ctxt->p_qzc_sock, &bgp_bm_wkn);
   if(IS_ZRPC_DEBUG)
     zrpc_info ("startBgp. bgpd called (AS %u, proc %d, .., stalepath %u, announceFbit %s)",
               (uint32_t)asNumber, pid, stalepathTime, announceFbit == true?"true":"false");
@@ -1007,7 +1009,7 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
       inet_aton(routerId, &inst.router_id_static);
     bgp = qcapn_new_BGP(cs);
     qcapn_BGP_write(&inst, bgp);
-    bgp_inst_nid = qzcclient_createchild (ctxt->qzc_sock, &bgp_bm_nid, \
+    bgp_inst_nid = qzcclient_createchild (ctxt->p_qzc_sock, &bgp_bm_nid, \
                                           1, &bgp, &bgp_datatype_bgp);
     capn_free(&rc);
     if (bgp_inst_nid == 0)
@@ -1024,7 +1026,7 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
     struct QZCGetRep *grep;
 
     /* get bgp_master configuration */
-    grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+    grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
     if(grep == NULL)
       {
         *_return = BGP_ERR_FAILED;
@@ -1090,7 +1092,7 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
     cs = capn_root(&rc).seg;
     bgp = qcapn_new_BGP(cs);
     qcapn_BGP_write(&inst, bgp);
-    ret = qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 1, \
+    ret = qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, \
                              &bgp, &bgp_datatype_bgp, \
                              NULL, NULL);
     ZRPC_FREE(inst.notify_zmq_url);
@@ -1498,7 +1500,7 @@ inst_filled:
   /* set route within afi context using QZC set request */
   if (bgpvrf_nid != 0)
     {
-      ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid,             \
+      ret = qzcclient_setelem (ctxt->p_qzc_sock, &bgpvrf_nid,             \
                                3, &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
                                &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
     }
@@ -1507,7 +1509,7 @@ inst_filled:
       struct QZCGetRep *grep;
 
       /* get bgp_master configuration */
-      grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+      grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
       if(grep == NULL)
         {
           *error = ERROR_BGP_RD_NOTFOUND
@@ -1515,7 +1517,7 @@ inst_filled:
           return FALSE;
         }
       qzcclient_qzcgetrep_free( grep);
-      ret = qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid,
+      ret = qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid,
                                3, &bgpvrfroute, &bgp_datatype_bgpvrfroute,
                                &afikey,  &bgp_ctxttype_afisafi_set_bgp_vrf_3);
     }
@@ -1796,7 +1798,7 @@ inst_filled:
   if (bgpvrf_nid != 0)
     {
       /* set route within afi context using QZC set request */
-      ret = qzcclient_unsetelem (ctxt->qzc_sock, &bgpvrf_nid, 3,      \
+      ret = qzcclient_unsetelem (ctxt->p_qzc_sock, &bgpvrf_nid, 3,      \
                                  &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
                                  &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
     }
@@ -1805,7 +1807,7 @@ inst_filled:
       struct QZCGetRep *grep;
 
       /* get bgp_master configuration */
-      grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+      grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
       if(grep == NULL)
         {
           *error = ERROR_BGP_RD_NOTFOUND
@@ -1813,7 +1815,7 @@ inst_filled:
           return FALSE;
         }
       qzcclient_qzcgetrep_free( grep);
-      ret = qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid,
+      ret = qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid,
                                4, &bgpvrfroute, &bgp_datatype_bgpvrfroute,
                                &afikey,  &bgp_ctxttype_afisafi_set_bgp_vrf_3);
     }
@@ -1920,7 +1922,7 @@ zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
      return;
 
    /* retrieve peer context */
-   grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 2, \
+   grep_peer = qzcclient_getelem (ctxt->p_qzc_sock, &peer_nid, 2, \
                                   NULL, NULL, NULL, NULL);
    if(grep_peer == NULL)
        return;
@@ -1943,7 +1945,7 @@ zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
      sprintf(peername_nid, "%llx", (long long unsigned int)peer_nid);
      peername = peername_nid;
    }
-   if(qzcclient_setelem (ctxt->qzc_sock, &peer_nid, 2, \
+   if(qzcclient_setelem (ctxt->p_qzc_sock, &peer_nid, 2, \
                          &peer_ctxt, &bgp_datatype_create_bgp_2, \
                          NULL, NULL))
      {
@@ -2020,7 +2022,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
   bgppeer = qcapn_new_BGPPeer(cs);
   qcapn_BGPPeer_write(&inst, bgppeer);
 
-  peer_nid = qzcclient_createchild (ctxt->qzc_sock, &bgp_inst_nid, 2, \
+  peer_nid = qzcclient_createchild (ctxt->p_qzc_sock, &bgp_inst_nid, 2, \
                                   &bgppeer, &bgp_datatype_create_bgp_2);
   capn_free(&rc);
   ZRPC_FREE(inst.host);
@@ -2279,7 +2281,7 @@ instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint
      }
    bgppeer_nid = c_peer->peer_nid;
    /* destroy node id */
-   if( qzcclient_deletenode(ctxt->qzc_sock, &bgppeer_nid))
+   if( qzcclient_deletenode(ctxt->p_qzc_sock, &bgppeer_nid))
      {
        struct zrpc_vpnservice_cache_peer *entry_bgppeer, *entry_bgppeer_prev, *entry_bgppeer_next;      
 
@@ -2346,7 +2348,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
        capn_write8(afisafi_ctxt, 0, af);
        capn_write8(afisafi_ctxt, 1, saf);
 
-       ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
+       ret = qzcclient_setelem (ctxt->p_qzc_sock, &bgpvrf_nid, 1, \
                                 &bgpvrf, &bgp_datatype_bgpvrf,\
                                 &afisafi_ctxt, &bgp_ctxttype_afisafi);
        if (ret)
@@ -2355,7 +2357,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
          }
      }
    else
-       ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
+       ret = qzcclient_setelem (ctxt->p_qzc_sock, &bgpvrf_nid, 1, \
                                 &bgpvrf, &bgp_datatype_bgpvrf,\
                                 NULL, NULL);
    capn_free(&rc);
@@ -2509,7 +2511,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
        cs = capn_root(&rc).seg;
        bgpvrf = qcapn_new_BGPVRF(cs);
        qcapn_BGPVRF_write(&instvrf, bgpvrf);
-       bgpvrf_nid = qzcclient_createchild (ctxt->qzc_sock, &bgp_inst_nid, 3, \
+       bgpvrf_nid = qzcclient_createchild (ctxt->p_qzc_sock, &bgp_inst_nid, 3, \
                                            &bgpvrf, &bgp_datatype_bgpvrf);
        capn_free(&rc);
        if (bgpvrf_nid == 0)
@@ -2538,7 +2540,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
    {
      struct QZCGetRep *grep_vrf;
 
-     grep_vrf = qzcclient_getelem (ctxt->qzc_sock, &bgpvrf_nid, 1,      \
+     grep_vrf = qzcclient_getelem (ctxt->p_qzc_sock, &bgpvrf_nid, 1,      \
                                    NULL, NULL, NULL, NULL);
      if(grep_vrf == NULL)
        {
@@ -2708,7 +2710,7 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
        capn_write8(afisafi_ctxt, 1, saf);
 
        /* set route within afi context using QZC set request */
-       ret = qzcclient_unsetelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
+       ret = qzcclient_unsetelem (ctxt->p_qzc_sock, &bgpvrf_nid, 1, \
                                   &bgpvrf, &bgp_datatype_bgpvrf, \
                                   &afisafi_ctxt, &bgp_ctxttype_afisafi);
 
@@ -2895,7 +2897,7 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
        if (entry->afc[i][j])
            return TRUE;
 
-   if( qzcclient_deletenode(ctxt->qzc_sock, &bgpvrf_nid))
+   if( qzcclient_deletenode(ctxt->p_qzc_sock, &bgpvrf_nid))
      {
        struct zrpc_vpnservice_cache_bgpvrf *entry_bgpvrf, *entry_bgpvrf_prev, *entry_bgpvrf_next;      
 
@@ -2978,7 +2980,7 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
      }
    peer_nid = c_peer->peer_nid;
    /* retrieve peer context */
-   grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 2, \
+   grep_peer = qzcclient_getelem (ctxt->p_qzc_sock, &peer_nid, 2, \
                                   NULL, NULL, NULL, NULL);
    if(grep_peer == NULL)
      {
@@ -3008,7 +3010,7 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
    cs = capn_root(&rc).seg;
    peer_ctxt = qcapn_new_BGPPeer(cs);
    qcapn_BGPPeer_write(&peer, peer_ctxt);
-   if(qzcclient_setelem (ctxt->qzc_sock, &peer_nid, 2, \
+   if(qzcclient_setelem (ctxt->p_qzc_sock, &peer_nid, 2, \
                          &peer_ctxt, &bgp_datatype_create_bgp_2, \
                          NULL, NULL))
      {
@@ -3236,7 +3238,7 @@ instance_bgp_configurator_handler_enable_graceful_restart (BgpConfiguratorIf *if
       return FALSE;
     }
   /* get bgp_master configuration */
-  grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+  grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
   if(grep == NULL)
     {
       *_return = BGP_ERR_FAILED;
@@ -3256,7 +3258,7 @@ instance_bgp_configurator_handler_enable_graceful_restart (BgpConfiguratorIf *if
   else if (stalepathTime == -1)
     inst.flags &= ~BGP_FLAG_GRACEFUL_RESTART;
   qcapn_BGP_write(&inst, bgp);
-  qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 1, \
+  qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, \
                      &bgp, &bgp_datatype_bgp, NULL, NULL);
   capn_free(&rc);
   if (inst.name)
@@ -3477,7 +3479,7 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
 
           entry = entry_next = NULL;
           /* get bgp_master configuration */
-          grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+          grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
           if(grep == NULL)
             {
               (*_return)->errcode = BGP_ERR_FAILED;
@@ -3548,13 +3550,13 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
           /* currently entries from the vrf route table XXX */
           if (do_not_parse_vrf == 0)
             {
-              grep_route = qzcclient_getelem (ctxt->qzc_sock, &bgpvrf_nid, 2, \
+              grep_route = qzcclient_getelem (ctxt->p_qzc_sock, &bgpvrf_nid, 2, \
                                               &afikey, &bgp_ctxtype_bgpvrfroute, \
                                               iter_table_ptr, &bgp_itertype_bgpvrfroute);
             }
           else
             {
-              grep_route = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 4,
+              grep_route = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 4,
                                               &afikey, &bgp_ctxtype_bgpvrfroute,
                                               iter_table_ptr, &bgp_itertype_bgpvrfroute);
             }
@@ -3659,13 +3661,13 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
               /* get route entry from the vrf rib table */
               if (do_not_parse_vrf == 0)
                 {
-                  grep_multipath_route = qzcclient_getelem (ctxt->qzc_sock, &bgpvrf_nid, 4, \
+                  grep_multipath_route = qzcclient_getelem (ctxt->p_qzc_sock, &bgpvrf_nid, 4, \
                                                             NULL, NULL, \
                                                             &iter_table_bim, &bgp_itertype_bgpvrfroute);
                 }
               else
                 {
-                  grep_multipath_route = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 5,
+                  grep_multipath_route = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 5,
                                                             NULL, NULL,
                                                             &iter_table_bim, &bgp_itertype_bgpvrfroute);
                 }
@@ -3780,7 +3782,7 @@ zrpc_bgp_set_multipath_internal(struct zrpc_vpnservice *ctxt,  gint32* _return,
   capn_write8(afisafi_ctxt, 0, af);
   capn_write8(afisafi_ctxt, 1, saf);
   /* retrieve bgp context */
-  grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 3, \
+  grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 3, \
                             &afisafi_ctxt, &bgp_ctxttype_afisafi,\
                             NULL, NULL);
   if(grep == NULL)
@@ -3810,7 +3812,7 @@ zrpc_bgp_set_multipath_internal(struct zrpc_vpnservice *ctxt,  gint32* _return,
   qcapn_BGPAfiSafi_write(&inst, nctxt, af, saf);
   /* put max value as a supplementary data in pipe */
   capn_write8(nctxt, 3, ZRPC_MAXPATH_DEFAULT_VAL);
-  if(qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 2, \
+  if(qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid, 2, \
                         &nctxt, &bgp_datatype_bgp,\
                         &afisafi_ctxt, &bgp_ctxttype_afisafi))
   {
@@ -4002,7 +4004,7 @@ instance_bgp_configurator_handler_multipaths(BgpConfiguratorIf *iface, gint32* _
   else
     bgpvrf_nid = entry->bgpvrf_nid;
 
-  grep_vrf = qzcclient_getelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
+  grep_vrf = qzcclient_getelem (ctxt->p_qzc_sock, &bgpvrf_nid, 1, \
                                 NULL, NULL, NULL, NULL);
   if(grep_vrf == NULL)
     {
@@ -4021,7 +4023,7 @@ instance_bgp_configurator_handler_multipaths(BgpConfiguratorIf *iface, gint32* _
   cs = capn_root(&rc).seg;
   bgpvrf = qcapn_new_BGPVRF(cs);
   qcapn_BGPVRF_write(&instvrf, bgpvrf);
-  ret = qzcclient_setelem (ctxt->qzc_sock, &bgpvrf_nid, 1, \
+  ret = qzcclient_setelem (ctxt->p_qzc_sock, &bgpvrf_nid, 1, \
                            &bgpvrf, &bgp_datatype_bgpvrf,\
                            NULL, NULL);
   capn_free(&rc);
@@ -4075,7 +4077,7 @@ instance_bgp_configurator_enable_eor_delay(BgpConfiguratorIf *iface, gint32* _re
     }
 
   /* get bgp_master configuration */
-  grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+  grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
   if(grep == NULL)
     {
       *_return = BGP_ERR_FAILED;
@@ -4102,7 +4104,7 @@ instance_bgp_configurator_enable_eor_delay(BgpConfiguratorIf *iface, gint32* _re
   bgp = qcapn_new_BGP(cs);
   inst.v_update_delay = delay;
   qcapn_BGP_write(&inst, bgp);
-  qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 1,            \
+  qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1,            \
                            &bgp, &bgp_datatype_bgp, NULL, NULL);
   capn_free(&rc);
   if (inst.notify_zmq_url)
@@ -4144,7 +4146,7 @@ instance_bgp_configurator_send_eor(BgpConfiguratorIf *iface, gint32* _return, GE
     }
 
   /* get bgp_master configuration */
-  grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+  grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
   if(grep == NULL)
     {
       *_return = BGP_ERR_FAILED;
@@ -4152,7 +4154,7 @@ instance_bgp_configurator_send_eor(BgpConfiguratorIf *iface, gint32* _return, GE
     }
 
   /* notify bgp to send EOR */
-  qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 5,            \
+  qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid, 5,            \
                      &grep->data, &bgp_datatype_bgp, NULL, NULL);
   qzcclient_qzcgetrep_free( grep);
 
@@ -4177,7 +4179,7 @@ zrpc_sync_bfd_conf_to_bgpd (struct zrpc_vpnservice *ctxt,
     return;
 
   /* get bgp_master configuration */
-  grep = qzcclient_getelem (ctxt->qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
+  grep = qzcclient_getelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, NULL, NULL, NULL, NULL);
   if(grep == NULL)
       return;
 
@@ -4199,7 +4201,7 @@ zrpc_sync_bfd_conf_to_bgpd (struct zrpc_vpnservice *ctxt,
     inst.flags &= ~BGP_FLAG_BFD_MULTIHOP;
 
   qcapn_BGP_write(&inst, bgp);
-  qzcclient_setelem (ctxt->qzc_sock, &bgp_inst_nid, 1,          \
+  qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1,          \
                      &bgp, &bgp_datatype_bgp, NULL, NULL);
   capn_free(&rc);
   if (inst.notify_zmq_url)
@@ -4392,8 +4394,10 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
       *error = ERROR_BGP_INTERNAL;
       return FALSE;
     }
+
+  ctxt->p_qzc_bfdd_sock = &ctxt->qzc_bfdd_sock;
   /* send ping msg. wait for pong */
-  rep = qzcclient_do(ctxt->qzc_bfdd_sock, NULL);
+  rep = qzcclient_do(ctxt->p_qzc_bfdd_sock, NULL);
   if( rep == NULL || rep->which != QZCReply_pong)
     {
       *error = ERROR_BGP_INTERNAL;
@@ -4418,7 +4422,7 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
                bfd_config->bfdMultihop == true?"true":"false");
 
   /* check well known number against node identifier */
-  bfd_nid = qzcclient_wkn(ctxt->qzc_bfdd_sock, &bfd_wkn);
+  bfd_nid = qzcclient_wkn(ctxt->p_qzc_bfdd_sock, &bfd_wkn);
 
   {
     struct capn_ptr bfd;
@@ -4478,7 +4482,7 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
     cs = capn_root(&rc).seg;
     bfd = qcapn_new_BFD(cs);
     qcapn_BFD_write(&inst, bfd);
-    ret = qzcclient_setelem (ctxt->qzc_bfdd_sock, &bfd_nid, 1, \
+    ret = qzcclient_setelem (ctxt->p_qzc_bfdd_sock, &bfd_nid, 1, \
                              &bfd, &bfd_datatype_bfd, \
                              NULL, NULL);
     if (inst.logFile)
@@ -4611,7 +4615,7 @@ instance_bgp_configurator_handler_get_peer_status(BgpConfiguratorIf *iface, peer
     }
   peer_nid = c_peer->peer_nid;
   /* retrieve peer context */
-  grep_peer = qzcclient_getelem (ctxt->qzc_sock, &peer_nid, 4, \
+  grep_peer = qzcclient_getelem (ctxt->p_qzc_sock, &peer_nid, 4, \
                                  NULL, NULL, NULL, NULL);
   if (grep_peer == NULL)
     {
