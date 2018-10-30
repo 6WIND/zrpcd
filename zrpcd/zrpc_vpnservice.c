@@ -558,7 +558,8 @@ void zrpc_vpnservice_setup_qzc(struct zrpc_vpnservice *setup)
   if(setup->zmq_subscribe_sock && setup->qzc_subscribe_sock == NULL )
     setup->qzc_subscribe_sock = qzcclient_subscribe(tm->global, \
                                                     setup->zmq_subscribe_sock, \
-                                                    zrpc_vpnservice_callback);
+                                                    zrpc_vpnservice_callback,
+                                                    QZC_CLIENT_ZMQ_LIMIT_RX);
 }
 
 void zrpc_vpnservice_terminate_qzc_bfdd(struct zrpc_vpnservice *setup)

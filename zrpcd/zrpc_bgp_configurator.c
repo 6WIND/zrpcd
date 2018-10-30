@@ -971,7 +971,7 @@ instance_bgp_configurator_handler_start_bgp(BgpConfiguratorIf *iface, gint32* _r
   /* creation of capnproto context - bgp configurator */
   /* creation of qzc client context */
   zrpc_vpnservice_get_bgp_context(ctxt)->asNumber = (uint32_t) asNumber;
-  ctxt->qzc_sock = qzcclient_connect(s_zmq_sock);
+  ctxt->qzc_sock = qzcclient_connect(s_zmq_sock, QZC_CLIENT_ZMQ_LIMIT_TX);
   if(ctxt->qzc_sock == NULL)
     {
       *_return = BGP_ERR_FAILED;
@@ -4386,7 +4386,7 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
       }
   }
 
-  ctxt->qzc_bfdd_sock = qzcclient_connect(ZMQ_BFDD_SOCK);
+  ctxt->qzc_bfdd_sock = qzcclient_connect(ZMQ_BFDD_SOCK, QZC_CLIENT_ZMQ_LIMIT_TX);
   if (ctxt->qzc_bfdd_sock == NULL)
     {
       *error = ERROR_BGP_INTERNAL;
