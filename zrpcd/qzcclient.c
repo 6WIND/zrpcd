@@ -124,7 +124,7 @@ int qzcclient_setsockopt(struct qzcclient_sock *sock, int option,
   return 0;
 }
 
-struct qzcclient_sock *qzcclient_connect (const char *url)
+struct qzcclient_sock *qzcclient_connect (const char *url, uint32_t limit)
 {
   void *qzc_sock;
   struct qzcclient_sock *ret;
@@ -135,6 +135,10 @@ struct qzcclient_sock *qzcclient_connect (const char *url)
       zrpc_log ("zmq_socket failed: %s (%d)", strerror (errno), errno);
       return NULL;
     }
+
+  if (limit)
+    zmq_setsockopt (qzc_sock, ZMQ_SNDHWM, &limit, sizeof(limit));
+
   if (zmq_connect (qzc_sock, url))
     {
       zrpc_log ("zmq_bind failed: %s (%d)", strerror (errno), errno);
@@ -148,7 +152,9 @@ struct qzcclient_sock *qzcclient_connect (const char *url)
 }
 
 struct qzcclient_sock *qzcclient_subscribe (struct thread_master *master, const char *url,
-                                void (*func)(void *arg, void *zmqsock, struct zmq_msg_t *msg))
+                                            void (*func)(void *arg, void *zmqsock,
+                                                         struct zmq_msg_t *msg),
+                                            uint32_t limit)
 {
   void *qzc_sock;
   struct qzcclient_sock *ret;
@@ -172,6 +178,9 @@ struct qzcclient_sock *qzcclient_subscribe (struct thread_master *master, const 
       zmq_close (qzc_sock);
       return NULL;
     }
+
+  if (limit)
+    zmq_setsockopt (qzc_sock, ZMQ_RCVHWM, &limit, sizeof(limit));
 
   ret = ZRPC_CALLOC(sizeof(*ret));
   ret->zmq = qzc_sock;
