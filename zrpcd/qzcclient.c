@@ -33,6 +33,17 @@ int rc_table_cnt = 0;
 int rc_table_index_free = 0;
 int rc_table_inited = 0;
 int qzcclient_debug = 0;
+int qzcclient_simulate_delay = 0;
+int qzcclient_simulate_random = 5;
+
+void qzcclient_configure_simulation_delay (unsigned int delay,
+                                           unsigned int occurence)
+{
+  qzcclient_simulate_delay = delay;
+  if (occurence)
+    qzcclient_simulate_random = occurence;
+}
+
 /*
  * manages capnproto allocations for some routines
  * that need delayed free.
@@ -211,6 +222,7 @@ qzcclient_do(struct qzcclient_sock **p_sock,
   ssize_t rs;
   int ret;
   struct qzcclient_sock *sock;
+  static int simulate_counter;
 
   if (!p_sock || *p_sock == NULL) {
     zrpc_log ("%s: sock null", __func__);
@@ -248,6 +260,13 @@ qzcclient_do(struct qzcclient_sock **p_sock,
       zrpc_log ("zmq_msg_init failed: %s (%d)", strerror (errno), errno);
       return NULL;
     }
+
+  /* introduce some heavy work */
+  if (qzcclient_simulate_delay && 0 == (simulate_counter % qzcclient_simulate_random)) {
+    sleep(qzcclient_simulate_delay);
+  }
+  simulate_counter++;
+
   do
     {
       ret = zmq_msg_recv (&msg, sock->zmq, 0);
