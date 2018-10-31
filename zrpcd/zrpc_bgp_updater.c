@@ -43,7 +43,7 @@ static bool zrpc_bgp_updater_handle_response(struct zrpc_vpnservice *ctxt,
               struct timeval tout;
               int optval, optlen;
 
-              zlog_info ("%s: sent error %s (%d), using select (%d sec) to retry",
+              zrpc_info ("%s: sent error %s (%d), using select (%d sec) to retry",
                          name, error->message, errno, tm->zrpc_select_time);
               FD_ZERO(&wrfds);
               FD_SET(fd, &wrfds);
@@ -58,7 +58,7 @@ static bool zrpc_bgp_updater_handle_response(struct zrpc_vpnservice *ctxt,
                   (getsockopt(fd, SOL_SOCKET, SO_ERROR, &optval, (socklen_t *)&optlen) < 0) ||
                   (optval != 0)) {
                 ctxt->bgp_updater_select_in_progress = FALSE;
-                zlog_info ("%s: sent error %s (%d), resetting connection",
+                zrpc_info ("%s: sent error %s (%d), resetting connection",
                            name, error->message, errno);
                 ctxt->bgp_update_thrift_lost_msgs++;
                 zrpc_transport_cancel_monitor(ctxt);
@@ -71,7 +71,7 @@ static bool zrpc_bgp_updater_handle_response(struct zrpc_vpnservice *ctxt,
                 should_retry = TRUE;
               }
             } else {
-              zlog_info ("%s: sent error %s (%d), resetting connection",
+              zrpc_info ("%s: sent error %s (%d), resetting connection",
                          name, error->message, errno);
               /* other errors fall in error */
               ctxt->bgp_update_thrift_lost_msgs++;
