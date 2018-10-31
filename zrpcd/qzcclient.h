@@ -71,5 +71,6 @@ qzcclient_qzcgetrep_free(struct QZCGetRep *rep);
 
 void qzcclient_configure_simulation_delay (unsigned int delay,
                                            unsigned int occurence);
+#define QZC_SOCKET_SIZE_USER 200000
 
 #endif /* _QZCCLIENT_H */

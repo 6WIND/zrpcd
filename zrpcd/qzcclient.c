@@ -145,6 +145,7 @@ struct qzcclient_sock *qzcclient_connect (const char *url, uint32_t limit)
 {
   void *qzc_sock;
   struct qzcclient_sock *ret;
+  uint64_t socket_size = QZC_SOCKET_SIZE_USER;
 
   qzc_sock = zmq_socket (qzmqclient_context, ZMQ_REQ);
   if (!qzc_sock)
@@ -155,6 +156,10 @@ struct qzcclient_sock *qzcclient_connect (const char *url, uint32_t limit)
 
   if (limit)
     zmq_setsockopt (qzc_sock, ZMQ_SNDHWM, &limit, sizeof(limit));
+  zmq_setsockopt (qzc_sock, ZMQ_RCVBUF, &socket_size,
+                  sizeof(socket_size));
+  zmq_setsockopt (qzc_sock, ZMQ_SNDBUF, &socket_size,
+                  sizeof(socket_size));
 
   if (zmq_connect (qzc_sock, url))
     {
