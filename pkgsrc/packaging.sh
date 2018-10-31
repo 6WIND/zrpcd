@@ -373,7 +373,7 @@ quagga_rpm_bin_spec () {
         echo "%files -f %{_builddir}/files" >> $RPM_SPEC_FILE
         echo "%defattr(-,root,root)" >> $RPM_SPEC_FILE
         echo "%dir %attr(750,quagga,quagga) /opt/quagga/var/run/quagga" >> $RPM_SPEC_FILE
-        echo "%dir %attr(750,quagga,quagga) /opt/quagga/var/log/quagga" >> $RPM_SPEC_FILE
+        echo "%dir %attr(1750,quagga,quagga) /opt/quagga/var/log/quagga" >> $RPM_SPEC_FILE
     fi
 }
 

@@ -38,9 +38,9 @@ check_privsep_dir() {
 	fi
 	if [ ! -d $PREFIX/var/log/quagga ]; then
 		mkdir $PREFIX/var/log/quagga/
-		chmod 0755 $PREFIX/var/log/quagga/
 		chown -R quagga:quagga $PREFIX/var/log/quagga/
 	fi
+        chmod a+t $PREFIX/var/log/quagga/
 }
 
 log_rotate () {
