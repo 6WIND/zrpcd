@@ -42,12 +42,14 @@ static int qzmqclient_read_msg (struct thread *t)
   struct qzmqclient_cb *cb = THREAD_ARG (t);
   zmq_msg_t msg;
   int ret;
+  struct qzcclient_sock *ctxt;
 
+  ctxt = cb->zmqsock;
   cb->thread = NULL;
 
   while (1)
     {
-      zmq_pollitem_t polli = { .socket = cb->zmqsock, .events = ZMQ_POLLIN, .revents = 0 };
+      zmq_pollitem_t polli = { .socket = ctxt->zmq, .events = ZMQ_POLLIN, .revents = 0 };
       ret = zmq_poll (&polli, 1, 0);
 
       if (ret < 0)
@@ -57,7 +59,7 @@ static int qzmqclient_read_msg (struct thread *t)
 
       if (zmq_msg_init (&msg))
         goto out_err;
-      ret = zmq_msg_recv (&msg, cb->zmqsock, ZMQ_NOBLOCK);
+      ret = zmq_msg_recv (&msg, ctxt->zmq, ZMQ_NOBLOCK);
       if (ret < 0)
         {
           if (errno == EAGAIN)
@@ -66,10 +68,12 @@ static int qzmqclient_read_msg (struct thread *t)
           zmq_msg_close (&msg);
           goto out_err;
         }
-      cb->cb_msg (cb->arg, cb->zmqsock, &msg);
+      cb->cb_msg (cb->arg, ctxt, &msg);
       zmq_msg_close (&msg);
     }
 
+  /* update ctxt if necessary */
+  t->u.fd = ctxt->fd;
   cb->thread = funcname_thread_add_read (t->master, qzmqclient_read_msg, cb,
                                          t->u.fd, t->funcname, t->schedfrom, t->schedfrom_line);
   return 0;
@@ -87,10 +91,13 @@ struct qzmqclient_cb *funcname_qzmqclient_thread_read_msg (
   int fd;
   size_t fd_len = sizeof (fd);
   struct qzmqclient_cb *cb;
+  struct qzcclient_sock *ctxt = zmqsock;
 
-  if (zmq_getsockopt (zmqsock, ZMQ_FD, &fd, &fd_len))
+  if (zmq_getsockopt (ctxt->zmq, ZMQ_FD, &fd, &fd_len))
    return NULL;
- cb = ZRPC_CALLOC (sizeof (struct qzmqclient_cb));
+  ctxt->fd = fd;
+
+  cb = ZRPC_CALLOC (sizeof (struct qzmqclient_cb));
   if (!cb)
     return NULL;
 
@@ -104,6 +111,8 @@ struct qzmqclient_cb *funcname_qzmqclient_thread_read_msg (
 
 void qzmqclient_thread_cancel (struct qzmqclient_cb *cb)
 {
-  thread_cancel (cb->thread);
-  ZRPC_FREE (cb);
+  if (cb->thread) {
+    thread_cancel (cb->thread);
+    ZRPC_FREE (cb);
+  }
 }
