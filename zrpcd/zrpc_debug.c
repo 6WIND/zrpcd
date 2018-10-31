@@ -116,6 +116,25 @@ DEFUN (show_debugging_zrpc_errno,
   return CMD_SUCCESS;
 }
 
+static int zrpc_zmq_delay;
+static int zrpc_zmq_occurence;
+
+DEFUN (show_debugging_zrpc_simulate,
+       show_debugging_zrpc_simulate_cmd,
+       "show debugging zrpc delay <0-20> occurence <1-500>",
+       SHOW_STR
+       DEBUG_STR
+       ZRPC_STR
+       "Simulate an extra delay before waiting for REP"
+       "Delay in seconds"
+       "Simulate the occurence of the event 1 out of X"
+       "X in number of occurences")
+{
+  zrpc_zmq_delay = atoi(argv[0]);
+  zrpc_zmq_occurence = atoi(argv[1]);
+  qzcclient_configure_simulation_delay (zrpc_zmq_delay, zrpc_zmq_occurence);
+}
+
 DEFUN (show_debugging_zrpc,
        show_debugging_zrpc_cmd,
        "show debugging zrpc",
@@ -277,6 +296,7 @@ zrpc_debug_init (void)
 
   install_node (&debug_node, config_write_debug);
   install_element (ENABLE_NODE, &show_debugging_zrpc_cmd);
+  install_element (ENABLE_NODE, &show_debugging_zrpc_simulate_cmd);
   install_element (ENABLE_NODE, &debug_zrpc_cmd);
   install_element (ENABLE_NODE, &no_debug_zrpc_cmd);
   install_element (ENABLE_NODE, &debug_zrpc_notification_cmd);
