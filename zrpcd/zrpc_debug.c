@@ -94,6 +94,9 @@ DEFUN (show_debugging_zrpc_stats,
            ctxt->bgp_update_thrift_retries_successfull,
            ctxt->bgp_update_thrift_lost_msgs,
            VTY_NEWLINE);
+  vty_out (vty, "BGP ZMQ REQ reconnections %u%s",
+           qzcclient_get_nb_reconnect(),
+           VTY_NEWLINE);
   return CMD_SUCCESS;
 }
 
