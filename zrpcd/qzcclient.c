@@ -260,7 +260,7 @@ qzcclient_do(struct qzcclient_sock **p_sock,
     struct qzcclient_sock *zmq_sock_new;
 
     while (retries_left) {
-      zmq_pollitem_t items [] = { { sock->zmq, 0, ZMQ_POLLIN, 0 } };
+      zmq_pollitem_t items [] = { { sock->zmq, 0, ZMQ_POLLIN } };
 
       ret = zmq_send (sock->zmq, buf, rs, 0);
       if (ret < 0)

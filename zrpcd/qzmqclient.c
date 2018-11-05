@@ -49,7 +49,7 @@ static int qzmqclient_read_msg (struct thread *t)
 
   while (1)
     {
-      zmq_pollitem_t polli = { .socket = ctxt->zmq, .events = ZMQ_POLLIN, .revents = 0 };
+      zmq_pollitem_t polli = { .socket = ctxt->zmq, .events = ZMQ_POLLIN};
       ret = zmq_poll (&polli, 1, 0);
 
       if (ret < 0)
