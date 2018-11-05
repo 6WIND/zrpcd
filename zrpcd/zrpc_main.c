@@ -216,7 +216,7 @@ main (int argc, char **argv)
 
   tm->zrpc_select_time = ZRPC_SELECT_TIME_SEC;
   /* Command line argument treatment. */
-  while ((option = getopt (argc, argv, "A:P:p:N:L:I:n:DSh:s")) != -1)
+  while ((option = getopt (argc, argv, "A:P:p:s:N:L:I:n:DSh")) != -1)
     {
       switch (option)
 	{
