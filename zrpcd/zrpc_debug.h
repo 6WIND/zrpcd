@@ -14,10 +14,12 @@
 #define ZRPC_DEBUG_NOTIFICATION  0x02
 #define ZRPC_DEBUG_NETWORK       0x04
 #define ZRPC_DEBUG_CACHE         0x08
+#define ZRPC_DEBUG_SHOW          0x10
 
 /* Debug related macro. */
 #define IS_ZRPC_DEBUG  (zrpc_debug & ZRPC_DEBUG)
 #define IS_ZRPC_DEBUG_NOTIFICATION  (zrpc_debug & ZRPC_DEBUG_NOTIFICATION)
+#define IS_ZRPC_DEBUG_SHOW  (zrpc_debug & ZRPC_DEBUG_SHOW)
 #define IS_ZRPC_DEBUG_NETWORK (zrpc_debug & ZRPC_DEBUG_NETWORK)
 #define IS_ZRPC_DEBUG_CACHE  (zrpc_debug & ZRPC_DEBUG_CACHE)
 

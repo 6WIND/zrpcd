@@ -153,6 +153,8 @@ DEFUN (show_debugging_zrpc,
     vty_out (vty, "  ZRPC debugging network is on%s", VTY_NEWLINE);
   if (IS_ZRPC_DEBUG_NOTIFICATION)
     vty_out (vty, "  ZRPC debugging notification is on%s", VTY_NEWLINE);
+  if (IS_ZRPC_DEBUG_SHOW)
+    vty_out (vty, "  ZRPC debugging show is on%s", VTY_NEWLINE);
   if (IS_ZRPC_DEBUG_CACHE)
     vty_out (vty, "  ZRPC debugging cache is on%s", VTY_NEWLINE);
   return CMD_SUCCESS;
@@ -201,6 +203,29 @@ DEFUN (no_debug_zrpc_notification,
        "ZRPC\n")
 {
   zrpc_debug &= ~ZRPC_DEBUG_NOTIFICATION;
+  return CMD_SUCCESS;
+}
+
+DEFUN (debug_zrpc_show,
+       debug_zrpc_show_cmd,
+       "debug zrpc show",
+       DEBUG_STR
+       ZRPC_STR
+       "ZRPC\n")
+{
+  zrpc_debug |= ZRPC_DEBUG_SHOW;
+  return CMD_WARNING;
+}
+
+DEFUN (no_debug_zrpc_show,
+       no_debug_zrpc_show_cmd,
+       "no debug zrpc show",
+       NO_STR
+       DEBUG_STR
+       ZRPC_STR
+       "ZRPC\n")
+{
+  zrpc_debug &= ~ZRPC_DEBUG_SHOW;
   return CMD_SUCCESS;
 }
 
@@ -304,6 +329,8 @@ zrpc_debug_init (void)
   install_element (ENABLE_NODE, &no_debug_zrpc_cmd);
   install_element (ENABLE_NODE, &debug_zrpc_notification_cmd);
   install_element (ENABLE_NODE, &no_debug_zrpc_notification_cmd);
+  install_element (ENABLE_NODE, &debug_zrpc_show_cmd);
+  install_element (ENABLE_NODE, &no_debug_zrpc_show_cmd);
   install_element (ENABLE_NODE, &debug_zrpc_network_cmd);
   install_element (ENABLE_NODE, &no_debug_zrpc_network_cmd);
   install_element (ENABLE_NODE, &debug_zrpc_cache_cmd);
@@ -313,6 +340,7 @@ zrpc_debug_init (void)
 
   zrpc_debug |= ZRPC_DEBUG;
   zrpc_debug |= ZRPC_DEBUG_NOTIFICATION;
+  zrpc_debug |= ZRPC_DEBUG_SHOW;
 
   openlog("zrpcd", LOG_CONS|LOG_NDELAY|LOG_PID, log_facility);
 }
