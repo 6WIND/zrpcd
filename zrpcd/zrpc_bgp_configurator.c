@@ -3634,6 +3634,12 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
             upd->rd = g_strdup(zrpc_util_rd_prefix2str(&(entry->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN));
           else
             upd->rd = NULL;
+
+          if (IS_ZRPC_DEBUG_SHOW)
+            zrpc_log("getRoutes(rd %s,pfx %s/%d, nh %s, l3label %u, l2label %u)",
+                      upd->rd ? upd->rd : "NULL", upd->prefix, upd->prefixlen,
+                      upd->nexthop, upd->l3label, upd->l2label);
+
           g_ptr_array_add((*_return)->updates, upd);
           route_updates++;
           if(inst_route.mac_router)
@@ -3723,6 +3729,12 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
                 upd->rd = g_strdup(zrpc_util_rd_prefix2str(&(entry->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN));
               else
                 upd->rd = NULL;
+
+              if (IS_ZRPC_DEBUG_SHOW)
+                zrpc_log("getRoutes(rd %s,pfx %s/%d, nh %s, l3label %u, l2label %u)",
+                         upd->rd ? upd->rd : "NULL", upd->prefix, upd->prefixlen,
+                         upd->nexthop, upd->l3label, upd->l2label);
+
               g_ptr_array_add((*_return)->updates, upd);
               route_updates++;
               free(inst_multipath_route.mac_router);
