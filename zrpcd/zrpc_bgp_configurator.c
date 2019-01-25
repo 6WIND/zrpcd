@@ -3252,10 +3252,11 @@ instance_bgp_configurator_handler_enable_graceful_restart (BgpConfiguratorIf *if
   cs = capn_root(&rc).seg;
   bgp = qcapn_new_BGP(cs);
   /* set default stalepath time */
-  inst.flags |= BGP_FLAG_GRACEFUL_RESTART;
   if(stalepathTime == 0)
     inst.stalepath_time = BGP_DEFAULT_STALEPATH_TIME;
-  else if (stalepathTime == -1)
+  if (stalepathTime)
+    inst.flags |= BGP_FLAG_GRACEFUL_RESTART;
+  else
     inst.flags &= ~BGP_FLAG_GRACEFUL_RESTART;
   qcapn_BGP_write(&inst, bgp);
   qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, \
@@ -3375,7 +3376,7 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
 gboolean
 instance_bgp_configurator_handler_disable_graceful_restart (BgpConfiguratorIf *iface, gint32* _return, GError **error)
 {
-  return instance_bgp_configurator_handler_enable_graceful_restart(iface, _return, -1, error);
+  return instance_bgp_configurator_handler_enable_graceful_restart(iface, _return, 0, error);
 }
 
 struct zrpc_prefix *prev_iter_table_ptr = NULL;
