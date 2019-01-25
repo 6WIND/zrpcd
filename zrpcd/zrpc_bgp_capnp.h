@@ -225,7 +225,7 @@ struct peer
 };
 
 /* BGP graceful restart  */
-#define BGP_DEFAULT_RESTART_TIME               120
+#define BGP_DEFAULT_RESTART_TIME               4090
 #define BGP_DEFAULT_STALEPATH_TIME             360
 
 #define  CAPN_BGPVRF_ROUTE_DEF_SIZE  12
