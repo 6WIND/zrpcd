@@ -3462,6 +3462,8 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
   (*_return)->errcode = 0;
   (*_return)->__isset_updates = TRUE;
   entry2 = NULL;
+  if (do_not_parse_vrf == 0)
+    entry = ctxt->bgp_get_routes_list;
 
   /* parse current vrfs and vrfs not already parsed and global RIB */
   do
@@ -3469,7 +3471,6 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
       unsigned long mpath_iter_ptr = 0;
       if (do_not_parse_vrf == 0)
         {
-          entry = ctxt->bgp_get_routes_list;
           if (entry)
             entry_next = entry->next;
           else
@@ -3493,18 +3494,14 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
       /* remove current bgpvrf entry, all routes have been parsed */
       if(entry2 && (do_not_parse_vrf == 0))
         {
-          struct zrpc_vpnservice_cache_bgpvrf *entry_curr, *entry_next, *entry_prev;
-          entry_prev = NULL;
+          struct zrpc_vpnservice_cache_bgpvrf *entry_curr, *entry_next;
           for (entry_curr = ctxt->bgp_get_routes_list; entry_curr; 
                entry_curr = entry_next)
             {
               entry_next = entry_curr->next;
               if (entry_curr == entry2)
                 {
-                  if (entry_prev)
-                    entry_prev->next = entry_next;
-                  else
-                    ctxt->bgp_get_routes_list = entry_next;
+                  ctxt->bgp_get_routes_list = entry_next;
                   ZRPC_FREE (entry2);
                   entry2 = NULL;
                   break;
@@ -3764,6 +3761,13 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
       entry = entry_next;
     }
   while ( entry && (do_not_parse_vrf == 0));
+
+  if (entry2 && (do_not_parse_vrf == 0))
+    {
+      ctxt->bgp_get_routes_list = NULL;
+      ZRPC_FREE (entry2);
+      entry2 = NULL;
+    }
 
   if(route_updates == 0)
     {
