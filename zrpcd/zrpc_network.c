@@ -287,6 +287,7 @@ gboolean zrpc_client_transport_open (ThriftTransport *transport, GError **error,
   int err;
   ThriftSocket *tsocket = THRIFT_SOCKET (transport);
   struct hostent *hp = NULL;
+  int onoff, val;
 
   if (tsocket->sd != THRIFT_INVALID_SOCKET)
     return FALSE;
@@ -339,6 +340,19 @@ gboolean zrpc_client_transport_open (ThriftTransport *transport, GError **error,
     }
   zrpc_log ("connected socket %u with host %s:%d", tsocket->sd,
             tsocket->hostname, tsocket->port);
+
+  onoff = 0;
+  if (setsockopt (tsocket->sd, IPPROTO_TCP, TCP_CORK, &onoff, sizeof(onoff)) < 0)
+    {
+      zrpc_log("Couldn't disable TCP_CORK option: %u\n", errno);
+    }
+
+  val = 1;
+  if (setsockopt (tsocket->sd, IPPROTO_TCP, TCP_NODELAY, (char *) &val, sizeof (val)) < 0)
+    {
+      zrpc_log("Couldn't set TCP_NODELAY option: %u\n", errno);
+    }
+
   return TRUE;
 }
 
