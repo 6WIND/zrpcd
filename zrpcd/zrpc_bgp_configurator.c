@@ -128,7 +128,7 @@ instance_bgp_configurator_handler_set_log_config (BgpConfiguratorIf *iface, gint
                                                   const gchar * logLevel, GError **error);
 gboolean
 instance_bgp_configurator_handler_enable_graceful_restart (BgpConfiguratorIf *iface, gint32* _return,
-                                                           const gint32 stalepathTime, GError **error);
+                                                           const gint32 restartTime, GError **error);
 gboolean
 instance_bgp_configurator_handler_disable_graceful_restart (BgpConfiguratorIf *iface, gint32* _return, GError **error);
 gboolean
@@ -3272,11 +3272,11 @@ instance_bgp_configurator_handler_set_log_config (BgpConfiguratorIf *iface, gint
 
 /*
  * enable Graceful Restart for BGP Router, as well as stale path timer.
- * if the stalepathTime is set to 0, then the graceful restart feature will be disabled
+ * if the restartTimer is set to 0, then the graceful restart feature will be disabled
  */
 gboolean
 instance_bgp_configurator_handler_enable_graceful_restart (BgpConfiguratorIf *iface, gint32* _return,
-                                                           const gint32 stalepathTime, GError **error)
+                                                           const gint32 restartTime, GError **error)
 {
   struct zrpc_vpnservice *ctxt = NULL;
   struct capn_ptr bgp;
@@ -3312,13 +3312,17 @@ instance_bgp_configurator_handler_enable_graceful_restart (BgpConfiguratorIf *if
   cs = capn_root(&rc).seg;
   bgp = qcapn_new_BGP(cs);
   /* set default stalepath time */
-  if(stalepathTime == 0)
-    inst.stalepath_time = BGP_DEFAULT_STALEPATH_TIME;
-  if (stalepathTime)
+  if(restartTime == 0)
+    inst.restart_time = BGP_DEFAULT_RESTART_TIME;
+  else
+    inst.restart_time = restartTime;
+  if (restartTime)
     inst.flags |= BGP_FLAG_GRACEFUL_RESTART;
   else
     inst.flags &= ~BGP_FLAG_GRACEFUL_RESTART;
-  inst.restart_time = BGP_DEFAULT_RESTART_TIME;
+  /* do not touch stalepath time if already set */
+  if (inst.stalepath_time == 0)
+    inst.stalepath_time = BGP_DEFAULT_STALEPATH_TIME;
   qcapn_BGP_write(&inst, bgp);
   qzcclient_setelem (ctxt->p_qzc_sock, &bgp_inst_nid, 1, \
                      &bgp, &bgp_datatype_bgp, NULL, NULL);
