@@ -323,6 +323,8 @@ gboolean zrpc_client_transport_open (ThriftTransport *transport, GError **error,
     sl.l_linger = 0;
     setsockopt(tsocket->sd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
   }
+  if (fcntl (tsocket->sd, F_SETFD, FD_CLOEXEC) == -1)
+    zrpc_log ("zrpc_transport_configures_cloexec : fcntl failed (%s)", strerror (errno));
   zrpc_log ("opened socket %u", tsocket->sd);
   /* set non blocking */
   set_nonblocking (tsocket->sd);
