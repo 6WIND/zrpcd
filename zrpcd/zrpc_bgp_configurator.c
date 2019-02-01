@@ -4241,6 +4241,7 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
                             (char *)ZMQ_BFDD_SOCK,
                             NULL};
   char *zebra_parmList[] =  {(char *)ZEBRA_PATH,
+                            (char *)"-K",
                              NULL};
   pid_t pid;
   int ret;
