@@ -82,6 +82,7 @@ static void  zrpc_sighup (void)
 /* SIGINT handler. */
 static void zrpc_sigint (void)
 {
+  zrpc_silent_leave = 1;
   zrpc_log ("Terminating on signal");
   zrpc_kill_child (BFDD_PID, "BFD");
   zrpc_kill_child (ZEBRA_PID, "ZEBRA");
@@ -119,6 +120,8 @@ static void zrpc_sigchild (void)
       zrpc_info ("BGPD terminated (%u)",p);
       /* kill BGP Daemon */
       zrpc_kill_in_progress = 1;
+      if (!zrpc_stopbgp_called)
+        zrpc_silent_leave = 1;
       asNumber = zrpc_vpnservice_get_bgp_context(ctxt)->asNumber;
       /* reset Thrift Context */
       zrpc_vpnservice_get_bgp_context(ctxt)->proc = 0;
@@ -163,6 +166,8 @@ static void zrpc_sig_handler(int signo)
       zrpc_sigint ();
     }
 }
+
+int  zrpc_silent_leave = 0;
 
 /*
   exit from zrpc daemon

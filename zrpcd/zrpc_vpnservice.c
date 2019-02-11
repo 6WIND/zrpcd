@@ -267,6 +267,10 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
     {
       return;
     }
+  if (zrpc_silent_leave)
+    {
+      return;
+    }
   ctxt->bgp_update_total++;
   /* if first time or previous failure, try to reconnect to client */
   if((ctxt->bgp_updater_client == NULL) ||
