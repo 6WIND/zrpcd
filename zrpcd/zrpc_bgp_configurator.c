@@ -2488,7 +2488,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
      {
        u_char tmp[8];
        int ret;
-       const char *rts = (char *)g_ptr_array_index(irts, i);
+       char *rts = (char *)g_ptr_array_index(irts, i);
 
        ret = zrpc_util_str2rdrt (rts, tmp, ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET);
        if (ret)
@@ -2506,7 +2506,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
      {
        u_char tmp[8];
        int ret;
-       const char *rts = (char *)g_ptr_array_index(erts, i);
+       char *rts = (char *)g_ptr_array_index(erts, i);
 
        ret = zrpc_util_str2rdrt (rts, tmp, ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET);
        if (ret)
@@ -4137,8 +4137,7 @@ instance_bgp_configurator_enable_eor_delay(BgpConfiguratorIf *iface, gint32* _re
   struct capn rc;
   struct capn_segment *cs;
   struct bgp inst;
-   struct QZCGetRep *grep;
-  int ret;
+  struct QZCGetRep *grep;
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
@@ -4207,7 +4206,6 @@ instance_bgp_configurator_send_eor(BgpConfiguratorIf *iface, gint32* _return, GE
 {
   struct zrpc_vpnservice *ctxt = NULL;
   struct QZCGetRep *grep;
-  int ret;
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
@@ -4303,8 +4301,8 @@ instance_bgp_configurator_handler_enable_bfd_failover(BgpConfiguratorIf *iface, 
   char *zebra_parmList[] =  {(char *)ZEBRA_PATH,
                             (char *)"-K",
                              NULL};
-  pid_t pid;
-  int ret;
+  pid_t pid = 0;
+  int ret = 0;
   struct QZCReply *rep;
   BfdConfigData default_bfd_config = {
                                        .bfdConfigDataVersion = 1,
