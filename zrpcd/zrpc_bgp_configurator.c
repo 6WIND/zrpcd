@@ -448,14 +448,14 @@ static const char *
 zrpc_bgp_configurator_get_peer_name(struct zrpc_vpnservice *ctxt,
                                     uint64_t peer_nid)
 {
-  struct zrpc_vpnservice_cache_peer *entry_bgppeer, *entry_bgppeer_next, *entry;
-  int i,j;
+  struct zrpc_vpnservice_cache_peer *entry_bgppeer, *entry_bgppeer_next;
 
   /* lookup in cache context, first */
   for (entry_bgppeer = ctxt->bgp_peer_list; entry_bgppeer; entry_bgppeer = entry_bgppeer_next)
     {
       if (peer_nid == entry_bgppeer->peer_nid)
         return entry_bgppeer->peerIp;
+      entry_bgppeer_next = entry_bgppeer->next;
     }
   return NULL;
 }
@@ -2000,7 +2000,7 @@ zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
    cs = capn_root(&rc).seg;
    peer_ctxt = qcapn_new_BGPPeer(cs);
    qcapn_BGPPeer_write(&peer, peer_ctxt);
-   peername = zrpc_bgp_configurator_get_peer_name(ctxt, peer_nid);
+   peername = (char *)zrpc_bgp_configurator_get_peer_name(ctxt, peer_nid);
    if (!peername) {
      sprintf(peername_nid, "%llx", (long long unsigned int)peer_nid);
      peername = peername_nid;
