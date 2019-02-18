@@ -266,6 +266,7 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
 #define ERROR_BGP_INVALID_PREFIX g_error_new(1, BGP_ERR_PARAM, "BGP: invalid prefix \"%s\"", prefix);
 #define ERROR_BGP_INVALID_NEXTHOP(_a) g_error_new(1, BGP_ERR_PARAM, "BGP: invalid nexthop \"%s\"", (_a));
 #define ERROR_BGP_INCONSISTENCY_PREFIXAFI(_a,_b) g_error_new(1, BGP_ERR_PARAM, "BGP: prefix family (%d) != afi (%d)", (_a), (_b));
+#define ERROR_BGP_RD_AFI_SAFI_NOT_CONFIGURED(_a,_b) g_error_new(1, BGP_ERR_PARAM, "BGP RD %s not configured with afi %d p_type %d", rd, (_a), (_b));
 
 #ifdef HAVE_THRIFT_V5
 #define ERROR_BGP_BFD_ENABLED g_error_new(1, BGP_ERR_ACTIVE, "BFD already enabled")
@@ -1219,7 +1220,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
-  struct zrpc_vpnservice_cache_bgpvrf *bgpvrf;
+  struct zrpc_vpnservice_cache_bgpvrf *bgpvrf = NULL;
   address_family_t afi_int = ADDRESS_FAMILY_IP;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
@@ -1228,7 +1229,11 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   int ret;
   gboolean is_auto_discovery = FALSE;
   char esi_static[]="00:00:00:00:00:00:00:00:00:00";
+#if !defined(HAVE_THRIFT_V1)
+  char error_cplment[100];
 
+  memset(error_cplment, 0, sizeof(error_cplment));
+#endif /* !HAVE_THRIFT_V1 */
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
     {
@@ -1441,10 +1446,10 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
               ret = FALSE;
               goto error;
             }
-      /* moving the prefix from ipv4 to ipv6 mapped */
-      if ((inst.nexthop.family == AF_INET) &&
-          (inst.prefix.family == AF_INET6))
-        zrpc_util_convert_ipv4toipv6mapped (&inst.nexthop);
+          /* moving the prefix from ipv4 to ipv6 mapped */
+          if ((inst.nexthop.family == AF_INET) &&
+              (inst.prefix.family == AF_INET6))
+            zrpc_util_convert_ipv4toipv6mapped (&inst.nexthop);
 #endif /* HAVE_THRIFT_V3 */
         }
     }
@@ -1486,6 +1491,31 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
         }
 #endif /* !HAVE_THRIFT_V1 */
     }
+
+#if !defined(HAVE_THRIFT_V1)
+  /* check corresponding afi/safi is set */
+  if (bgpvrf) {
+    int af, saf;
+
+    if (afi == AF_AFI_AFI_IP)
+      af = ADDRESS_FAMILY_IP;
+    else if (afi == AF_AFI_AFI_IPV6)
+      af = ADDRESS_FAMILY_IPV6;
+    else
+      af = ADDRESS_FAMILY_L2VPN;
+    if (p_type == PROTOCOL_TYPE_PROTOCOL_L3VPN)
+      saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+    else
+      saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+    if (!bgpvrf->afc[af][saf]) {
+      *error = ERROR_BGP_RD_AFI_SAFI_NOT_CONFIGURED(afi, p_type);
+      *_return = BGP_ERR_PARAM;
+      ret = FALSE;
+      sprintf(error_cplment, "(RD %s not configured with afi %d)", rd, af);
+      goto error;
+    }
+  }
+#endif /* !HAVE_THRIFT_V1 */
 
 #if !defined(HAVE_THRIFT_V1)
 inst_filled:
@@ -1538,13 +1568,15 @@ inst_filled:
 #if !defined(HAVE_THRIFT_V1)
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
         zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, l3label %d, l2label %d,"
-                    " esi %s, ethtag %d, routermac %s, macaddress %s, enc_type %d) %s",
+                    " esi %s, ethtag %d, routermac %s, macaddress %s, enc_type %d) %s %s",
                     prefix, nexthop, rd==NULL?"<none>":rd, l3label, l2label, esi, ethtag,
-                   routermac?routermac:"<none>", macaddress, enc_type, (ret==FALSE)?"NOK":"OK");
+                   routermac?routermac:"<none>", macaddress, enc_type, (ret==FALSE)?"NOK":"OK",
+                   error_cplment);
       else
 #endif /* !HAVE_THRIFT_V1 */
-        zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) %s",
-                   prefix, nexthop, rd==NULL?"<none>":rd, l3label, (ret==FALSE)?"NOK":"OK");
+        zrpc_info ("pushRoute(prefix %s, nexthop %s, rd %s, label %d) %s %s",
+                   prefix, nexthop, rd==NULL?"<none>":rd, l3label, (ret==FALSE)?"NOK":"OK",
+                   error_cplment);
     }
   if (inst.esi)
     free(inst.esi);
@@ -1585,7 +1617,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
   uint64_t bgpvrf_nid = 0;
-  struct zrpc_vpnservice_cache_bgpvrf *bgpvrf;
+  struct zrpc_vpnservice_cache_bgpvrf *bgpvrf = NULL;
   address_family_t afi_int = ADDRESS_FAMILY_IP;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
@@ -1594,7 +1626,11 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   int ret;
   gboolean is_auto_discovery = FALSE;
   char esi_static[]="00:00:00:00:00:00:00:00:00:00";
+#if !defined(HAVE_THRIFT_V1)
+  char error_cplment[100];
 
+  memset(error_cplment, 0, sizeof(error_cplment));
+#endif /* !HAVE_THRIFT_V1 */
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
     {
@@ -1783,6 +1819,30 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
         }
 #endif /* !HAVE_THRIFT_V1 */
     }
+#if !defined(HAVE_THRIFT_V1)
+  /* check corresponding afi/safi is set */
+  if (bgpvrf) {
+    int af, saf;
+
+    if (afi == AF_AFI_AFI_IP)
+      af = ADDRESS_FAMILY_IP;
+    else if (afi == AF_AFI_AFI_IPV6)
+      af = ADDRESS_FAMILY_IPV6;
+    else
+      af = ADDRESS_FAMILY_L2VPN;
+    if (p_type == PROTOCOL_TYPE_PROTOCOL_L3VPN)
+      saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+    else
+      saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+    if (!bgpvrf->afc[af][saf]) {
+      *error = ERROR_BGP_RD_AFI_SAFI_NOT_CONFIGURED(afi, p_type);
+      *_return = BGP_ERR_PARAM;
+      ret = FALSE;
+      sprintf(error_cplment, "(RD %s not configured with afi %d)", rd, af);
+      goto error;
+    }
+  }
+#endif /* !HAVE_THRIFT_V1 */
 
 #if !defined(HAVE_THRIFT_V1)
 inst_filled:
@@ -1837,13 +1897,13 @@ error:
 #if !defined(HAVE_THRIFT_V1)
       if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
         zrpc_info ("withdrawRoute(prefix %s, rd %s,"
-        " esi %s, ethtag %d, macaddress %s) %s",
+        " esi %s, ethtag %d, macaddress %s) %s %s",
         prefix, rd==NULL?"<none>":rd, esi, ethtag, macaddress,
-        (ret==FALSE)?"NOK":"OK");
+	(ret==FALSE)?"NOK":"OK", error_cplment);
       else
 #endif /* !HAVE_THRIFT_V1 */
-        zrpc_info ("withdrawRoute(prefix %s, rd %s) %s", prefix, rd,
-                   (ret==FALSE)?"NOK":"OK");
+        zrpc_info ("withdrawRoute(prefix %s, rd %s) %s %s", prefix, rd,
+                   (ret==FALSE)?"NOK":"OK", error_cplment);
     }
   free(inst.esi);
   if (ret)
