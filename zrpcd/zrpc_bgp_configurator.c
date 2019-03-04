@@ -2090,7 +2090,6 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
     {
       *_return = BGP_ERR_FAILED;
       *error = ERROR_BGP_INTERNAL;
-      ZRPC_FREE (inst.host);
       if(IS_ZRPC_DEBUG)
         zrpc_info ("createPeer(%s,%u) NOK (capnproto error 1)", routerId, asNumber);
       return FALSE;
