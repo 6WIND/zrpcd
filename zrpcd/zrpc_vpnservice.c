@@ -820,6 +820,8 @@ void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup)
   struct zrpc_vpnservice_cache_bgpvrf *entry_bgpvrf, *entry_bgpvrf_next;
   struct zrpc_vpnservice_cache_peer *entry_bgppeer, *entry_bgppeer_next;
 
+  THREAD_TIMER_OFF(setup->config_stale_thread);
+
   setup->bgp_vrf_list = NULL;
   for (entry_bgpvrf = setup->bgp_vrf_list; entry_bgpvrf; entry_bgpvrf = entry_bgpvrf_next)
     {
@@ -992,4 +994,46 @@ void zrpc_vpnservice_setup_client(struct zrpc_vpnservice_client *peer,
   if(peer->simple_server && &(peer->simple_server->parent))
     peer->server = &(peer->simple_server->parent);
   return;
+}
+
+void zrpc_config_stale_timer_flush(struct zrpc_vpnservice *setup, bool donotflush)
+{
+  if (donotflush) {
+    zrpc_err ("ODL/Bgp connection configuration synchronization failed, "
+              "stale timer expired after %d seconds, not REMOVE any "
+              "stale configuration below.", zrpc_stalemarker_timer);
+  }
+  /* flush staled vrfs/peers/routes here, TODO */
+}
+
+static int zrpc_config_stale_timer_expire (struct thread *thread)
+{
+  struct zrpc_vpnservice *setup;
+
+  setup = THREAD_ARG (thread);
+  assert (setup);
+  zrpc_config_stale_timer_flush(setup, TRUE);
+  return 0;
+}
+
+/* called when ODL builds TCP connection on port 7644 */
+void zrpc_config_stale_set(struct zrpc_vpnservice *setup)
+{
+  struct zrpc_vpnservice_cache_bgpvrf *vrf;
+  struct zrpc_vpnservice_cache_peer *peer;
+
+  if (!zrpc_stalemarker_timer)
+    return;
+  if (!setup)
+    return;
+  if (zrpc_vpnservice_get_bgp_context(setup) == NULL ||
+      zrpc_vpnservice_get_bgp_context(setup)->asNumber == 0)
+    return;
+
+  /* Mark vrfs/peers/routes as stale config here, TODO */
+
+  THREAD_TIMER_OFF(setup->config_stale_thread);
+  THREAD_TIMER_MSEC_ON(tm->global, setup->config_stale_thread, \
+                       zrpc_config_stale_timer_expire, \
+                       setup, zrpc_stalemarker_timer * 1000);
 }

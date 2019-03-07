@@ -64,6 +64,7 @@ zrpc_accept (struct thread *thread)
   ThriftSocket *socket;
   struct zrpc_peer *peer_to_parse, *peer_next, *peer_prev;
   socklen_t len;
+  struct zrpc_vpnservice *ctxt = NULL;
 
   /* Register accept thread. */
   if( THREAD_FD (thread) < 0)
@@ -147,6 +148,11 @@ zrpc_accept (struct thread *thread)
         }
       break;
     }
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if (ctxt)
+    zrpc_config_stale_set(ctxt);
+
   if (peer_to_parse == NULL)
     return 0;
   THREAD_OFF(peer_to_parse->t_read);
@@ -164,6 +170,7 @@ zrpc_accept (struct thread *thread)
   peer_to_parse->peer = NULL;
   peer_to_parse->fd=0;
   ZRPC_FREE(peer_to_parse);
+
   return 0;
 }
 

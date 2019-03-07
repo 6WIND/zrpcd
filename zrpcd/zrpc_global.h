@@ -53,5 +53,6 @@ extern int zrpc_disable_syslog;
 extern int zrpc_disable_stdout;
 extern int zrpc_stopbgp_called;
 extern int zrpc_silent_leave;
+extern int zrpc_stalemarker_timer;
 
 #endif /* _ZRPC_GLOBAL_H_ */

@@ -44,6 +44,9 @@ int zrpc_disable_syslog = 0;
 int zrpc_disable_stdout = 0;
 int zrpc_stopbgp_called = 0;
 
+/* Timeout of stale marking timer */
+int zrpc_stalemarker_timer = 0;
+
 /* Help information display. */
 static void
 zrpc_usage (int status)
@@ -59,6 +62,7 @@ zrpc configuration across thrift defined model : vpnservice.\n\n\
 -s, --select_timeout_max    Set thrift's select timeout max calue in seconds\n\
 -I, --thrift_listen_port    Set thrift's listen config port number\n\
 -L, --thrift_listen_address Set thrift's listen config specified address\n");
+  printf ("-M,                         Change stalemarker expiration timer in seconds\n");
 #ifdef HAVE_THRIFT_V6
   printf ("-R,                         Set maximum retries for bgp updater message, <1-20>, default 5\n\
            -G,                         Set time gap(in milliseconds) between two retries for bgp updater\n\
@@ -245,11 +249,13 @@ main (int argc, char **argv)
   tm->zrpc_bgp_updater_retry_time_gap = ZRPC_DEFAULT_UPDATE_RETRY_TIME_GAP;
   tm->zrpc_bgp_updater_queue_maximum_size = 0;
 #endif
+  zrpc_stalemarker_timer = STALEMARKER_TIMER_DEFAULT;
+
   /* Command line argument treatment. */
 #ifndef HAVE_THRIFT_V6
-  while ((option = getopt (argc, argv, "A:P:p:s:N:L:I:n:DSh")) != -1)
+  while ((option = getopt (argc, argv, "A:P:p:M:s:N:L:I:n:DSh")) != -1)
 #else
-  while ((option = getopt (argc, argv, "A:P:p:s:N:L:I:n:R:G:Q:DSh")) != -1)
+  while ((option = getopt (argc, argv, "A:P:p:M:s:N:L:I:n:R:G:Q:DSh")) != -1)
 #endif
     {
       switch (option)
@@ -334,6 +340,12 @@ main (int argc, char **argv)
 	  tm->zrpc_bgp_updater_queue_maximum_size = val;
 	  break;
 #endif
+	case 'M':
+	  zrpc_stalemarker_timer = atoi(optarg);
+	  if (zrpc_stalemarker_timer < STALEMARKER_TIMER_MIN ||
+	      zrpc_stalemarker_timer > STALEMARKER_TIMER_MAX)
+	    zrpc_stalemarker_timer = STALEMARKER_TIMER_DEFAULT;
+	  break;
 	case 'h':
 	  zrpc_usage (0);
 	  break;

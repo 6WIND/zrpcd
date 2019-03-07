@@ -42,6 +42,11 @@
 #define ZRPC_DEFAULT_LOG_FILE "/opt/quagga/var/log/quagga/zrpcd.init.log"
 #define ZRPC_DEFAULT_LOG_LEVEL "debugging"
 
+#define STALEMARKER_TIMER_MAX 3600
+#define STALEMARKER_TIMER_MIN 0
+#define STALEMARKER_TIMER_DEFAULT 1800
+#define BGP_CONFIG_FLAG_STALE (1 << 0)
+
 struct thread;
 
 struct zrpc_vpnservice_client
@@ -135,6 +140,12 @@ struct zrpc_vpnservice
   struct zrpc_vpnservice_cache_peer *bgp_peer_list;
   struct zrpc_vpnservice_cache_bgpvrf *bgp_get_routes_list;
 
+  /* Timer thread for configs marked as STALE. If one STALE config
+   * is received again before this timer expires, STALE flag will
+   * be removed for this config. When this timer expires, all configs
+   * marked as STALE will be deleted. */
+  struct thread *config_stale_thread;
+
   /* bgp updater statistics */
   u_int32_t bgp_update_lost_msgs;
   u_int32_t bgp_update_monitor;
@@ -188,4 +199,8 @@ gboolean zrpc_vpnservice_set_bgp_context_multipath (struct zrpc_vpnservice_bgp_c
                                                     address_family_t afi, subsequent_address_family_t safi,
                                                     uint8_t on, gint32* _return, GError **error);
 extern int zrpc_vpnservice_get_bgp_updater_socket (struct zrpc_vpnservice *setup);
+
+extern void zrpc_config_stale_set(struct zrpc_vpnservice *setup);
+extern void zrpc_config_stale_timer_flush(struct zrpc_vpnservice *setup, bool donotflush);
+
 #endif /* _ZRPC_VPNSERVICE_H */
