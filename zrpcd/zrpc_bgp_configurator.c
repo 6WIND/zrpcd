@@ -2550,6 +2550,13 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
   entry = zrpc_bgp_configurator_find_peer(ctxt, routerId, _return, 0);
   if(entry && entry->peer_nid)
     {
+      if (CHECK_FLAG(entry->flags, BGP_CONFIG_FLAG_STALE))
+        {
+          UNSET_FLAG (entry->flags, BGP_CONFIG_FLAG_STALE);
+          if (IS_ZRPC_DEBUG)
+            zrpc_info ("Peer(%s) unset STALE state", routerId);
+        }
+
       if(IS_ZRPC_DEBUG)
         zrpc_info ("createPeer(%s) already present. do nothing.", routerId);
 #if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4)
@@ -3143,6 +3150,16 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
              zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd,
                         AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN);
          }
+       /* unset STALE flag if this vrf is added again for this (afi,safi) family */
+       af = ADDRESS_FAMILY_IP;
+       saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
+                       AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN);
+         }
 
 #if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
        /* enable VRF for (IPv6, MPLSVPN) */
@@ -3158,6 +3175,16 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
          {
            if (IS_ZRPC_DEBUG)
              zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd,
+                        AF_AFI_AFI_IPV6, AF_SAFI_SAFI_MPLS_VPN);
+         }
+       /* unset STALE flag if this vrf is added again for this (afi,safi) family */
+       af = ADDRESS_FAMILY_IPV6;
+       saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
                         AF_AFI_AFI_IPV6, AF_SAFI_SAFI_MPLS_VPN);
          }
 #endif /* defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
@@ -3178,6 +3205,16 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
              zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd,
                         AF_AFI_AFI_IP, AF_SAFI_SAFI_EVPN);
          }
+       /* unset STALE flag if this vrf is added again for this (afi,safi) family */
+       af = ADDRESS_FAMILY_IP;
+       saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
+                        AF_AFI_AFI_IP, AF_SAFI_SAFI_EVPN);
+         }
 #endif /* defined(HAVE_THRIFT_V2) || defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
 
 #if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
@@ -3196,6 +3233,16 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
              zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd,
                         AF_AFI_AFI_IPV6, AF_SAFI_SAFI_EVPN);
          }
+       /* unset STALE flag if this vrf is added again for this (afi,safi) family */
+       af = ADDRESS_FAMILY_IPV6;
+       saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
+                        AF_AFI_AFI_IPV6, AF_SAFI_SAFI_EVPN);
+         }
 #endif /* defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
      }
 #ifdef HAVE_THRIFT_V5
@@ -3211,6 +3258,14 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
          {
            if (IS_ZRPC_DEBUG)
              zrpc_info ("addVrf(%s, afi %u, safi %u) NOK", rd, afi, safi);
+         }
+       /* unset STALE flag if this vrf is added again for this (afi,safi) family */
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
+                        afi, safi);
          }
      }
 #endif /* THRIFT_V5 */
@@ -3369,6 +3424,16 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
              zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd,
                         AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN);
          }
+       /* unset STALE flag if this vrf is disabled this (afi,safi) family */
+       af = ADDRESS_FAMILY_IP;
+       saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
+                        AF_AFI_AFI_IP, AF_SAFI_SAFI_MPLS_VPN);
+         }
 
 #if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
        /* disable VRF for (IPv6, MPLSVPN) */
@@ -3384,6 +3449,16 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
          {
            if (IS_ZRPC_DEBUG)
              zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd,
+                        AF_AFI_AFI_IPV6, AF_SAFI_SAFI_MPLS_VPN);
+         }
+       /* unset STALE flag if this vrf is disabled for this (afi,safi) family */
+       af = ADDRESS_FAMILY_IPV6;
+       saf = SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN;
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
                         AF_AFI_AFI_IPV6, AF_SAFI_SAFI_MPLS_VPN);
          }
 #endif /* defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
@@ -3404,6 +3479,16 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
              zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd,
                         AF_AFI_AFI_IP, AF_SAFI_SAFI_EVPN);
          }
+       /* unset STALE flag if this vrf is disabled for this (afi,safi) family */
+       af = ADDRESS_FAMILY_IP;
+       saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
+                        AF_AFI_AFI_IP, AF_SAFI_SAFI_EVPN);
+         }
 #endif /* defined(HAVE_THRIFT_V2) || defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
 
 #if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
@@ -3420,6 +3505,16 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
          {
            if (IS_ZRPC_DEBUG)
              zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd,
+                        AF_AFI_AFI_IPV6, AF_SAFI_SAFI_EVPN);
+         }
+       /* unset STALE flag if this vrf is disabled for this (afi,safi) family */
+       af = ADDRESS_FAMILY_IPV6;
+       saf = SUBSEQUENT_ADDRESS_FAMILY_EVPN;
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
                         AF_AFI_AFI_IPV6, AF_SAFI_SAFI_EVPN);
          }
 #endif /* defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5) */
@@ -3440,6 +3535,14 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
          {
            if (IS_ZRPC_DEBUG)
              zrpc_info ("delVrf(%s, afi %u, safi %u) OK", rd, afi, safi);
+         }
+       /* unset STALE flag if this vrf is disabled for this (afi,safi) family */
+       if (CHECK_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE))
+         {
+           UNSET_FLAG(entry->stale_flags[af][saf], BGP_CONFIG_FLAG_STALE);
+           if (IS_ZRPC_DEBUG)
+             zrpc_info ("VRF(%s) afi %u, safi %u unset STALE state", rd,
+                        afi, safi);
          }
      }
 #endif /* !HAVE_THRIFT_V5 */
@@ -5373,3 +5476,154 @@ instance_bgp_configurator_handler_init(InstanceBgpConfiguratorHandler *self)
   return;
 }
 
+void zrpc_delete_stale_vrf(struct zrpc_vpnservice *setup,
+	                   struct zrpc_vpnservice_cache_bgpvrf *vrf)
+{
+  af_afi afi;
+  af_safi safi;
+  int ret;
+  int dont_remove_this_vrf = 0;
+
+  if (!setup || !vrf)
+    return;
+
+  /* Is there other RIB table enabled with no stale flag? If no, delete the vrf node. */
+  for (int i = 0; i < ADDRESS_FAMILY_MAX; i++ )
+    for (int j = 0; j < SUBSEQUENT_ADDRESS_FAMILY_MAX; j++)
+      if (vrf->afc[i][j] && !CHECK_FLAG(vrf->stale_flags[i][j], BGP_CONFIG_FLAG_STALE))
+        {
+          dont_remove_this_vrf = 1;
+          break;
+        }
+
+  if (dont_remove_this_vrf)
+    {
+      for (int i = 0; i < ADDRESS_FAMILY_MAX; i++ )
+        for (int j = 0; j < SUBSEQUENT_ADDRESS_FAMILY_MAX; j++)
+          if (vrf->afc[i][j] && CHECK_FLAG(vrf->stale_flags[i][j], BGP_CONFIG_FLAG_STALE))
+            {
+              if (i == ADDRESS_FAMILY_IP)
+                afi = AF_AFI_AFI_IP;
+#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
+              else if (i == ADDRESS_FAMILY_IPV6)
+                afi = AF_AFI_AFI_IPV6;
+#endif
+              else
+                continue;
+
+              if (j == SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN)
+                safi = AF_SAFI_SAFI_MPLS_VPN;
+#if defined(HAVE_THRIFT_V2) || defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
+              else if (j == SUBSEQUENT_ADDRESS_FAMILY_EVPN)
+                safi = AF_SAFI_SAFI_EVPN;
+#endif
+              else
+                continue;
+
+              ret = zrpc_bgp_disable_vrf(setup, vrf, i, j);
+              if (ret == 0)
+                {
+                  if (IS_ZRPC_DEBUG)
+                    {
+                      char rdstr[ZRPC_UTIL_RDRT_LEN];
+                      zrpc_util_rd_prefix2str (&(vrf->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN);
+                      zrpc_info ("Stale vrf(%s, afi %u, safi %u) disabled NOK", rdstr, afi, safi);
+                    }
+                }
+              else
+                {
+                  if (IS_ZRPC_DEBUG)
+                    {
+                      char rdstr[ZRPC_UTIL_RDRT_LEN];
+                      zrpc_util_rd_prefix2str (&(vrf->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN);
+                      zrpc_info ("Stale vrf(%s, afi %u, safi %u) disabled OK", rdstr, afi, safi);
+                    }
+                }
+              /* unset STALE flag if this vrf is disabled for this (afi,safi) family */
+              if (CHECK_FLAG(vrf->stale_flags[i][j], BGP_CONFIG_FLAG_STALE))
+                UNSET_FLAG(vrf->stale_flags[i][j], BGP_CONFIG_FLAG_STALE);
+            }
+
+      return;
+    }
+
+
+  if (qzcclient_deletenode(setup->p_qzc_sock, &vrf->bgpvrf_nid))
+    {
+      struct zrpc_vpnservice_cache_bgpvrf *entry, *entry_prev, *entry_next;
+
+      entry_prev = NULL;
+      for (entry = setup->bgp_vrf_list; entry; entry = entry_next)
+        {
+          entry_next = entry->next;
+          if (entry == vrf)
+            {
+              if (IS_ZRPC_DEBUG)
+                {
+                  char rdstr[ZRPC_UTIL_RDRT_LEN];
+                  zrpc_util_rd_prefix2str (&(vrf->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN);
+                  zrpc_info ("Stale vrf %s(%llx) deleted", rdstr,
+                             (long long unsigned int)vrf->bgpvrf_nid);
+                }
+              if (entry_prev)
+                entry_prev->next = entry_next;
+              else
+                setup->bgp_vrf_list = entry_next;
+              ZRPC_FREE (entry);
+              break;
+            }
+          entry_prev = entry;
+        }
+    }
+  else
+    {
+      if (IS_ZRPC_DEBUG)
+        {
+          char rdstr[ZRPC_UTIL_RDRT_LEN];
+          zrpc_util_rd_prefix2str (&(vrf->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN);
+          zrpc_err ("Failed to delete stale vrf %s(%llx) (capnproto error)",
+                    rdstr, (long long unsigned int)vrf->bgpvrf_nid);
+        }
+    }
+}
+
+void zrpc_delete_stale_peer(struct zrpc_vpnservice *setup,
+                            struct zrpc_vpnservice_cache_peer *peer)
+{
+  if (!setup || !peer)
+    return;
+
+  /* destroy node id */
+  if (qzcclient_deletenode(setup->p_qzc_sock, &peer->peer_nid))
+    {
+      struct zrpc_vpnservice_cache_peer *entry, *entry_prev, *entry_next;
+
+      entry_prev = NULL;
+      for (entry = setup->bgp_peer_list; entry; entry = entry_next)
+        {
+          entry_next = entry->next;
+          if (entry == peer)
+            {
+              if (IS_ZRPC_DEBUG)
+                zrpc_info ("Stale peer %s(%llx) deleted",
+                           peer->peerIp, (long long unsigned int)peer->peer_nid);
+
+              if (entry_prev)
+                entry_prev->next = entry_next;
+              else
+                setup->bgp_peer_list = entry_next;
+              ZRPC_FREE (entry->peerIp);
+              entry->peerIp = NULL;
+              ZRPC_FREE (entry);
+              break;
+            }
+          entry_prev = entry;
+        }
+    }
+  else
+    {
+      if (IS_ZRPC_DEBUG)
+        zrpc_info ("Failed to delete stale peer %s(%llx) (capnproto error)",
+                   peer->peerIp, (long long unsigned int)peer->peer_nid);
+    }
+}

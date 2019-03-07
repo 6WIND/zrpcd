@@ -998,12 +998,69 @@ void zrpc_vpnservice_setup_client(struct zrpc_vpnservice_client *peer,
 
 void zrpc_config_stale_timer_flush(struct zrpc_vpnservice *setup, bool donotflush)
 {
+  struct zrpc_vpnservice_cache_bgpvrf *vrf, *vrf_next;
+  struct zrpc_vpnservice_cache_peer *peer, *peer_next;
+
   if (donotflush) {
     zrpc_err ("ODL/Bgp connection configuration synchronization failed, "
               "stale timer expired after %d seconds, not REMOVE any "
               "stale configuration below.", zrpc_stalemarker_timer);
   }
-  /* flush staled vrfs/peers/routes here, TODO */
+
+  for (vrf = setup->bgp_vrf_list; vrf; vrf = vrf_next)
+    {
+      vrf_next = vrf->next;
+      if (donotflush)
+        {
+          for (int i = 0; i < ADDRESS_FAMILY_MAX; i++)
+            for (int j = 0; j < SUBSEQUENT_ADDRESS_FAMILY_MAX; j++)
+              if (vrf->afc[i][j] && CHECK_FLAG (vrf->stale_flags[i][j], BGP_CONFIG_FLAG_STALE))
+                {
+                  if (IS_ZRPC_DEBUG)
+                    {
+                      af_afi afi;
+                      af_safi safi;
+                      char rdstr[ZRPC_UTIL_RDRT_LEN];
+
+                      if (i == ADDRESS_FAMILY_IP)
+                        afi = AF_AFI_AFI_IP;
+#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
+                      else if (i == ADDRESS_FAMILY_IPV6)
+                        afi = AF_AFI_AFI_IPV6;
+#endif
+                      if (j == SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN)
+                        safi = AF_SAFI_SAFI_MPLS_VPN;
+#if defined(HAVE_THRIFT_V2) || defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
+                      else if (j == SUBSEQUENT_ADDRESS_FAMILY_EVPN)
+                        safi = AF_SAFI_SAFI_EVPN;
+#endif
+
+                      zrpc_util_rd_prefix2str (&(vrf->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN);
+                      zrpc_info ("Stale vrf(%s, afi %u, safi %u) should be deleted", rdstr, afi, safi);
+                    }
+                }
+        }
+      else
+        zrpc_delete_stale_vrf(setup, vrf);
+    }
+
+  for (peer = setup->bgp_peer_list; peer; peer = peer_next)
+    {
+      peer_next = peer->next;
+      if (CHECK_FLAG(peer->flags, BGP_CONFIG_FLAG_STALE))
+        {
+          if (donotflush)
+            {
+              if (IS_ZRPC_DEBUG)
+                {
+                  zrpc_info ("Stale peer %s(%llx) should be deleted",
+                             peer->peerIp, (long long unsigned int)peer->peer_nid);
+                }
+            }
+          else
+            zrpc_delete_stale_peer(setup, peer);
+        }
+    }
 }
 
 static int zrpc_config_stale_timer_expire (struct thread *thread)
@@ -1030,7 +1087,45 @@ void zrpc_config_stale_set(struct zrpc_vpnservice *setup)
       zrpc_vpnservice_get_bgp_context(setup)->asNumber == 0)
     return;
 
-  /* Mark vrfs/peers/routes as stale config here, TODO */
+  /* lookup in cache context, and set QBGP_CONFIG_STALE flag */
+  for (vrf = setup->bgp_vrf_list; vrf; vrf = vrf->next)
+    {
+      for (int i = 0; i < ADDRESS_FAMILY_MAX; i++)
+        for (int j = 0; j < SUBSEQUENT_ADDRESS_FAMILY_MAX; j++)
+          if (vrf->afc[i][j])
+            {
+              if (IS_ZRPC_DEBUG)
+                {
+                  af_afi afi;
+                  af_safi safi;
+                  char rdstr[ZRPC_UTIL_RDRT_LEN];
+
+		  if (i == ADDRESS_FAMILY_IP)
+                    afi = AF_AFI_AFI_IP;
+#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
+                  else if (i == ADDRESS_FAMILY_IPV6)
+                    afi = AF_AFI_AFI_IPV6;
+#endif
+                  if (j == SUBSEQUENT_ADDRESS_FAMILY_MPLS_VPN)
+                    safi = AF_SAFI_SAFI_MPLS_VPN;
+#if defined(HAVE_THRIFT_V2) || defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
+                  else if (j == SUBSEQUENT_ADDRESS_FAMILY_EVPN)
+                    safi = AF_SAFI_SAFI_EVPN;
+#endif
+
+                  zrpc_util_rd_prefix2str (&(vrf->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN);
+                  zrpc_info ("VRF(%s, afi %u, safi %u) set to STALE state", rdstr, afi, safi);
+                }
+              SET_FLAG (vrf->stale_flags[i][j], BGP_CONFIG_FLAG_STALE);
+            }
+    }
+
+  for (peer = setup->bgp_peer_list; peer; peer = peer->next)
+    {
+      if (IS_ZRPC_DEBUG)
+        zrpc_info ("Peer %s set to STALE state", peer->peerIp);
+      SET_FLAG (peer->flags, BGP_CONFIG_FLAG_STALE);
+    }
 
   THREAD_TIMER_OFF(setup->config_stale_thread);
   THREAD_TIMER_MSEC_ON(tm->global, setup->config_stale_thread, \

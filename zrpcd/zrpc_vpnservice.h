@@ -77,12 +77,14 @@ struct zrpc_vpnservice_cache_bgpvrf
   struct zrpc_vpnservice_cache_bgpvrf *next;
   bgp_layer_type_t ltype;
   uint8_t afc[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
+  uint8_t stale_flags[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
 };
 
 struct zrpc_vpnservice_cache_peer
 {
   uint64_t peer_nid;
   uint32_t asNumber;
+  uint16_t flags;
   char *peerIp;
   struct zrpc_vpnservice_cache_peer *next;
   uint8_t enableAddressFamily[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
@@ -201,6 +203,10 @@ gboolean zrpc_vpnservice_set_bgp_context_multipath (struct zrpc_vpnservice_bgp_c
 extern int zrpc_vpnservice_get_bgp_updater_socket (struct zrpc_vpnservice *setup);
 
 extern void zrpc_config_stale_set(struct zrpc_vpnservice *setup);
+extern void zrpc_delete_stale_vrf(struct zrpc_vpnservice *setup,
+                                  struct zrpc_vpnservice_cache_bgpvrf *vrf);
 extern void zrpc_config_stale_timer_flush(struct zrpc_vpnservice *setup, bool donotflush);
+extern void zrpc_delete_stale_peer(struct zrpc_vpnservice *setup,
+                                   struct zrpc_vpnservice_cache_peer *peer);
 
 #endif /* _ZRPC_VPNSERVICE_H */

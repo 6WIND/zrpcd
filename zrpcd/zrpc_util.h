@@ -73,6 +73,11 @@ typedef u_int8_t subsequent_address_family_t;
 /* reuse AF_L2VPN define */
 #define AF_L2VPN 44
 
+/* Flag manipulation macros. */
+#define CHECK_FLAG(V,F)      ((V) & (F))
+#define SET_FLAG(V,F)        (V) |= (F)
+#define UNSET_FLAG(V,F)      (V) &= ~(F)
+
 struct zrpc_ethaddr {
     u_char octet[ZRPC_MAC_LEN];
 } __attribute__ ((packed));
