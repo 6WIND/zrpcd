@@ -25,6 +25,7 @@
 
 extern void zrpc_log (const char *format, ...);
 extern void zrpc_info (const char *format, ...);
+extern void zrpc_err (const char *format, ...);
 
 extern unsigned long zrpc_debug;
 

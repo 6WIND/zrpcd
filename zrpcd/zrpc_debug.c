@@ -431,6 +431,38 @@ zrpc_info(const char *format, ...)
   zrpc_system (dest_sys);
 }
 
+void
+zrpc_err(const char *format, ...)
+{
+  time_t t;
+  char buffer[50];
+  struct tm* tm_info;
+  static char dest[1024];
+  va_list argptr;
+
+  if (log_level < ZRPC_LOG_LEVEL_ERRORS)
+    return;
+
+  time (&t);
+  tm_info = localtime(&t);
+  strftime(buffer, 26, "%Y/%m/%d %H:%M:%S", tm_info);
+  va_start(argptr, format);
+  vsprintf(dest, format, argptr);
+  va_end(argptr);
+  if (log_stdout)
+    fprintf(stderr, "%s %s ZRPC: %s\r\n",
+            buffer, record_priority ?
+            zrpc_log_level_str[ZRPC_LOG_LEVEL_ERRORS] : "", dest);
+  if (log_syslog)
+    syslog(ZRPC_LOG_LEVEL_ERRORS | log_facility, "%s", dest);
+  if (!log_file_filename)
+    return;
+  sprintf(dest_sys, "%s %s ZRPC: %s",
+            buffer, record_priority ?
+            zrpc_log_level_str[ZRPC_LOG_LEVEL_ERRORS] : "", dest);
+  zrpc_system (dest_sys);
+}
+
 /* this fuction will configure file logging, and level logging for
  * all target : stdout, file or syslog
  */
