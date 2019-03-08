@@ -2569,6 +2569,7 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
        capn_init_malloc(&rc);
        cs = capn_root(&rc).seg;
        bgpvrf = qcapn_new_BGPVRF(cs);
+       instvrf.max_mpath = 2;
        qcapn_BGPVRF_write(&instvrf, bgpvrf);
        bgpvrf_nid = qzcclient_createchild (ctxt->p_qzc_sock, &bgp_inst_nid, 3, \
                                            &bgpvrf, &bgp_datatype_bgpvrf);
