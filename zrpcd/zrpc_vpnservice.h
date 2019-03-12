@@ -11,6 +11,8 @@
 #include "zrpcd/zrpc_os_wrapper.h"
 #include "zrpcd/zrpc_util.h"
 #include "zrpcd/zrpc_bgp_capnp.h"
+#include "prefix.h"
+#include "table.h"
 
 #define ZRPC_LISTEN_PORT	 7644
 #define ZRPC_NOTIFICATION_PORT 6644
@@ -68,6 +70,15 @@ struct zrpc_vpnservice_bgp_context
   uint8_t multipath_on[AFI_MAX][SAFI_MAX];
 };
 
+struct zrpc_bgp_static
+{
+  struct zrpc_rd_prefix prd;
+#if !defined(HAVE_THRIFT_V1)
+  protocol_type p_type;
+#endif
+  uint16_t flags;
+};
+
 /* zrpc cache contexts */
 struct zrpc_vpnservice_cache_bgpvrf
 {
@@ -78,6 +89,8 @@ struct zrpc_vpnservice_cache_bgpvrf
   bgp_layer_type_t ltype;
   uint8_t afc[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
   uint8_t stale_flags[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
+  /* Static route configuration.  */
+  struct route_table *route[ADDRESS_FAMILY_MAX];
 };
 
 struct zrpc_vpnservice_cache_peer
@@ -208,5 +221,8 @@ extern void zrpc_delete_stale_vrf(struct zrpc_vpnservice *setup,
 extern void zrpc_config_stale_timer_flush(struct zrpc_vpnservice *setup, bool donotflush);
 extern void zrpc_delete_stale_peer(struct zrpc_vpnservice *setup,
                                    struct zrpc_vpnservice_cache_peer *peer);
+extern void zrpc_delete_stale_route(struct zrpc_vpnservice *setup,
+                                    struct route_node *rn);
+extern void zrpc_clear_vrf_route_table(struct zrpc_vpnservice_cache_bgpvrf *entry);
 
 #endif /* _ZRPC_VPNSERVICE_H */

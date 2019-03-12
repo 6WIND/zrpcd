@@ -22,6 +22,8 @@
 #include "zrpcd/qzcclient.capnp.h"
 #include "zrpcd/zrpc_bfd_capnp.h"
 
+#include "prefix.h"
+#include "table.h"
 
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -1247,6 +1249,8 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
   int ret;
   gboolean is_auto_discovery = FALSE;
   char esi_static[]="00:00:00:00:00:00:00:00:00:00";
+  struct route_node *rn;
+  struct zrpc_bgp_static *bgp_static;
 #if !defined(HAVE_THRIFT_V1)
   char error_cplment[100];
 
@@ -1537,6 +1541,32 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
       sprintf(error_cplment, "(RD %s not configured with afi %d)", rd, af);
       goto error;
     }
+
+    /* save static route */
+    rn = route_node_get (bgpvrf->route[af], (const struct prefix *)&inst.prefix);
+    if (rn->info)
+      {
+        struct zrpc_bgp_static *bs = rn->info;
+
+        if (CHECK_FLAG(bs->flags, BGP_CONFIG_FLAG_STALE))
+          {
+            UNSET_FLAG(bs->flags, BGP_CONFIG_FLAG_STALE);
+            if (IS_ZRPC_DEBUG)
+              zrpc_log ("Route(prefix %s, rd %s) unset STALE state", prefix, rd);
+          }
+        route_unlock_node (rn);
+      }
+    else
+      {
+        bgp_static = ZRPC_CALLOC (sizeof (struct zrpc_bgp_static));
+        bgp_static->prd = rd_inst;
+#if !defined(HAVE_THRIFT_V1)
+        bgp_static->p_type = p_type;
+#endif
+        rn->info = bgp_static;
+        if (IS_ZRPC_DEBUG_CACHE)
+          zrpc_log ("CACHE_ROUTES: add route(prefix %s, rd %s)", prefix, rd);
+      }
   }
 #endif /* !HAVE_THRIFT_V1 */
 
@@ -1649,6 +1679,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   int ret;
   gboolean is_auto_discovery = FALSE;
   char esi_static[]="00:00:00:00:00:00:00:00:00:00";
+  struct route_node *rn;
 #if !defined(HAVE_THRIFT_V1)
   char error_cplment[100];
 
@@ -1869,6 +1900,23 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
       sprintf(error_cplment, "(RD %s not configured with afi %d)", rd, af);
       goto error;
     }
+
+    /* delete static route */
+    rn = route_node_lookup(bgpvrf->route[af], (const struct prefix *)&inst.prefix);
+    if (rn)
+      {
+        struct zrpc_bgp_static *bs = rn->info;
+
+        if (bs)
+          {
+            if (IS_ZRPC_DEBUG_CACHE)
+                zrpc_log ("CACHE_ROUTES: del route(prefix %s, rd %s)", prefix, rd);
+            ZRPC_FREE(bs);
+            rn->info = NULL;
+          }
+        route_unlock_node (rn); /* to free the lookup lock */
+        route_unlock_node (rn); /* to free the original lock */
+      }
   }
 #endif /* !HAVE_THRIFT_V1 */
 
@@ -3077,6 +3125,10 @@ zrpc_bgp_enable_vrf(struct zrpc_vpnservice *ctxt, struct bgp_vrf *instvrf,
        entry->outbound_rd = instvrf.outbound_rd;
        entry->ltype = instvrf.ltype;
        entry->bgpvrf_nid = bgpvrf_nid;
+
+       for (int i = ADDRESS_FAMILY_IP; i < ADDRESS_FAMILY_MAX; i++ )
+         entry->route[i] = route_table_init();
+
        if(IS_ZRPC_DEBUG_CACHE)
          zrpc_log ("CACHE_VRF: add entry %llx", (long long unsigned int)bgpvrf_nid);
        entry->next = ctxt->bgp_vrf_list;
@@ -3551,6 +3603,9 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
      for (int j = 0; j < SUBSEQUENT_ADDRESS_FAMILY_MAX; j++)
        if (entry->afc[i][j])
            return TRUE;
+
+   /* Clear static route table */
+   zrpc_clear_vrf_route_table(entry);
 
    if( qzcclient_deletenode(ctxt->p_qzc_sock, &bgpvrf_nid))
      {
@@ -5547,6 +5602,8 @@ void zrpc_delete_stale_vrf(struct zrpc_vpnservice *setup,
       return;
     }
 
+  /* Clear static route table */
+  zrpc_clear_vrf_route_table(vrf);
 
   if (qzcclient_deletenode(setup->p_qzc_sock, &vrf->bgpvrf_nid))
     {
@@ -5626,4 +5683,122 @@ void zrpc_delete_stale_peer(struct zrpc_vpnservice *setup,
         zrpc_info ("Failed to delete stale peer %s(%llx) (capnproto error)",
                    peer->peerIp, (long long unsigned int)peer->peer_nid);
     }
+}
+
+void
+zrpc_clear_vrf_route_table(struct zrpc_vpnservice_cache_bgpvrf *entry)
+{
+  struct route_node *rn;
+
+  if (!entry)
+    return;
+
+  for (int i = ADDRESS_FAMILY_IP; i < ADDRESS_FAMILY_MAX; i++ )
+    {
+      if (!entry->route[i])
+        continue;
+
+      /* Clear static route table */
+      for (rn = route_top (entry->route[i]); rn; rn = route_next (rn))
+        {
+          struct zrpc_bgp_static *bs;
+
+          if ((bs = rn->info) != NULL)
+            {
+              if (IS_ZRPC_DEBUG_CACHE)
+                {
+                  char pfx_str[INET6_BUFSIZ];
+                  char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
+
+                  zrpc_util_rd_prefix2str(&entry->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
+                  prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+                  zrpc_log ("CACHE_ROUTES: del route(prefix %s, rd %s)", pfx_str, vrf_rd_str);
+                }
+              ZRPC_FREE(bs);
+              rn->info = NULL;
+              route_unlock_node (rn);
+            }
+        }
+      route_table_finish(entry->route[i]);
+      entry->route[i] = NULL;
+    }
+}
+
+void zrpc_delete_stale_route(struct zrpc_vpnservice *setup,
+	                     struct route_node *rn)
+{
+  struct bgp_api_route inst;
+  uint64_t bgpvrf_nid = 0;
+  address_family_t afi_int = ADDRESS_FAMILY_IP;
+  struct capn_ptr bgpvrfroute;
+  struct capn_ptr afikey;
+  struct capn rc;
+  struct capn_segment *cs;
+  int ret;
+  struct zrpc_bgp_static *bs = rn->info;
+  struct zrpc_vpnservice_cache_bgpvrf *vrf;
+
+  if (!setup || !rn || !bs)
+    return;
+
+  /* if vrf not found, return */
+  vrf = zrpc_bgp_configurator_find_vrf(setup, &bs->prd, NULL);
+  if (!vrf)
+    return;
+  bgpvrf_nid = vrf->bgpvrf_nid;
+
+  memset(&inst, 0, sizeof(struct bgp_api_route));
+  prefix_copy ((struct prefix *)(&inst.prefix), &rn->p);
+
+#if !defined(HAVE_THRIFT_V1)
+  if (bs->p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
+    afi_int = ADDRESS_FAMILY_L2VPN;
+  else
+    {
+#endif
+      if (inst.prefix.family == AF_INET)
+        afi_int = ADDRESS_FAMILY_IP;
+      else if (inst.prefix.family == AF_INET6)
+        afi_int = ADDRESS_FAMILY_IPV6;
+#if !defined(HAVE_THRIFT_V1)
+    }
+#endif
+
+  capn_init_malloc(&rc);
+  cs = capn_root(&rc).seg;
+  bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
+  qcapn_BGPVRFRoute_write(&inst, bgpvrfroute);
+  /* prepare afi context */
+  afikey = qcapn_new_AfiKey(cs);
+  capn_write8(afikey, 0, afi_int);
+  /* set route within afi context using QZC set request */
+  ret = qzcclient_unsetelem (setup->p_qzc_sock, &bgpvrf_nid, 3, \
+                             &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
+                             &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+  if (ret)
+    {
+      if (IS_ZRPC_DEBUG)
+        {
+          char pfx_str[INET6_BUFSIZ];
+          char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
+
+          zrpc_util_rd_prefix2str(&vrf->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
+          prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+          zrpc_info ("Stale route(prefix %s, rd %s) withdrawn", pfx_str, vrf_rd_str);
+        }
+    }
+  else
+    {
+      if (IS_ZRPC_DEBUG)
+        {
+          char pfx_str[INET6_BUFSIZ];
+          char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
+
+          zrpc_util_rd_prefix2str(&vrf->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
+          prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+          zrpc_info ("Failed to withdraw stale route(prefix %s, rd %s)", pfx_str, vrf_rd_str);
+        }
+    }
+
+  capn_free(&rc);
 }

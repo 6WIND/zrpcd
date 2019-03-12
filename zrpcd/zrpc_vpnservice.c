@@ -10,6 +10,8 @@
 #include "workqueue.h"
 #endif
 #include "config.h"
+#include "prefix.h"
+#include "table.h"
 
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_thrift_wrapper.h"
@@ -825,6 +827,9 @@ void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup)
   setup->bgp_vrf_list = NULL;
   for (entry_bgpvrf = setup->bgp_vrf_list; entry_bgpvrf; entry_bgpvrf = entry_bgpvrf_next)
     {
+      /* Clear static route table */
+      zrpc_clear_vrf_route_table(entry_bgpvrf);
+
       entry_bgpvrf_next = entry_bgpvrf->next;
       ZRPC_FREE (entry_bgpvrf);
     }
@@ -1010,6 +1015,45 @@ void zrpc_config_stale_timer_flush(struct zrpc_vpnservice *setup, bool donotflus
   for (vrf = setup->bgp_vrf_list; vrf; vrf = vrf_next)
     {
       vrf_next = vrf->next;
+      struct route_node *rn;
+
+      for (int i = ADDRESS_FAMILY_IP; i < ADDRESS_FAMILY_MAX; i++ )
+        {
+          if (!vrf->route[i])
+            continue;
+          /* delete the static routes marked as STALE */
+          for (rn = route_top (vrf->route[i]); rn; rn = route_next (rn))
+            {
+              struct zrpc_bgp_static *bs;
+
+              if ((bs = rn->info) != NULL)
+                {
+                  if (CHECK_FLAG(bs->flags, BGP_CONFIG_FLAG_STALE))
+                    {
+                      if (donotflush)
+                        {
+                          if (IS_ZRPC_DEBUG)
+                            {
+                              char pfx_str[INET6_BUFSIZ];
+                              char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
+
+                              zrpc_util_rd_prefix2str(&vrf->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
+                              prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+                              zrpc_err ("Stale route(prefix %s, rd %s) should be withdrawn", pfx_str, vrf_rd_str);
+                            }
+                        }
+                      else
+                        {
+                          zrpc_delete_stale_route(setup, rn);
+                          ZRPC_FREE(bs);
+                          rn->info = NULL;
+                          route_unlock_node(rn);
+                        }
+                    }
+                }
+            }
+        }
+
       if (donotflush)
         {
           for (int i = 0; i < ADDRESS_FAMILY_MAX; i++)
@@ -1036,7 +1080,7 @@ void zrpc_config_stale_timer_flush(struct zrpc_vpnservice *setup, bool donotflus
 #endif
 
                       zrpc_util_rd_prefix2str (&(vrf->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN);
-                      zrpc_info ("Stale vrf(%s, afi %u, safi %u) should be deleted", rdstr, afi, safi);
+                      zrpc_err ("Stale vrf(%s, afi %u, safi %u) should be deleted", rdstr, afi, safi);
                     }
                 }
         }
@@ -1053,7 +1097,7 @@ void zrpc_config_stale_timer_flush(struct zrpc_vpnservice *setup, bool donotflus
             {
               if (IS_ZRPC_DEBUG)
                 {
-                  zrpc_info ("Stale peer %s(%llx) should be deleted",
+                  zrpc_err ("Stale peer %s(%llx) should be deleted",
                              peer->peerIp, (long long unsigned int)peer->peer_nid);
                 }
             }
@@ -1090,6 +1134,8 @@ void zrpc_config_stale_set(struct zrpc_vpnservice *setup)
   /* lookup in cache context, and set QBGP_CONFIG_STALE flag */
   for (vrf = setup->bgp_vrf_list; vrf; vrf = vrf->next)
     {
+      struct route_node *rn;
+
       for (int i = 0; i < ADDRESS_FAMILY_MAX; i++)
         for (int j = 0; j < SUBSEQUENT_ADDRESS_FAMILY_MAX; j++)
           if (vrf->afc[i][j])
@@ -1118,6 +1164,26 @@ void zrpc_config_stale_set(struct zrpc_vpnservice *setup)
                 }
               SET_FLAG (vrf->stale_flags[i][j], BGP_CONFIG_FLAG_STALE);
             }
+
+      for (int i = ADDRESS_FAMILY_IP; i < ADDRESS_FAMILY_MAX; i++)
+        for (rn = route_top (vrf->route[i]); rn; rn = route_next (rn))
+          {
+            struct zrpc_bgp_static *bs;
+
+            if ((bs = rn->info) != NULL)
+              {
+                if (IS_ZRPC_DEBUG)
+                  {
+                    char rdstr[ZRPC_UTIL_RDRT_LEN];
+                    char pfx_str[INET6_BUFSIZ];
+
+                    zrpc_util_rd_prefix2str(&(vrf->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN);
+                    prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+                    zrpc_info ("Route(prefix %s, rd %s) set to STALE state", pfx_str, rdstr);
+                  }
+                SET_FLAG(bs->flags, BGP_CONFIG_FLAG_STALE);
+              }
+          }
     }
 
   for (peer = setup->bgp_peer_list; peer; peer = peer->next)
