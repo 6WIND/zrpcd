@@ -143,6 +143,7 @@ struct qzcclient_sock *qzcclient_connect (const char *url, uint32_t limit)
   void *qzc_sock;
   struct qzcclient_sock *ret;
   uint64_t socket_size = QZC_SOCKET_SIZE_USER;
+  int val;
 
   qzc_sock = zmq_socket (qzmqclient_context, ZMQ_REQ);
   if (!qzc_sock)
@@ -157,6 +158,9 @@ struct qzcclient_sock *qzcclient_connect (const char *url, uint32_t limit)
                   sizeof(socket_size));
   zmq_setsockopt (qzc_sock, ZMQ_SNDBUF, &socket_size,
                   sizeof(socket_size));
+
+  val = 0;
+  zmq_setsockopt (qzc_sock, ZMQ_LINGER, &val, sizeof (val));
 
   if (zmq_connect (qzc_sock, url))
     {
@@ -179,6 +183,7 @@ struct qzcclient_sock *qzcclient_subscribe (struct thread_master *master, const 
 {
   void *qzc_sock;
   struct qzcclient_sock *ret;
+  int val = 0;
 
   qzc_sock = zmq_socket (qzmqclient_context, ZMQ_SUB);
 
@@ -194,6 +199,12 @@ struct qzcclient_sock *qzcclient_subscribe (struct thread_master *master, const 
       return NULL;
     }
   if (zmq_setsockopt (qzc_sock, ZMQ_SUBSCRIBE,"",0))
+    {
+      zrpc_log ("zmq_setsockopt failed: %s (%d)", strerror (errno), errno);
+      zmq_close (qzc_sock);
+      return NULL;
+    }
+  if (zmq_setsockopt (qzc_sock, ZMQ_LINGER, &val, sizeof(val)))
     {
       zrpc_log ("zmq_setsockopt failed: %s (%d)", strerror (errno), errno);
       zmq_close (qzc_sock);
