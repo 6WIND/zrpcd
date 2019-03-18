@@ -180,6 +180,7 @@ extern int zrpc_cmd_get_path_prefix_dir(char *path, unsigned int size);
 extern uint32_t zrpc_util_get_pid_output (const char *path);
 extern void zrpc_kill_child(const char *, const char *);
 extern uint32_t zrpc_util_proc_find(const char* name);
+extern void zrpc_clean_tmp_files_for_bgpd_bfdd(void);
 
 extern int zrpc_util_str2esi (const char *str, struct zrpc_eth_segment_id *id);
 extern int zrpc_util_str2mac (const char *str, char *mac);

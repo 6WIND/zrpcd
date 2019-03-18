@@ -129,6 +129,8 @@ void  zrpc_create_context (struct zrpc **zrpc_val)
   zrpc_kill_child (BGPD_PATH_BGPD_PID, "BGP");
   zrpc_kill_child (BFDD_PID, "BFD");
   zrpc_kill_child (ZEBRA_PID, "ZEBRA");
+  zrpc_clean_tmp_files_for_bgpd_bfdd();
+
   /* run bgp_configurator_server */ 
   if(zrpc_server_listen (zrpc) < 0)
     {

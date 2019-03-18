@@ -573,6 +573,28 @@ void zrpc_kill_child(const char *pidfile, const char *process_name)
     }
 }
 
+/* Clean tmp files for created by bgpd/bfdd */
+void zrpc_clean_tmp_files_for_bgpd_bfdd(void)
+{
+  DIR* dir;
+  struct dirent* ent;
+  char buf[512] = {0};
+  const char *tmp = "/tmp";
+  int ret;
+
+  if (!(dir = opendir(tmp))) {
+    zrpc_log("can't open %s", tmp);
+    return;
+  }
+  while ((ent = readdir(dir)) != NULL) {
+    if (strstr(ent->d_name, "qzc-")) {
+      snprintf(buf, sizeof(buf), "%s/%s", tmp, ent->d_name);
+      ret=remove(buf);
+      zrpc_log("remove(%s), ret=%d\n", buf, ret);
+    }
+  }
+}
+
 uint32_t zrpc_util_proc_find(const char* name) 
 {
   DIR* dir;
