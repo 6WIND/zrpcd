@@ -57,7 +57,6 @@ static bool zrpc_bgp_updater_handle_response(struct zrpc_vpnservice *ctxt,
               ctxt->bgp_update_thrift_retries++;
               ctxt->bgp_updater_select_in_progress = TRUE;
               optval = 0;
-            retry_handle_response:
               selret = select(fd+1, NULL, &wrfds, NULL, &tout);
               if (selret <= 0)
                 {
