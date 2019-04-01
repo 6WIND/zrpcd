@@ -41,8 +41,9 @@ static bool zrpc_bgp_updater_handle_response(struct zrpc_vpnservice *ctxt,
               int fd = zrpc_vpnservice_get_bgp_updater_socket(ctxt);
               fd_set wrfds;
               struct timeval tout;
-              int optval, optlen, selret = 0;
+              int optval, optlen, selret = 0, ret;
               struct timeval tv_start, tv_end;
+              bool need_reset = FALSE;
 
               zrpc_info ("%s: sent error %s (%d), using select (%d sec) to retry",
                          name, error->message, errno, tm->zrpc_select_time);
@@ -56,31 +57,45 @@ static bool zrpc_bgp_updater_handle_response(struct zrpc_vpnservice *ctxt,
               ctxt->bgp_update_thrift_retries++;
               ctxt->bgp_updater_select_in_progress = TRUE;
               optval = 0;
-            retry_handle_response:
-              gettimeofday(&tv_start, NULL);
-              if (((selret = select(FD_SETSIZE, NULL, &wrfds, NULL, &tout)) <= 0) ||
-                  (getsockopt(fd, SOL_SOCKET, SO_ERROR, &optval, (socklen_t *)&optlen) < 0) ||
-                  (optval != 0)) {
-                gettimeofday(&tv_end, NULL);
-                if(tv_end.tv_sec - tv_start.tv_sec < tm->zrpc_select_time) {
-                  zrpc_info ("%s: sent error %d/%d, polling not ended. continue",
-                             name, selret, optval);
-                  goto retry_handle_response;
+              selret = select(fd+1, NULL, &wrfds, NULL, &tout);
+              if (selret <= 0)
+                {
+                  if (selret == 0)
+                    zrpc_info ("%s: select timeout", name);
+                  else
+                    zrpc_info ("%s: select error - %s (%d)", name, strerror(errno), errno);
+                  need_reset = TRUE;
                 }
-                /* case timeout happens. reset connection */
-                ctxt->bgp_updater_select_in_progress = FALSE;
-                zrpc_info ("%s: sent error %s (%d), resetting connection",
-                           name, error->message, errno);
-                ctxt->bgp_update_thrift_lost_msgs++;
-                zrpc_transport_cancel_monitor(ctxt);
-                should_retry = FALSE;
-                *response = FALSE;
-                zrpc_transport_check_response(ctxt, FALSE);
-              } else {
-                ctxt->bgp_updater_select_in_progress = FALSE;
-                ctxt->bgp_update_thrift_retries_successfull++;
-                should_retry = TRUE;
-              }
+              else
+                {
+                  ret = getsockopt(fd, SOL_SOCKET, SO_ERROR, &optval, (socklen_t *)&optlen);
+                  if (ret < 0 || optval)
+                    {
+                      if (optval)
+                        errno = optval;
+                      zrpc_info ("%s: getsockopt error - %s (%d)", name, strerror(errno), errno);
+                      need_reset = TRUE;
+                    }
+                }
+              if (need_reset)
+                {
+                  /* case timeout happens. reset connection */
+                  ctxt->bgp_updater_select_in_progress = FALSE;
+                  zrpc_info ("%s: sent error %s (%d), resetting connection",
+                             name, error->message, errno);
+                  ctxt->bgp_update_thrift_lost_msgs++;
+                  zrpc_transport_cancel_monitor(ctxt);
+                  should_retry = FALSE;
+                  *response = FALSE;
+                  zrpc_transport_check_response(ctxt, FALSE);
+                }
+              else
+                {
+                  zrpc_info ("%s: retry to send", name);
+                  ctxt->bgp_updater_select_in_progress = FALSE;
+                  ctxt->bgp_update_thrift_retries_successfull++;
+                  should_retry = TRUE;
+                }
             } else {
               zrpc_info ("%s: sent error %s (%d), resetting connection",
                          name, error->message, errno);
