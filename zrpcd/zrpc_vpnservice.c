@@ -58,6 +58,8 @@ void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean respon
         zrpc_transport_current_status = ZRPC_TO_SDN_TRUE;
         zrpc_bgp_updater_on_start_config_resync_notification_quick (setup, FALSE);
       } else {
+        if (setup->bgp_updater_transport)
+          zrpc_client_transport_close(setup->bgp_updater_transport->transport);
         zrpc_transport_current_status = ZRPC_TO_SDN_FALSE;
       }
     }
@@ -277,6 +279,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
      (zrpc_transport_current_status == ZRPC_TO_SDN_UNKNOWN) ||
      (zrpc_transport_current_status == ZRPC_TO_SDN_FALSE))
     {
+      if (ctxt->bgp_updater_transport)
+        zrpc_client_transport_close(ctxt->bgp_updater_transport->transport);
       if(ctxt->bgp_updater_client)
         zrpc_vpnservice_terminate_thrift_bgp_updater_client(ctxt);
       /* start the retry mecanism */
@@ -709,7 +713,6 @@ gboolean zrpc_vpnservice_setup_thrift_bgp_updater_client (struct zrpc_vpnservice
                     "input_protocol",  setup->bgp_updater_protocol,
                     "output_protocol", setup->bgp_updater_protocol,
                     NULL);
-  zrpc_client_transport_close(setup->bgp_updater_transport->transport);
   setup->bgp_updater_client_need_select = FALSE;
   setup->bgp_updater_select_in_progress = FALSE;
   response = zrpc_client_transport_open (setup->bgp_updater_transport->transport,
