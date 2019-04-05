@@ -3385,6 +3385,15 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
   if(inst_multipath)
     {
       char nh_str[ZRPC_UTIL_IPV6_LEN_MAX];
+
+      if (inst_multipath->nexthop.family == AF_INET6 &&
+	  inst_route->prefix.family == AF_INET6 &&
+          IN6_IS_ADDR_V4MAPPED (&inst_multipath->nexthop.u.prefix6))
+        {
+          /* check that nexthop is ipv4 mapped ipv6. transform it if this is it */
+          zrpc_util_convert_ipv6mappedtoipv4 (&inst_multipath->nexthop);
+        }
+
       zrpc_util_prefix_2str (&(inst_multipath->nexthop), nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       upd->nexthop = g_strdup(nh_str);
 #if !defined(HAVE_THRIFT_V1)
@@ -3411,6 +3420,14 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
   else
     {
       char nh_str[ZRPC_UTIL_IPV6_LEN_MAX];
+
+      if (inst_route->nexthop.family == AF_INET6 &&
+	  inst_route->prefix.family == AF_INET6 &&
+          IN6_IS_ADDR_V4MAPPED (&inst_route->nexthop.u.prefix6))
+        {
+          /* check that nexthop is ipv4 mapped ipv6. transform it if this is it */
+          zrpc_util_convert_ipv6mappedtoipv4 (&inst_route->nexthop);
+        }
       zrpc_util_prefix_2str (&(inst_route->nexthop), nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       upd->nexthop = g_strdup(nh_str);
 #if !defined(HAVE_THRIFT_V1)
