@@ -10,6 +10,7 @@
 #define _QUAGGA_QZMQCLIENT_H
 
 #include "thread.h"
+#include "workqueue.h"
 #include <zmq.h>
 
 /* libzmq's context */
@@ -23,7 +24,22 @@ extern void qzmqclient_finish (void);
 #define qzmqclient_thread_read_msg(m,f,a,z) funcname_qzmqclient_thread_read_msg( \
                              m,f,a,z,#f,__FILE__,__LINE__)
 
-struct qzmqclient_cb;
+/* read callback integration */
+struct qzmqclient_cb {
+  struct thread *thread;
+  void *zmqsock;
+  void *arg;
+  void (*cb_msg)(void *arg, void *zmqsock, zmq_msg_t *msg);
+  /* work queues */
+  struct work_queue *process_zmq_msg_queue;
+  int msg_not_sent;
+};
+
+struct zmq_msg_queue_node
+{
+  zmq_msg_t *msg;
+  struct qzmqclient_cb *cb;
+};
 
 struct qzcclient_sock {
 	void *zmq;
