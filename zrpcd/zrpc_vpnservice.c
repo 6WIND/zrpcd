@@ -26,7 +26,7 @@
 #include "zrpcd/zrpc_network.h"
 #include "zrpcd/vpnservice_types.h"
 
-static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *msg);
+static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_queue_node *node);
 
 void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
 void zrpc_transport_cancel_monitor(struct zrpc_vpnservice *setup);
@@ -50,6 +50,10 @@ void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean respon
       ((response == TRUE) && (zrpc_transport_current_status == ZRPC_TO_SDN_FALSE)) ||
       ((response == FALSE) && (zrpc_transport_current_status == ZRPC_TO_SDN_TRUE)))
     {
+#ifdef HAVE_THRIFT_V6
+      struct qzmqclient_cb *cb = (setup->qzc_subscribe_sock ? setup->qzc_subscribe_sock->cb : NULL);
+#endif
+
       zrpc_info("bgpUpdater check connection with %s:%u %s",
                 tm->zrpc_notification_address,
                 setup->zrpc_notification_port,
@@ -57,7 +61,15 @@ void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean respon
       if (response == TRUE) {
         zrpc_transport_current_status = ZRPC_TO_SDN_TRUE;
         zrpc_bgp_updater_on_start_config_resync_notification_quick (setup, FALSE);
+#ifdef HAVE_THRIFT_V6
+        if (cb && cb->process_zmq_msg_queue)
+          work_queue_unplug (cb->process_zmq_msg_queue);
+#endif
       } else {
+#ifdef HAVE_THRIFT_V6
+        if (cb && cb->process_zmq_msg_queue)
+          work_queue_plug (cb->process_zmq_msg_queue);
+#endif
         if (setup->bgp_updater_transport)
           zrpc_client_transport_close(setup->bgp_updater_transport->transport);
         zrpc_transport_current_status = ZRPC_TO_SDN_FALSE;
@@ -250,7 +262,7 @@ static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thre
   return 0;
 }
 /* callback function for capnproto bgpupdater notifications */
-static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *message)
+static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_queue_node *node)
 {
   struct capn rc;
   capn_ptr p;
@@ -260,7 +272,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
   struct zrpc_vpnservice *ctxt = NULL;
   struct bgp_event_shut tt;
   struct bgp_event_shut *t;
-  bool announce;
+  bool announce, ret = FALSE;
   gchar *nexthop;
   char nh_str[ZRPC_UTIL_IPV6_LEN_MAX];
 
@@ -293,7 +305,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
           return;
         }
     }
-  p = qzcclient_msg_to_notification (message, &rc);
+  p = qzcclient_msg_to_notification (node->msg, &rc);
   s = &ss;
   memset(s, 0, sizeof(struct bgp_event_vrf));
   qcapn_BGPEventVRFRoute_read(s, p);
@@ -395,9 +407,9 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
 
 
 
-          zrpc_bgp_updater_on_update_push_route(
+          ret = zrpc_bgp_updater_on_update_push_route(
 #else
-          zrpc_bgp_updater_on_update_push_route(p_type,
+          ret = zrpc_bgp_updater_on_update_push_route(p_type,
 #endif /* HAVE_THRIFT_V1 */
                                                 (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                 (const gint32)ipprefixlen, nexthop,
@@ -439,9 +451,9 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                 }
             }
 #if defined(HAVE_THRIFT_V1)
-          zrpc_bgp_updater_on_update_withdraw_route (
+          ret = zrpc_bgp_updater_on_update_withdraw_route (
 #else
-          zrpc_bgp_updater_on_update_withdraw_route (p_type,
+          ret = zrpc_bgp_updater_on_update_withdraw_route (p_type,
 #endif /* HAVE_THRIFT_V1 */
                                                      (zrpc_invalid_rd == 1)?NULL:vrf_rd_str, pfx_str_p,
                                                      (const gint32)ipprefixlen, nexthop,
@@ -521,7 +533,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       t->subtype = (uint8_t)s->prefix.u.prefix4.s_addr;
       zrpc_util_prefix_2str (&t->peer, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       nexthop = nh_str;
-      zrpc_bgp_updater_on_notification_send_event(nexthop, t->type, t->subtype);
+      ret = zrpc_bgp_updater_on_notification_send_event(nexthop, t->type, t->subtype);
     }
 #ifdef HAVE_THRIFT_V5
   else if (s->announce == BGP_EVENT_BFD_STATUS)
@@ -534,9 +546,9 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       zrpc_util_prefix_2str (&st.peer, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
       nexthop = nh_str;
       if (st.up_down)
-        zrpc_bgp_updater_peer_up (nexthop, (const gint64)st.as);
+        ret = zrpc_bgp_updater_peer_up (nexthop, (const gint64)st.as);
       else
-        zrpc_bgp_updater_peer_down (nexthop, (const gint64)st.as);
+        ret = zrpc_bgp_updater_peer_down (nexthop, (const gint64)st.as);
     }
 #endif
 
@@ -548,6 +560,25 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
     free (s->gatewayIp);
   if (s->tunnel_id)
     free (s->tunnel_id);
+
+  if (ret == FALSE)
+    {
+      zrpc_info ("bgp->sdnc message failed to be sent");
+      ctxt->bgp_update_lost_msgs++;
+    }
+
+#ifdef HAVE_THRIFT_V6
+  node->retry_times++;
+  node->msg_not_sent = (ret == FALSE) ? 1 : 0;
+  if (node->retry_times > DEFAULT_UPDATE_RETRY_TIMES)
+    {
+      zrpc_info ("Maximum retry times (%d) reached, resetting connection to ODL",
+                 DEFAULT_UPDATE_RETRY_TIMES);
+      zrpc_transport_cancel_monitor(ctxt);
+      zrpc_transport_check_response(ctxt, FALSE);
+    }
+#endif
+
   capn_free(&rc);
   return;
 }

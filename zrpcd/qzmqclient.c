@@ -9,6 +9,9 @@
 #include <zmq.h>
 
 #include "thread.h"
+#ifdef HAVE_THRIFT_V6
+#include "workqueue.h"
+#endif
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_debug.h"
 #include "zrpcd/qzmqclient.h"
@@ -28,19 +31,10 @@ void qzmqclient_finish (void)
   qzmqclient_context = NULL;
 }
 
-/* read callback integration */
-struct qzmqclient_cb {
-  struct thread *thread;
-  void *zmqsock;
-  void *arg;
-  void (*cb_msg)(void *arg, void *zmqsock, zmq_msg_t *msg);
-};
-
-
 static int qzmqclient_read_msg (struct thread *t)
 {
   struct qzmqclient_cb *cb = THREAD_ARG (t);
-  zmq_msg_t msg;
+  struct zmq_msg_queue_node *node = NULL;
   int ret;
   struct qzcclient_sock *ctxt;
 
@@ -57,19 +51,34 @@ static int qzmqclient_read_msg (struct thread *t)
       if (!(polli.revents & ZMQ_POLLIN))
         break;
 
-      if (zmq_msg_init (&msg))
+      node = ZRPC_CALLOC (sizeof(struct zmq_msg_queue_node));
+      if (!node)
         goto out_err;
-      ret = zmq_msg_recv (&msg, ctxt->zmq, ZMQ_NOBLOCK);
+      node->msg = ZRPC_CALLOC (sizeof(zmq_msg_t));
+      if (!node->msg)
+        goto out_err;
+
+      node->cb = cb;
+#ifdef HAVE_THRIFT_V6
+      node->retry_times = 0;
+#endif
+      if (zmq_msg_init (node->msg))
+        goto out_err;
+      ret = zmq_msg_recv (node->msg, ctxt->zmq, ZMQ_NOBLOCK);
       if (ret < 0)
         {
           if (errno == EAGAIN)
             break;
 
-          zmq_msg_close (&msg);
+          zmq_msg_close (node->msg);
           goto out_err;
         }
-      cb->cb_msg (cb->arg, ctxt, &msg);
-      zmq_msg_close (&msg);
+#ifndef HAVE_THRIFT_V6
+      cb->cb_msg (cb->arg, ctxt, node);
+      zmq_msg_close (node->msg);
+#else
+      work_queue_add (cb->process_zmq_msg_queue, node);
+#endif
     }
 
   /* update ctxt if necessary */
@@ -79,13 +88,52 @@ static int qzmqclient_read_msg (struct thread *t)
   return 0;
 
 out_err:
+  if (node)
+    ZRPC_FREE (node);
   zrpc_log ("ZeroMQ error: %s(%d)", strerror (errno), errno);
   return 0;
 }
 
+#ifdef HAVE_THRIFT_V6
+static wq_item_status
+process_zmq_msg (struct work_queue *wq, void *data)
+{
+  struct zmq_msg_queue_node *node = data;
+  struct qzmqclient_cb *cb = node->cb;
+  struct qzcclient_sock *ctxt = cb->zmqsock;
+
+  cb->cb_msg (cb->arg, ctxt, node);
+
+  if (node->msg_not_sent)
+    {
+      if (node->retry_times < (DEFAULT_UPDATE_RETRY_TIMES + 1))
+        {
+          zrpc_log ("process_zmq_msg: msg not sent, should retry later");
+          return WQ_RETRY_LATER;
+        }
+      else
+        {
+          return WQ_ERROR;
+        }
+    }
+  return WQ_SUCCESS;
+}
+
+static void
+process_zmq_msg_del (struct work_queue *wq, void *data)
+{
+  struct zmq_msg_queue_node *node = data;
+
+  zmq_msg_close (node->msg);
+  ZRPC_FREE (node->msg);
+  ZRPC_FREE (node);
+  return;
+}
+#endif
+
 struct qzmqclient_cb *funcname_qzmqclient_thread_read_msg (
         struct thread_master *master,
-        void (*func)(void *arg, void *zmqsock, zmq_msg_t *msg),
+        void (*func)(void *arg, void *zmqsock, struct zmq_msg_queue_node *node),
         void *arg, void *zmqsock, debugargdef)
 {
   int fd;
@@ -104,6 +152,13 @@ struct qzmqclient_cb *funcname_qzmqclient_thread_read_msg (
   cb->arg = arg;
   cb->zmqsock = zmqsock;
   cb->cb_msg = func;
+#ifdef HAVE_THRIFT_V6
+  cb->process_zmq_msg_queue = work_queue_new (master, "process_zmq_msg_queue");
+  cb->process_zmq_msg_queue->spec.workfunc = &process_zmq_msg;
+  cb->process_zmq_msg_queue->spec.del_item_data = &process_zmq_msg_del;
+  cb->process_zmq_msg_queue->spec.max_retries = DEFAULT_UPDATE_RETRY_TIMES;
+  cb->process_zmq_msg_queue->spec.hold = DEFAULT_UPDATE_RETRY_TIME_GAP;
+#endif
   cb->thread = funcname_thread_add_read (master, qzmqclient_read_msg, cb, fd,
                                          funcname, schedfrom, fromln);
   return cb;
@@ -111,6 +166,13 @@ struct qzmqclient_cb *funcname_qzmqclient_thread_read_msg (
 
 void qzmqclient_thread_cancel (struct qzmqclient_cb *cb)
 {
+#ifdef HAVE_THRIFT_V6
+  if (cb->process_zmq_msg_queue)
+    {
+      work_queue_free (cb->process_zmq_msg_queue);
+      cb->process_zmq_msg_queue = NULL;
+    }
+#endif
   if (cb->thread) {
     thread_cancel (cb->thread);
     ZRPC_FREE (cb);
