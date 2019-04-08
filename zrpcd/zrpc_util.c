@@ -593,6 +593,7 @@ void zrpc_clean_tmp_files_for_bgpd_bfdd(void)
       zrpc_log("remove(%s), ret=%d\n", buf, ret);
     }
   }
+  closedir(dir);
 }
 
 uint32_t zrpc_util_proc_find(const char* name) 
