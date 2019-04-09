@@ -26,7 +26,7 @@
 #include "zrpcd/zrpc_network.h"
 #include "zrpcd/vpnservice_types.h"
 
-static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *msg);
+static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_queue_node *node);
 
 void zrpc_transport_check_response(struct zrpc_vpnservice *setup, gboolean response);
 void zrpc_transport_cancel_monitor(struct zrpc_vpnservice *setup);
@@ -256,7 +256,7 @@ static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thre
   return 0;
 }
 /* callback function for capnproto bgpupdater notifications */
-static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t *message)
+static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_queue_node *node)
 {
   struct capn rc;
   capn_ptr p;
@@ -299,7 +299,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
           return;
         }
     }
-  p = qzcclient_msg_to_notification (message, &rc);
+  p = qzcclient_msg_to_notification (node->msg, &rc);
   s = &ss;
   memset(s, 0, sizeof(struct bgp_event_vrf));
   qcapn_BGPEventVRFRoute_read(s, p);
@@ -397,6 +397,14 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                 }
               macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_macip.mac);
             }
+
+          if (IS_ZRPC_DEBUG_NOTIFICATION)
+            {
+              if (node->retry_times >= 1)
+                zrpc_info ("retry (%d) to send onUpdatePushRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d)",
+                           node->retry_times, (zrpc_invalid_rd == 1)? NULL : vrf_rd_str,
+                           pfx_str_p, nexthop, s->label, s->l2label);
+            }
 #if defined(HAVE_THRIFT_V1)
 
 
@@ -444,6 +452,14 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                   ipprefixlen = 0;
                 }
             }
+
+	  if (IS_ZRPC_DEBUG_NOTIFICATION)
+            {
+              if (node->retry_times >= 1)
+                zrpc_info ("retry (%d) to send onUpdateWithdrawRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d)",
+                           node->retry_times, (zrpc_invalid_rd == 1)? NULL : vrf_rd_str,
+                           pfx_str_p, nexthop, s->label, s->l2label);
+            }
 #if defined(HAVE_THRIFT_V1)
           ret = zrpc_bgp_updater_on_update_withdraw_route (
 #else
@@ -487,8 +503,15 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
     }
 #endif
 
-  if (ctxt->qzc_subscribe_sock && ctxt->qzc_subscribe_sock->cb)
-    ctxt->qzc_subscribe_sock->cb->msg_not_sent = (ret == FALSE) ? 1 : 0;
+  node->retry_times++;
+  node->msg_not_sent = (ret == FALSE) ? 1 : 0;
+  if (node->retry_times > DEFAULT_UPDATE_RETRY_TIMES)
+    {
+      zrpc_info ("Maximum retry times (%d) reached, resetting connection to ODL",
+                 DEFAULT_UPDATE_RETRY_TIMES);
+      zrpc_transport_cancel_monitor(ctxt);
+      zrpc_transport_check_response(ctxt, FALSE);
+    }
 
   capn_free(&rc);
   return;

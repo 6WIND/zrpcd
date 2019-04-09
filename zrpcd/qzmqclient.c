@@ -57,6 +57,7 @@ static int qzmqclient_read_msg (struct thread *t)
         goto out_err;
 
       node->cb = cb;
+      node->retry_times = 0;
       if (zmq_msg_init (node->msg))
         goto out_err;
       ret = zmq_msg_recv (node->msg, ctxt->zmq, ZMQ_NOBLOCK);
@@ -96,12 +97,20 @@ process_zmq_msg (struct work_queue *wq, void *data)
   struct qzmqclient_cb *cb = node->cb;
   struct qzcclient_sock *ctxt = cb->zmqsock;
 
-  cb->cb_msg (cb->arg, ctxt, node->msg);
+  cb->cb_msg (cb->arg, ctxt, node);
 
-  if (cb->msg_not_sent) {
-    zrpc_log ("process_zmq_msg: msg not sent, should retry later");
-    return WQ_RETRY_LATER;
-  }
+  if (node->msg_not_sent)
+    {
+      if (node->retry_times < (DEFAULT_UPDATE_RETRY_TIMES + 1))
+        {
+          zrpc_log ("process_zmq_msg: msg not sent, should retry later");
+          return WQ_RETRY_LATER;
+        }
+      else
+        {
+          return WQ_ERROR;
+        }
+    }
   return WQ_SUCCESS;
 }
 
@@ -117,7 +126,7 @@ process_zmq_msg_del (struct work_queue *wq, void *data)
 
 struct qzmqclient_cb *funcname_qzmqclient_thread_read_msg (
         struct thread_master *master,
-        void (*func)(void *arg, void *zmqsock, zmq_msg_t *msg),
+        void (*func)(void *arg, void *zmqsock, struct zmq_msg_queue_node *node),
         void *arg, void *zmqsock, debugargdef)
 {
   int fd;
@@ -139,8 +148,8 @@ struct qzmqclient_cb *funcname_qzmqclient_thread_read_msg (
   cb->process_zmq_msg_queue = work_queue_new (master, "process_zmq_msg_queue");
   cb->process_zmq_msg_queue->spec.workfunc = &process_zmq_msg;
   cb->process_zmq_msg_queue->spec.del_item_data = &process_zmq_msg_del;
-  cb->process_zmq_msg_queue->spec.max_retries = 0;
-  cb->process_zmq_msg_queue->spec.hold = 50;
+  cb->process_zmq_msg_queue->spec.max_retries = DEFAULT_UPDATE_RETRY_TIMES;
+  cb->process_zmq_msg_queue->spec.hold = DEFAULT_UPDATE_RETRY_TIME_GAP;
   cb->thread = funcname_thread_add_read (master, qzmqclient_read_msg, cb, fd,
                                          funcname, schedfrom, fromln);
   return cb;
