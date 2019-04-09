@@ -178,7 +178,7 @@ struct qzcclient_sock *qzcclient_connect (const char *url, uint32_t limit)
 
 struct qzcclient_sock *qzcclient_subscribe (struct thread_master *master, const char *url,
                                             void (*func)(void *arg, void *zmqsock,
-                                                         struct zmq_msg_t *msg),
+                                                         struct zmq_msg_queue_node *node),
                                             uint32_t limit)
 {
   void *qzc_sock;

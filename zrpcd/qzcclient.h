@@ -15,6 +15,7 @@
 #include <zmq.h>
 #include "thread.h"
 #include "zrpcd/qzcclient.capnp.h"
+#include "zrpcd/qzmqclient.h"
 
 struct qzcclient_sock;
 
@@ -33,7 +34,7 @@ qzcclient_msg_to_notification(zmq_msg_t *msg, struct capn *rc);
 struct qzcclient_sock *qzcclient_connect (const char *url, uint32_t limit);
 struct qzcclient_sock *qzcclient_subscribe (struct thread_master *master, const char *url,
                                             void (*func)(void *arg, void *zmqsock,
-                                                         struct zmq_msg_t *msg),
+                                                         struct zmq_msg_queue_node *node),
                                             uint32_t limit);
 struct QZCReply *qzcclient_do(struct qzcclient_sock **sock,
                               struct QZCRequest *req_ptr);
