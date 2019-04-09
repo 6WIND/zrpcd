@@ -237,19 +237,19 @@ enum protocol_type {
  
  service BgpUpdater {
    // 'p_type' is mandatory. indicates the origin of data
-   oneway void onUpdatePushRoute(1:protocol_type p_type, 2:string rd, 3:string prefix, 
-                                 4:i32 prefixlen, 5:string nexthop, 
-                                 6:i64 ethtag, 7:string esi, 8:string macaddress,
-                                 9:i32 l3label, 10:i32 l2label,
-                                 11:string routermac, 12:af_afi afi),
-   oneway void onUpdateWithdrawRoute(1:protocol_type p_type, 2:string rd, 3:string prefix, 
-                                     4:i32 prefixlen, 5:string nexthop,
-                                     6:i64 ethtag, 7:string esi, 8:string macaddress,
-                                     9:i32 l3label, 10:i32 l2label, 11:af_afi afi),
+   i32 onUpdatePushRoute(1:protocol_type p_type, 2:string rd, 3:string prefix,
+                         4:i32 prefixlen, 5:string nexthop,
+                         6:i64 ethtag, 7:string esi, 8:string macaddress,
+                         9:i32 l3label, 10:i32 l2label,
+                         11:string routermac, 12:af_afi afi),
+   i32 onUpdateWithdrawRoute(1:protocol_type p_type, 2:string rd, 3:string prefix,
+                             4:i32 prefixlen, 5:string nexthop,
+                             6:i64 ethtag, 7:string esi, 8:string macaddress,
+                             9:i32 l3label, 10:i32 l2label, 11:af_afi afi),
    // tell them we're open for business
    oneway void onStartConfigResyncNotification(),
    // relay to odl a bgp Notification we got from peer 
-   oneway void onNotificationSendEvent(1:string prefix, 
+   oneway void onNotificationSendEvent(1:string prefix,
                                        2:byte errCode, 3:byte errSubcode),
    oneway void peerDown(1:string ipAddress, 2:i64 asNumber),
    oneway void peerUp(1:string ipAddress, 2:i64 asNumber)
