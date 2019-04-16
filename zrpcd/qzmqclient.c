@@ -113,6 +113,7 @@ process_zmq_msg_del (struct work_queue *wq, void *data)
   struct zmq_msg_queue_node *node = data;
 
   zmq_msg_close (node->msg);
+  ZRPC_FREE (node->msg);
   ZRPC_FREE (node);
   return;
 }
