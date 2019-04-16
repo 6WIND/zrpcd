@@ -45,4 +45,5 @@ zrpc_bgp_updater_on_update_push_route (const protocol_type p_type, const gchar *
                                        const gint32 l3label, const gint32 l2label, const gchar * routermac,
                                        const gchar *gatewayIp, const af_afi afi);
 
+extern void zrpc_bgp_updater_set_msg_queue (void);
 #endif /* _ZRPC_BGP_UPDATER_H */

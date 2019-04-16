@@ -505,10 +505,10 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
 
   node->retry_times++;
   node->msg_not_sent = (ret == FALSE) ? 1 : 0;
-  if (node->retry_times > DEFAULT_UPDATE_RETRY_TIMES)
+  if (node->retry_times > tm->zrpc_bgp_updater_max_retries)
     {
       zrpc_info ("Maximum retry times (%d) reached, resetting connection to ODL",
-                 DEFAULT_UPDATE_RETRY_TIMES);
+                 tm->zrpc_bgp_updater_max_retries);
       zrpc_transport_cancel_monitor(ctxt);
       zrpc_transport_check_response(ctxt, FALSE);
     }
