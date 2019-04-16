@@ -30,6 +30,13 @@ struct zrpc_global
   uint16_t zrpc_notification_port;
   uint16_t zrpc_listen_port;
   uint16_t zrpc_select_time;
+#ifdef HAVE_THRIFT_V6
+  /* how many iterations shall be tried to re-send udpate message */
+  u_int16_t zrpc_bgp_updater_max_retries;
+  /* time-gap between each iteration, in milliseconds */
+  u_int16_t zrpc_bgp_updater_retry_time_gap;
+#endif
+
   char *zrpc_notification_address;
   char *zrpc_listen_address;
 };

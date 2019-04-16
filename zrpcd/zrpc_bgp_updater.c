@@ -823,3 +823,26 @@ zrpc_bgp_updater_on_update_withdraw_evpn_rt(const gint32 routeType, const gchar 
   return response;
 }
 #endif
+
+#ifdef HAVE_THRIFT_V6
+void zrpc_bgp_updater_set_msg_queue(void)
+{
+  struct zrpc_vpnservice *ctxt = NULL;
+  struct qzmqclient_cb *cb = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if (!ctxt)
+    return;
+  if (!ctxt->qzc_subscribe_sock)
+    return;
+  if (!(cb = ctxt->qzc_subscribe_sock->cb))
+    return;
+  if (!cb->process_zmq_msg_queue)
+    return;
+
+  cb->process_zmq_msg_queue->spec.max_retries = tm->zrpc_bgp_updater_max_retries;
+  cb->process_zmq_msg_queue->spec.hold = tm->zrpc_bgp_updater_retry_time_gap;
+
+  return;
+}
+#endif

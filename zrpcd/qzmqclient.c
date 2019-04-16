@@ -149,8 +149,6 @@ struct qzmqclient_cb *funcname_qzmqclient_thread_read_msg (
   cb->process_zmq_msg_queue = work_queue_new (master, "process_zmq_msg_queue");
   cb->process_zmq_msg_queue->spec.workfunc = &process_zmq_msg;
   cb->process_zmq_msg_queue->spec.del_item_data = &process_zmq_msg_del;
-  cb->process_zmq_msg_queue->spec.max_retries = DEFAULT_UPDATE_RETRY_TIMES;
-  cb->process_zmq_msg_queue->spec.hold = DEFAULT_UPDATE_RETRY_TIME_GAP;
 #endif
   cb->thread = funcname_thread_add_read (master, qzmqclient_read_msg, cb, fd,
                                          funcname, schedfrom, fromln);

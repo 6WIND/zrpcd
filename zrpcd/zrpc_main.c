@@ -58,8 +58,12 @@ zrpc configuration across thrift defined model : vpnservice.\n\n\
 -n, --thrift_notif_port     Set thrift's notif update \n\
 -s, --select_timeout_max    Set thrift's select timeout max calue in seconds\n\
 -I, --thrift_listen_port    Set thrift's listen config port number\n\
--L, --thrift_listen_address Set thrift's listen config specified address\n\
--h, --help                  Display this help and exit\n\n");
+-L, --thrift_listen_address Set thrift's listen config specified address\n");
+#ifdef HAVE_THRIFT_V6
+  printf ("-R,                         Set maximum retries for bgp updater message, <1-20>\n\
+           -G,                         Set time gap(in milliseconds) between two retries for bgp updater message, <1-500>\n");
+#endif
+  printf ("-h, --help                  Display this help and exit\n\n");
   exit (status);
 }
 
@@ -207,6 +211,10 @@ main (int argc, char **argv)
   int option = 0;
   char vtydisplay[20];
   struct in_addr server_addr;
+#ifdef HAVE_THRIFT_V6
+  long val;
+  char *endptr;
+#endif
 
   /* Set umask before anything for security */
   umask (0027);
@@ -220,8 +228,16 @@ main (int argc, char **argv)
   zrpc_global_init ();
 
   tm->zrpc_select_time = ZRPC_SELECT_TIME_SEC;
+#ifdef HAVE_THRIFT_V6
+  tm->zrpc_bgp_updater_max_retries = ZRPC_DEFAULT_UPDATE_RETRY_TIMES;
+  tm->zrpc_bgp_updater_retry_time_gap = ZRPC_DEFAULT_UPDATE_RETRY_TIME_GAP;
+#endif
   /* Command line argument treatment. */
+#ifndef HAVE_THRIFT_V6
   while ((option = getopt (argc, argv, "A:P:p:s:N:L:I:n:DSh")) != -1)
+#else
+  while ((option = getopt (argc, argv, "A:P:p:s:N:L:I:n:R:G:DSh")) != -1)
+#endif
     {
       switch (option)
 	{
@@ -276,6 +292,26 @@ main (int argc, char **argv)
 	  else
 	    tm->zrpc_select_time = tmp_select;
 	  break;
+#ifdef HAVE_THRIFT_V6
+	case 'R':
+	  val = strtol (optarg, &endptr, 10);
+	  if (*endptr != '\0' || val < 1 || val > 20 || errno != 0)
+	    {
+	      printf ("Invalid bgp updater message maximum retries %s, should be 1-20\r\n", optarg);
+	      zrpc_usage (1);
+	    }
+	  tm->zrpc_bgp_updater_max_retries = val;
+	  break;
+	case 'G':
+	  val = strtol (optarg, &endptr, 10);
+	  if (*endptr != '\0' || val < 1 || val > 500 || errno != 0)
+	    {
+	      printf ("Invalid time gap %s, should be 1-500\r\n", optarg);
+	      zrpc_usage (1);
+	    }
+	  tm->zrpc_bgp_updater_retry_time_gap = val;
+	  break;
+#endif
 	case 'h':
 	  zrpc_usage (0);
 	  break;
@@ -320,6 +356,9 @@ main (int argc, char **argv)
   /* create listen context */
   zrpc_create_context (&zrpc);
   tm->zrpc = zrpc;
+#ifdef HAVE_THRIFT_V6
+  zrpc_bgp_updater_set_msg_queue ();
+#endif
 
   /* Print banner. */
   zrpc_log ("zrpcd starting: %s zrpc@%s:%d pid %d",

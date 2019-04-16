@@ -17,6 +17,10 @@
 #define ZRPC_CLIENT_ADDRESS "0.0.0.0"
 #define ZRPC_LISTEN_ADDRESS "0.0.0.0"
 #define ZRPC_SELECT_TIME_SEC 2
+#ifdef HAVE_THRIFT_V6
+#define ZRPC_DEFAULT_UPDATE_RETRY_TIMES 5
+#define ZRPC_DEFAULT_UPDATE_RETRY_TIME_GAP 100 /* millisecond */
+#endif
 
 #define ZMQ_SOCK "ipc:///tmp/qzc-vpn2bgp"
 #define ZMQ_NOTIFY "ipc:///tmp/qzc-notify"
