@@ -489,3 +489,24 @@ zrpc_bgp_updater_peer_down (const gchar * ipAddress, const gint64 asNumber)
   return response;
 }
 #endif
+
+void zrpc_bgp_updater_set_msg_queue(void)
+{
+  struct zrpc_vpnservice *ctxt = NULL;
+  struct qzmqclient_cb *cb = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if (!ctxt)
+    return;
+  if (!ctxt->qzc_subscribe_sock)
+    return;
+  if (!(cb = ctxt->qzc_subscribe_sock->cb))
+    return;
+  if (!cb->process_zmq_msg_queue)
+    return;
+
+  cb->process_zmq_msg_queue->spec.max_retries = tm->zrpc_bgp_updater_max_retries;
+  cb->process_zmq_msg_queue->spec.hold = tm->zrpc_bgp_updater_retry_time_gap;
+
+  return;
+}
