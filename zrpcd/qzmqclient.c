@@ -106,15 +106,8 @@ process_zmq_msg (struct work_queue *wq, void *data)
 
   if (node->msg_not_sent)
     {
-      if (node->retry_times < (DEFAULT_UPDATE_RETRY_TIMES + 1))
-        {
-          zrpc_log ("process_zmq_msg: msg not sent, should retry later");
-          return WQ_RETRY_LATER;
-        }
-      else
-        {
-          return WQ_ERROR;
-        }
+      zrpc_log ("process_zmq_msg: msg not sent, should retry later");
+      return WQ_RETRY_LATER;
     }
   return WQ_SUCCESS;
 }
