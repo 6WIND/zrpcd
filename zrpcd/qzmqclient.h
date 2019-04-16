@@ -24,9 +24,6 @@ extern void qzmqclient_finish (void);
 #define qzmqclient_thread_read_msg(m,f,a,z) funcname_qzmqclient_thread_read_msg( \
                              m,f,a,z,#f,__FILE__,__LINE__)
 
-#define DEFAULT_UPDATE_RETRY_TIMES 5
-#define DEFAULT_UPDATE_RETRY_TIME_GAP 100 /* millisecond */
-
 struct zmq_msg_queue_node
 {
   zmq_msg_t *msg;
