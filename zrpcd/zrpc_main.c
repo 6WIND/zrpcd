@@ -200,6 +200,9 @@ zrpc_exit (int status)
   if (tm->global)
     thread_master_free (tm->global);
 
+  if (zlog_default)
+    closezlog (zlog_default);
+
   exit (status);
 }
 
@@ -218,6 +221,7 @@ main (int argc, char **argv)
   long val;
   char *endptr;
 #endif
+  char *p, *progname;
 
   /* Set umask before anything for security */
   umask (0027);
@@ -227,6 +231,11 @@ main (int argc, char **argv)
       printf("%s: pid %u already present. cancel execution\r\n",argv[0], zrpc_util_proc_find(argv[0]));
       return 0;
     }
+
+  progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
+  zlog_default = openzlog (progname, ZLOG_NONE,
+                           LOG_CONS | LOG_NDELAY | LOG_PID, LOG_DAEMON);
+
   /* ZRPC main init. */
   zrpc_global_init ();
 
