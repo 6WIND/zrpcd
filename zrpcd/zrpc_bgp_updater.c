@@ -42,7 +42,6 @@ static bool zrpc_bgp_updater_handle_response(struct zrpc_vpnservice *ctxt,
               fd_set wrfds;
               struct timeval tout;
               int optval, optlen, selret = 0, ret;
-              struct timeval tv_start, tv_end;
               bool need_reset = FALSE;
 
               zrpc_info ("%s: sent error %s (%d), using select (%d sec) to retry",
