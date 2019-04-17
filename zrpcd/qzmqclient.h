@@ -40,6 +40,7 @@ struct qzmqclient_cb {
   void (*cb_msg)(void *arg, void *zmqsock, struct zmq_msg_queue_node *node);
   /* work queues */
   struct work_queue *process_zmq_msg_queue;
+  u_int32_t queue_size;
 };
 
 struct qzcclient_sock {
