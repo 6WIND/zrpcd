@@ -10,6 +10,7 @@
 
 #include "thread.h"
 #include "workqueue.h"
+
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_debug.h"
 #include "zrpcd/qzmqclient.h"
@@ -32,7 +33,7 @@ void qzmqclient_finish (void)
 static int qzmqclient_read_msg (struct thread *t)
 {
   struct qzmqclient_cb *cb = THREAD_ARG (t);
-  struct zmq_msg_queue_node *node;
+  struct zmq_msg_queue_node *node = NULL;
   int ret;
   struct qzcclient_sock *ctxt;
 
