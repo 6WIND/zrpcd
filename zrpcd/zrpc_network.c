@@ -6,6 +6,7 @@
  * See the LICENSE file.
  */
 #include "thread.h"
+#include "network.h"
 
 #include <glib-object.h>
 #include "zrpcd/zrpc_thrift_wrapper.h"
