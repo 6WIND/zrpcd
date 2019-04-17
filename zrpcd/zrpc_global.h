@@ -35,6 +35,8 @@ struct zrpc_global
   u_int16_t zrpc_bgp_updater_max_retries;
   /* time-gap between each iteration, in milliseconds */
   u_int16_t zrpc_bgp_updater_retry_time_gap;
+  /* maximum size of bgp updater message queue */
+  u_int32_t zrpc_bgp_updater_queue_maximum_size;
 #endif
 
   char *zrpc_notification_address;

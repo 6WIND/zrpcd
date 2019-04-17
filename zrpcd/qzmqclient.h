@@ -45,6 +45,7 @@ struct qzmqclient_cb {
 #ifdef HAVE_THRIFT_V6
   /* work queues */
   struct work_queue *process_zmq_msg_queue;
+  u_int32_t queue_size;
 #endif
 };
 
