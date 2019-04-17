@@ -59,8 +59,12 @@ zrpc configuration across thrift defined model : vpnservice.\n\n\
 -s, --select_timeout_max    Set thrift's select timeout max calue in seconds\n\
 -I, --thrift_listen_port    Set thrift's listen config port number\n\
 -L, --thrift_listen_address Set thrift's listen config specified address\n\
--R,                         Set maximum retries for bgp updater message, <1-20>\n\
--G,                         Set time gap(in milliseconds) between two retries for bgp updater message, <1-500>\n\
+-R,                         Set maximum retries for bgp updater message, <1-20>,\n\
+                            default 5\n\
+-G,                         Set time gap(in milliseconds) between two retries, <1-500>,\n\
+                            default 100\n\
+-Q,                         Set size limit for bgp updater message queue, <0-4294967295>,\n\
+                            default 0 which means unlimited\n\
 -h, --help                  Display this help and exit\n\n");
   exit (status);
 }
@@ -235,8 +239,9 @@ main (int argc, char **argv)
   tm->zrpc_select_time = ZRPC_SELECT_TIME_SEC;
   tm->zrpc_bgp_updater_max_retries = ZRPC_DEFAULT_UPDATE_RETRY_TIMES;
   tm->zrpc_bgp_updater_retry_time_gap = ZRPC_DEFAULT_UPDATE_RETRY_TIME_GAP;
+  tm->zrpc_bgp_updater_queue_maximum_size = 0;
   /* Command line argument treatment. */
-  while ((option = getopt (argc, argv, "A:P:p:s:N:L:I:n:R:G:DSh")) != -1)
+  while ((option = getopt (argc, argv, "A:P:p:s:N:L:I:n:R:G:Q:DSh")) != -1)
     {
       switch (option)
 	{
@@ -309,6 +314,16 @@ main (int argc, char **argv)
 	    }
 	  tm->zrpc_bgp_updater_retry_time_gap = val;
 	  break;
+	case 'Q':
+	  val = strtol (optarg, &endptr, 10);
+	  if (*endptr != '\0' || val < 0 || val > 4294967295 || errno != 0)
+	    {
+	      printf ("Invalid queue size limit %s, should be 0-4294967295\r\n", optarg);
+	      zrpc_usage (1);
+	    }
+	  tm->zrpc_bgp_updater_queue_maximum_size = val;
+	  break;
+
 	case 'h':
 	  zrpc_usage (0);
 	  break;

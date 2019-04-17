@@ -10,6 +10,7 @@
 
 #include "thread.h"
 #include "workqueue.h"
+#include "linklist.h"
 
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_debug.h"
@@ -74,7 +75,17 @@ static int qzmqclient_read_msg (struct thread *t)
       cb->cb_msg (cb->arg, ctxt, node->msg);
       zmq_msg_close (node->msg);
 #else
-      work_queue_add (cb->process_zmq_msg_queue, node);
+      if (cb->queue_size == 0)
+        work_queue_add (cb->process_zmq_msg_queue, node);
+      else if (listcount (cb->process_zmq_msg_queue->items) < cb->queue_size)
+        work_queue_add (cb->process_zmq_msg_queue, node);
+      else
+        {
+          zrpc_log ("BGP updater message queue limit(%u) reached, message ignored", cb->queue_size);
+          zmq_msg_close (node->msg);
+          ZRPC_FREE (node->msg);
+          ZRPC_FREE (node);
+        }
 #endif
     }
 
