@@ -417,6 +417,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
                                                 (const gint32)ipprefixlen, nexthop,
                                                 s->ethtag, esi, macaddress, s->label, s->l2label,
                                                 mac_router, s->gatewayIp, afi_out);
+          if (mac_router)
+            g_free (mac_router);
         }
       else
         {
@@ -470,10 +472,17 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
                                                      s->ethtag, esi, macaddress, s->label, s->l2label,
                                                      afi_out);
         }
+
+      if (esi)
+        g_free (esi);
       if (s->esi)
         free (s->esi);
       if (s->mac_router)
         free (s->mac_router);
+      if (s->gatewayIp)
+        free (s->gatewayIp);
+      if (macaddress)
+        free (macaddress);
     }
   else if (s->announce == BGP_EVENT_SHUT)
     {
