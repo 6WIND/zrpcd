@@ -136,6 +136,7 @@ DEFUN (show_debugging_zrpc_simulate,
   zrpc_zmq_delay = atoi(argv[0]);
   zrpc_zmq_occurence = atoi(argv[1]);
   qzcclient_configure_simulation_delay (zrpc_zmq_delay, zrpc_zmq_occurence);
+  return CMD_SUCCESS;
 }
 
 DEFUN (show_debugging_zrpc,
