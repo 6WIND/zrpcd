@@ -6,7 +6,9 @@
  * See the LICENSE file.
  */
 #include "thread.h"
+#include "workqueue.h"
 #include "config.h"
+
 #include "zrpcd/zrpc_memory.h"
 #include "zrpcd/zrpc_thrift_wrapper.h"
 #include "zrpcd/bgp_configurator.h"
@@ -200,9 +202,16 @@ static int zrpc_vpnservice_setup_bgp_updater_client_retry (struct thread *thread
   struct zrpc_vpnservice *setup;
   GError *error = NULL;
   gboolean response;
+  struct qzmqclient_cb *cb;
 
   setup = THREAD_ARG (thread);
   assert (setup);
+
+  /* cleanup all the nodes in the workqueue */
+  cb = (setup->qzc_subscribe_sock ? setup->qzc_subscribe_sock->cb : NULL);
+  if (cb && cb->process_zmq_msg_queue)
+    work_queue_cleanup (cb->process_zmq_msg_queue);
+
   if (zrpc_vpnservice_bgp_updater_select_connection(setup))
     {
       zrpc_monitor_retry_job_in_progress = 0;
