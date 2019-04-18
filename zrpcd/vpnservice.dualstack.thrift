@@ -247,11 +247,11 @@ enum protocol_type {
                              6:i64 ethtag, 7:string esi, 8:string macaddress,
                              9:i32 l3label, 10:i32 l2label, 11:af_afi afi),
    // tell them we're open for business
-   oneway void onStartConfigResyncNotification(),
+   i32 onStartConfigResyncNotification(),
    // relay to odl a bgp Notification we got from peer 
-   oneway void onNotificationSendEvent(1:string prefix,
+   i32 onNotificationSendEvent(1:string prefix,
                                        2:byte errCode, 3:byte errSubcode),
-   oneway void peerDown(1:string ipAddress, 2:i64 asNumber),
-   oneway void peerUp(1:string ipAddress, 2:i64 asNumber)
+   i32 peerDown(1:string ipAddress, 2:i64 asNumber),
+   i32 peerUp(1:string ipAddress, 2:i64 asNumber)
 
 } 
