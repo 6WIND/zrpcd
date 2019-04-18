@@ -122,7 +122,7 @@ enum protocol_type {
  }
 
  struct BfdConfigData {
-     1: byte bfdConfigDataVersion,
+     1: i8 bfdConfigDataVersion,
      2: optional i32  bfdRxInterval,
      3: optional byte bfdFailureThreshold,
      4: optional i32  bfdTxInterval,
