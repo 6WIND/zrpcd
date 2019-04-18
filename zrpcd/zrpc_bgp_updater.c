@@ -342,16 +342,41 @@ zrpc_bgp_updater_on_start_config_resync_notification_quick (struct zrpc_vpnservi
 {
   gboolean response;
   GError *error = NULL;
+#if defined(HAVE_THRIFT_V5)
+  gint32 _return;
+#endif
 
   response = bgp_updater_client_send_on_start_config_resync_notification(ctxt->bgp_updater_client, &error);
-  if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, &error, "onStartConfigResyncNotification()") == FALSE)
+  if (response == FALSE)
     {
-      if (error)
-        {
-          g_error_free (error);
-          error = NULL;
-        }
+      g_error_free (error);
+      error = NULL;
     }
+#if defined(HAVE_THRIFT_V5)
+  else
+    {
+      if (zrpc_bgp_updater_wait_reply(ctxt, "onStartConfigResyncNotification()"))
+        {
+          response = bgp_updater_client_recv_on_start_config_resync_notification(ctxt->bgp_updater_client, &_return, &error);
+          if (error)
+            {
+              zrpc_info ("onStartConfigResyncNotification(): recv error: %s (%d)", error->message, errno);
+              g_error_free (error);
+              error = NULL;
+            }
+          else
+            {
+	      if (_return != 0)
+                {
+                  zrpc_info ("onStartConfigResyncNotification(): return value %d", _return);
+                  response = FALSE;
+                }
+            }
+        }
+      else
+        response = FALSE;
+    }
+#endif
 
   if(IS_ZRPC_DEBUG_NOTIFICATION)
     zrpc_info ("onStartConfigResyncNotification() %s", response == FALSE?"NOK":"OK");
@@ -401,6 +426,9 @@ zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 e
   GError *error = NULL;
   gboolean response;
   struct zrpc_vpnservice *ctxt = NULL;
+#if defined(HAVE_THRIFT_V5)
+  gint32 _return;
+#endif
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
@@ -408,14 +436,36 @@ zrpc_bgp_updater_on_notification_send_event (const gchar * prefix, const gint8 e
 
   response = bgp_updater_client_send_on_notification_send_event(ctxt->bgp_updater_client, \
                                                                 prefix, errCode, errSubcode, &error);
-  if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, &error, "onNotificationSendEvent()") == FALSE)
+  if (response == FALSE)
     {
-      if (error)
-        {
-          g_error_free (error);
-          error = NULL;
-        }
+      g_error_free (error);
+      error = NULL;
     }
+#if defined(HAVE_THRIFT_V5)
+  else
+    {
+      if (zrpc_bgp_updater_wait_reply(ctxt, "onNotificationSendEvent()"))
+        {
+          response = bgp_updater_client_recv_on_notification_send_event(ctxt->bgp_updater_client, &_return, &error);
+          if (error)
+            {
+              zrpc_info ("onNotificationSendEvent(): recv error: %s (%d)", error->message, errno);
+              g_error_free (error);
+              error = NULL;
+            }
+          else
+            {
+	      if (_return != 0)
+                {
+                  zrpc_info ("onNotificationSendEvent(): return value %d", _return);
+                  response = FALSE;
+                }
+            }
+        }
+      else
+        response = FALSE;
+    }
+#endif
 
  if(IS_ZRPC_DEBUG_NOTIFICATION)
     zrpc_log ("onNotificationSendEvent(%s, errCode %d, errSubCode %d) %s", \
@@ -433,6 +483,9 @@ zrpc_bgp_updater_peer_up (const gchar * ipAddress, const gint64 asNumber)
   GError *error = NULL;
   gboolean response;
   struct zrpc_vpnservice *ctxt = NULL;
+#if defined(HAVE_THRIFT_V5)
+  gint32 _return;
+#endif
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
@@ -440,14 +493,36 @@ zrpc_bgp_updater_peer_up (const gchar * ipAddress, const gint64 asNumber)
 
   response = bgp_updater_client_send_peer_up(ctxt->bgp_updater_client,
                                              ipAddress, asNumber, &error);
-  if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, &error, "peerUp()") == FALSE)
+  if (response == FALSE)
     {
-      if (error)
-        {
-          g_error_free (error);
-          error = NULL;
-        }
+      g_error_free (error);
+      error = NULL;
     }
+#if defined(HAVE_THRIFT_V5)
+  else
+    {
+      if (zrpc_bgp_updater_wait_reply(ctxt, "peerUp()"))
+        {
+          response = bgp_updater_client_recv_peer_up(ctxt->bgp_updater_client, &_return, &error);
+          if (error)
+            {
+              zrpc_info ("peerUp(): recv error: %s (%d)", error->message, errno);
+              g_error_free (error);
+              error = NULL;
+            }
+          else
+            {
+	      if (_return != 0)
+                {
+                  zrpc_info ("peerUp(): return value %d", _return);
+                  response = FALSE;
+                }
+            }
+        }
+      else
+        response = FALSE;
+    }
+#endif
 
  if(IS_ZRPC_DEBUG_NOTIFICATION)
     zrpc_log ("peerUp(%s, asNumber %u) %s",
@@ -465,6 +540,9 @@ zrpc_bgp_updater_peer_down (const gchar * ipAddress, const gint64 asNumber)
   GError *error = NULL;
   gboolean response;
   struct zrpc_vpnservice *ctxt = NULL;
+#if defined(HAVE_THRIFT_V5)
+  gint32 _return;
+#endif
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt || !ctxt->bgp_updater_client)
@@ -472,14 +550,36 @@ zrpc_bgp_updater_peer_down (const gchar * ipAddress, const gint64 asNumber)
 
   response = bgp_updater_client_send_peer_down(ctxt->bgp_updater_client,
                                                ipAddress, asNumber, &error);
-  if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, &error, "peerDown()") == FALSE)
+  if (response == FALSE)
     {
-      if (error)
-        {
-          g_error_free (error);
-          error = NULL;
-        }
+      g_error_free (error);
+      error = NULL;
     }
+#if defined(HAVE_THRIFT_V5)
+  else
+    {
+      if (zrpc_bgp_updater_wait_reply(ctxt, "peerDown()"))
+        {
+          response = bgp_updater_client_recv_peer_down(ctxt->bgp_updater_client, &_return, &error);
+          if (error)
+            {
+              zrpc_info ("peerDown(): recv error: %s (%d)", error->message, errno);
+              g_error_free (error);
+              error = NULL;
+            }
+          else
+            {
+	      if (_return != 0)
+                {
+                  zrpc_info ("peerDown(): return value %d", _return);
+                  response = FALSE;
+                }
+            }
+        }
+      else
+        response = FALSE;
+    }
+#endif
 
  if(IS_ZRPC_DEBUG_NOTIFICATION)
     zrpc_log ("peerDown(%s, asNumber %u) %s",
