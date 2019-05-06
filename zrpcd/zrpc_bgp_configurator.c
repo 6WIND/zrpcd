@@ -2067,7 +2067,7 @@ instance_bgp_configurator_handler_create_peer(BgpConfiguratorIf *iface, gint32* 
     {
       if(IS_ZRPC_DEBUG)
         zrpc_info ("createPeer(%s) already present. do nothing.", routerId);
-#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V5)
+#if defined(HAVE_THRIFT_V3) || defined(HAVE_THRIFT_V4)
       *error = ERROR_BGP_PEER_EXISTS;
       return FALSE;
 #else
