@@ -269,8 +269,10 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
 #define ERROR_BGP_RD_AFI_SAFI_NOT_CONFIGURED(_a,_b) g_error_new(1, BGP_ERR_PARAM, "BGP RD %s not configured with afi %d p_type %d", rd, (_a), (_b));
 
 #ifdef HAVE_THRIFT_V5
-#define ERROR_BGP_BFD_ENABLED g_error_new(1, BGP_ERR_ACTIVE, "BFD already enabled")
-#define ERROR_BGP_BFD_NOT_ENABLED g_error_new(1, BGP_ERR_INACTIVE, "BFD not enabled")
+
+#define ERROR_BGP_BFD_ENABLED g_error_new(1, BGP_ERR_PEER_EXISTS, "BFD already enabled")
+#define ERROR_BGP_BFD_NOT_ENABLED g_error_new(1, BGP_ERR_PARAM, "BFD not enabled")
+
 #define ERROR_BGP_INVALID_BFD_CONFIG_DATA_VERSION \
             g_error_new(1, BGP_ERR_PARAM, \
                         "BFD config data: invalid version %d, only version 1 is supported", \
