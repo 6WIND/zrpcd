@@ -44,7 +44,7 @@
  const i32 BGP_ERR_PARAM = 100
  const i32 BGP_ERR_NOT_SUPPORTED = 200
  
- const i32 BGP_ETHTAG_MAX_ET = 0xffffffff
+ const i64 BGP_ETHTAG_MAX_ET = 0xffffffff
 
  // supported afi-safi combinations 
  enum af_afi {
