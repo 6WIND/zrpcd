@@ -41,6 +41,7 @@ set +u
 INST_BIN_DIR=$2
 HOST_NAME=$4
 COMMITID=$5
+PACKAGING_VERSION=$7
 PACKAGE_DEB="n"
 #The src.rpm will be installed into following dir
 SRC_INST_DIR="/usr/local/src/"
@@ -88,6 +89,13 @@ zrpc_copy_bin_files () {
         if [ -f $INST_BIN_DIR/opt/quagga/var/log/quagga/zrpcd.init.log ]; then
               touch $INST_BIN_DIR/opt/quagga/var/log/quagga/zrpcd.init.log
         fi
+
+        if [ -z "$PACKAGING_VERSION" ]; then
+	    zrpc_version="0.2.`date +'%Y%m%d'`"
+        else
+	    zrpc_version="0.2.$PACKAGING_VERSION"
+        fi
+	echo $zrpc_version > $INST_BIN_DIR/opt/quagga/etc/zrpc.version
     else
         if [ $PACKAGE_DEB = "n" ]; then
         #For redhat: prepare source
@@ -270,6 +278,14 @@ quagga_copy_bin_files () {
     	    touch $INST_BIN_DIR/opt/quagga/etc/zebra.conf
         fi
 
+        if [ -z "$PACKAGING_VERSION" ]; then
+	    quagga_version="1.1.0.`date +'%Y%m%d'`"
+        else
+	    quagga_version="1.1.0.$PACKAGING_VERSION"
+        fi
+
+	echo $quagga_version > $INST_BIN_DIR/opt/quagga/etc/quagga.version
+
         rm -rf $INST_BIN_DIR/../bin
         mkdir -p $INST_BIN_DIR/../bin
 
@@ -282,6 +298,7 @@ quagga_copy_bin_files () {
         tar cf - ./opt/quagga/etc/bgpd.conf | tar xf - -C $INST_BIN_DIR/../bin
         tar cf - ./opt/quagga/etc/bfdd.conf | tar xf - -C $INST_BIN_DIR/../bin
         tar cf - ./opt/quagga/etc/zebra.conf | tar xf - -C $INST_BIN_DIR/../bin
+        tar cf - ./opt/quagga/etc/quagga.version | tar xf - -C $INST_BIN_DIR/../bin
         tar cf - ./opt/quagga/sbin | tar xf - -C $INST_BIN_DIR/../bin
         popd
 

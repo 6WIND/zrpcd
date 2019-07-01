@@ -182,14 +182,14 @@ install_deps() {
         COMMITID=`git log -n1 --format="%h"`
 
         popd
-        $DIR_NAME/packaging.sh "thrift" $INSTALL_DIR $THRIFT_DIR $HOST_NAME $COMMITID bin
+        $DIR_NAME/packaging.sh "thrift" $INSTALL_DIR $THRIFT_DIR $HOST_NAME $COMMITID bin ""
         rm -rf $ZRPCD_BUILD_FOLDER/packager/thrift/bin
         rm -rf $ZRPCD_BUILD_FOLDER/packager/thrift/src
         mkdir -p $ZRPCD_BUILD_FOLDER/packager/thrift/src
         pushd $ZRPCD_BUILD_FOLDER/thrift
         git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/thrift/src/thrift-src.tar $THRIFT_TAG
         popd
-        $DIR_NAME/packaging.sh "thrift-src" $ZRPCD_BUILD_FOLDER/packager/thrift/src/ $THRIFT_DIR $HOST_NAME $COMMITID dev
+        $DIR_NAME/packaging.sh "thrift-src" $ZRPCD_BUILD_FOLDER/packager/thrift/src/ $THRIFT_DIR $HOST_NAME $COMMITID dev ""
     fi
 #Install ZeroMQ
     pushd $ZRPCD_BUILD_FOLDER
@@ -211,7 +211,7 @@ install_deps() {
         COMMITID=`git log -n1 --format="%h"`
         popd
         cd $DIR_PATH
-        ./$DIR_NAME/packaging.sh "zmq" $INSTALL_DIR $ZMQ_DIR $HOST_NAME $COMMITID bin
+        ./$DIR_NAME/packaging.sh "zmq" $INSTALL_DIR $ZMQ_DIR $HOST_NAME $COMMITID bin ""
         rm -rf $ZRPCD_BUILD_FOLDER/packager/zmq/src
         rm -rf $ZRPCD_BUILD_FOLDER/packager/zmq/bin
         mkdir -p $ZRPCD_BUILD_FOLDER/packager/zmq/src
@@ -219,7 +219,7 @@ install_deps() {
         git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/zmq/src/zmq-src.tar $ZMQ_TAG
         popd
         cd $DIR_PATH
-        ./$DIR_NAME/packaging.sh "zmq-src" $ZRPCD_BUILD_FOLDER/packager/zmq/src $ZMQ_DIR $HOST_NAME $COMMITID dev
+        ./$DIR_NAME/packaging.sh "zmq-src" $ZRPCD_BUILD_FOLDER/packager/zmq/src $ZMQ_DIR $HOST_NAME $COMMITID dev ""
     fi
 #Install C-capnproto
      pushd $ZRPCD_BUILD_FOLDER
@@ -243,7 +243,7 @@ install_deps() {
 
          popd
          cd $DIR_PATH
-         ./$DIR_NAME/packaging.sh "c-capnproto" $INSTALL_DIR $CCAPNPROTO_DIR $HOST_NAME $COMMITID bin
+         ./$DIR_NAME/packaging.sh "c-capnproto" $INSTALL_DIR $CCAPNPROTO_DIR $HOST_NAME $COMMITID bin ""
          rm -rf $ZRPCD_BUILD_FOLDER/packager/c-capnproto/bin
          rm -rf $ZRPCD_BUILD_FOLDER/packager/c-capnproto/src
          mkdir -p $ZRPCD_BUILD_FOLDER/packager/c-capnproto/src
@@ -251,7 +251,7 @@ install_deps() {
          git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/c-capnproto/src/c-capnproto-src.tar $CCAPNPROTO_TAG
          popd
          cd $DIR_PATH
-         ./$DIR_NAME/packaging.sh "c-capnproto-src" $ZRPCD_BUILD_FOLDER/packager/c-capnproto/src $CCAPNPROTO_DIR $HOST_NAME $COMMITID dev
+         ./$DIR_NAME/packaging.sh "c-capnproto-src" $ZRPCD_BUILD_FOLDER/packager/c-capnproto/src $CCAPNPROTO_DIR $HOST_NAME $COMMITID dev ""
      fi
 #Install Quagga
 
@@ -348,14 +348,14 @@ install_deps() {
             ;;
         esac
         cd $DIR_PATH
-        ./$DIR_NAME/packaging.sh "quagga" $INSTALL_DIR $QUAGGA_DIR $HOST_NAME $COMMITID bin
+        ./$DIR_NAME/packaging.sh "quagga" $INSTALL_DIR $QUAGGA_DIR $HOST_NAME $COMMITID bin $PACKAGING_VERSION
         rm -rf $ZRPCD_BUILD_FOLDER/packager/quagga/src
         mkdir -p $ZRPCD_BUILD_FOLDER/packager/quagga/src
         pushd $ZRPCD_BUILD_FOLDER/quagga
         git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/quagga/src/quagga-src.tar quagga_mpbgp_capnp
         popd
         cd $DIR_PATH
-        ./$DIR_NAME/packaging.sh "quagga-src" $ZRPCD_BUILD_FOLDER/packager/quagga/src $QUAGGA_DIR $HOST_NAME $COMMITID dev
+        ./$DIR_NAME/packaging.sh "quagga-src" $ZRPCD_BUILD_FOLDER/packager/quagga/src $QUAGGA_DIR $HOST_NAME $COMMITID dev $PACKAGING_VERSION
     fi
 }
 build_zrpcd (){
@@ -504,13 +504,13 @@ build_zrpcd (){
             fi
 	    ;;
         esac
-        $DIR_NAME/packaging.sh "zrpc" $INSTALL_DIR $ZRPC_DIR $HOST_NAME $COMMITID bin
+        $DIR_NAME/packaging.sh "zrpc" $INSTALL_DIR $ZRPC_DIR $HOST_NAME $COMMITID bin $PACKAGING_VERSION
         rm -rf $ZRPCD_BUILD_FOLDER'/packager/zrpc/bin'
         rm -rf $ZRPCD_BUILD_FOLDER'/packager/zrpc/deb'
         rm -rf $ZRPCD_BUILD_FOLDER'/packager/zrpc/src'
         mkdir $ZRPCD_BUILD_FOLDER'/packager/zrpc/src'
         git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/zrpc/src/zrpc-src.tar origin/master
-        $DIR_NAME/packaging.sh "zrpc-src" $ZRPCD_BUILD_FOLDER/packager/zrpc/src/ $ZRPC_DIR $HOST_NAME $COMMITID dev
+        $DIR_NAME/packaging.sh "zrpc-src" $ZRPCD_BUILD_FOLDER/packager/zrpc/src/ $ZRPC_DIR $HOST_NAME $COMMITID dev $PACKAGING_VERSION
     else
         echo "hostname bgpd" > /opt/quagga/etc/bgpd.conf
         echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
@@ -537,6 +537,7 @@ OPTIONS:
   -d/--install-deps, compile and install zrpcd's dependencies.
   -v/--version, define the thrift API to use with: 1 = l3vpn, 2 = evpn, 4 = ipv6, 5 = dualstack
   -p/ Do packaging
+  -P/ Provide packaging version: 20190702 for instance
   -h help, prints this help text
 EOF
 }
@@ -546,6 +547,7 @@ BUILD_FROM_DIST=""
 DIST_ARCHIVE=""
 DO_PACKAGING=""
 THRIFT_VERSION="1"
+PACKAGING_VERSION=""
 parse_cmdline() {
     while [ $# -gt 0 ]
     do
@@ -576,6 +578,10 @@ parse_cmdline() {
                 ;;
             -v|--version)
                 THRIFT_VERSION=${2}
+                shift 2
+                ;;
+            -P|--PackagingVersion)
+                PACKAGING_VERSION=${2}
                 shift 2
                 ;;
             *)
