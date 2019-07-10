@@ -212,6 +212,7 @@ zrpc_deb_bin_control () {
         echo "Description: Zebra Remote Procedure Call" >> $DEB_CONTROL_FILE
     printf " ZRPC-DEV provides source necessary to develop under ZRPC.\n" >> $DEB_CONTROL_FILE
     else
+        echo "Architecture: amd64" >> $DEB_CONTROL_FILE
         echo "Depends: thrift(>=0.9), zmq(>=4.1.0), libglib2.0-0(>=2.22.5), quagga(>=1.1.0), c-capnproto(>=1.0.0)" >> $DEB_CONTROL_FILE
         echo "Description: Zebra Remote Procedure Call" >> $DEB_CONTROL_FILE
         printf " ZRPC provides a Thrift API and handles RPC to configure Quagga framework.\n" >> $DEB_CONTROL_FILE
