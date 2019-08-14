@@ -429,19 +429,19 @@ void qcapn_prefix_macip_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index
 {
     size_t i;
 
-    pfx->u.prefix_macip.eth_tag_id = htonl(capn_read32(p, *index));
+    pfx->u.prefix_evpn.u.prefix_macip.eth_tag_id = htonl(capn_read32(p, *index));
     *index = *index + 4;
     for (i = 0; i < sizeof(struct zrpc_ethaddr); i++)
-      pfx->u.prefix_macip.mac.octet[i] = capn_read8(p, *index + i);
+      pfx->u.prefix_evpn.u.prefix_macip.mac.octet[i] = capn_read8(p, *index + i);
 
     *index = *index + i;
-    pfx->u.prefix_macip.mac_len = capn_read8(p, *index);
+    pfx->u.prefix_evpn.u.prefix_macip.mac_len = capn_read8(p, *index);
     *index = *index + 1;
-    pfx->u.prefix_macip.ip_len = capn_read8(p, *index);
+    pfx->u.prefix_evpn.u.prefix_macip.ip_len = capn_read8(p, *index);
     *index = *index + 1;
-    if (pfx->u.prefix_macip.ip_len == 128)
+    if (pfx->u.prefix_evpn.u.prefix_macip.ip_len == 128)
       {
-        u_char *in6 = (u_char *)&(pfx->u.prefix_macip.ip.in6);
+        u_char *in6 = (u_char *)&(pfx->u.prefix_evpn.u.prefix_macip.ip.in6);
 
         for(i=0; i < sizeof(struct in6_addr); i++)
           {
@@ -452,7 +452,7 @@ void qcapn_prefix_macip_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index
       }
     else /* assuming 0 or 32 */
       {
-        pfx->u.prefix_macip.ip.in4.s_addr = ntohl(capn_read32(p, *index));
+        pfx->u.prefix_evpn.u.prefix_macip.ip.in4.s_addr = ntohl(capn_read32(p, *index));
         *index = *index + 4;
       }
 }
@@ -461,18 +461,18 @@ void qcapn_prefix_macip_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t
 {
     size_t i;
 
-    capn_write32(p, *index, ntohl(pfx->u.prefix_macip.eth_tag_id));
+    capn_write32(p, *index, ntohl(pfx->u.prefix_evpn.u.prefix_macip.eth_tag_id));
     *index = *index + 4;
     for (i = 0; i < sizeof(struct zrpc_ethaddr); i++)
-      capn_write8(p, *index + i, pfx->u.prefix_macip.mac.octet[i]);
+      capn_write8(p, *index + i, pfx->u.prefix_evpn.u.prefix_macip.mac.octet[i]);
     *index = *index + i;
-    capn_write8(p, *index, pfx->u.prefix_macip.mac_len);
+    capn_write8(p, *index, pfx->u.prefix_evpn.u.prefix_macip.mac_len);
     *index = *index + 1;
-    capn_write8(p, *index, pfx->u.prefix_macip.ip_len);
+    capn_write8(p, *index, pfx->u.prefix_evpn.u.prefix_macip.ip_len);
     *index = *index + 1;
-    if (pfx->u.prefix_macip.ip_len == 128)
+    if (pfx->u.prefix_evpn.u.prefix_macip.ip_len == 128)
       {
-        u_char *in6 = (u_char *)&(pfx->u.prefix_macip.ip.in6);
+        u_char *in6 = (u_char *)&(pfx->u.prefix_evpn.u.prefix_macip.ip.in6);
 
         for(i=0; i < sizeof(struct in6_addr); i++)
           {
@@ -482,7 +482,7 @@ void qcapn_prefix_macip_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t
       }
     else /* assuming 0 or 32 */
       {
-        capn_write32(p, *index, ntohl(pfx->u.prefix_macip.ip.in4.s_addr));
+        capn_write32(p, *index, ntohl(pfx->u.prefix_evpn.u.prefix_macip.ip.in4.s_addr));
         *index = *index + 4;
       }
 }
@@ -500,7 +500,7 @@ void qcapn_BGPVRFRoute_write(const struct bgp_api_route *s, capn_ptr p)
           size = 20;
         else if (s->prefix.family == AF_L2VPN)
           {
-            if (s->prefix.u.prefix_macip.ip_len == 128)
+            if (s->prefix.u.prefix_evpn.u.prefix_macip.ip_len == 128)
               size = 30; /* ipv6 replaced by ipv4 */
             else
               size = 18;

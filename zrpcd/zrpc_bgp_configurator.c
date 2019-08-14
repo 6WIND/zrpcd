@@ -1367,7 +1367,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
 
       if (is_auto_discovery)
         {
-          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
+          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_evpn.u.prefix_macip;
 
           /* ethtag must be 0 or MAX_ET */
           if( ((ethtag != 0 && ethtag != BGP_ETHTAG_MAX_ET)
@@ -1388,7 +1388,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
         }
       if (macaddress && zrpc_util_str2mac (macaddress, NULL) != 0)
         {
-          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
+          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_evpn.u.prefix_macip;
           inst.prefix.family = AF_L2VPN;
           inst.prefix.prefixlen = ZRPC_L2VPN_IPV4_PREFIX_LEN;
           m->eth_tag_id = ethtag;
@@ -1699,7 +1699,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
       /* detect Auto Discovery and then check parameters coherency */
       if (is_auto_discovery)
         {
-          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
+          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_evpn.u.prefix_macip;
 
           /* labels must be 0, ethtag must be 0 or MAX_ET */
           if(( ethtag != 0 && ethtag != BGP_ETHTAG_MAX_ET)
@@ -1718,7 +1718,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
 
       if (macaddress && zrpc_util_str2mac (macaddress, NULL) != 0)
         {
-          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_macip;
+          struct zrpc_macipaddr *m = &inst.prefix.u.prefix_evpn.u.prefix_macip;
           inst.prefix.family = AF_L2VPN;
           inst.prefix.prefixlen = ZRPC_L2VPN_IPV4_PREFIX_LEN;
           m->eth_tag_id = ethtag;
@@ -3365,12 +3365,12 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
     {
       if (ZRPC_L2VPN_PREFIX_HAS_IPV4(&(inst_route->prefix)))
         {
-          upd->prefix = g_strdup(inet_ntop (AF_INET, &(inst_route->prefix.u.prefix_macip.ip.in4), rdstr, ZRPC_UTIL_RDRT_LEN));
+          upd->prefix = g_strdup(inet_ntop (AF_INET, &(inst_route->prefix.u.prefix_evpn.u.prefix_macip.ip.in4), rdstr, ZRPC_UTIL_RDRT_LEN));
           upd->prefixlen = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
         }
       else if (ZRPC_L2VPN_PREFIX_HAS_IPV6(&(inst_route->prefix)))
         {
-          upd->prefix = g_strdup(inet_ntop (AF_INET6, &(inst_route->prefix.u.prefix_macip.ip.in6), rdstr, ZRPC_UTIL_RDRT_LEN));
+          upd->prefix = g_strdup(inet_ntop (AF_INET6, &(inst_route->prefix.u.prefix_evpn.u.prefix_macip.ip.in6), rdstr, ZRPC_UTIL_RDRT_LEN));
           upd->prefixlen = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
         }
       else
@@ -3379,7 +3379,7 @@ static void get_update_entry_from_context( struct bgp_api_route *inst_route,
           upd->prefixlen = 0;
         }
 #if !defined(HAVE_THRIFT_V1)
-      upd->macaddress = g_strdup(zrpc_util_mac2str((char*) &inst_route->prefix.u.prefix_macip.mac));
+      upd->macaddress = g_strdup(zrpc_util_mac2str((char*) &inst_route->prefix.u.prefix_evpn.u.prefix_macip.mac));
 #endif /* !HAVE_THRIFT_V1 */
     }
   if(inst_multipath)
@@ -3681,7 +3681,7 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
               prefix_addr_is_zero =  (inst_route.prefix.u.prefix6.s6_addr == 0);
               break;
             case AF_L2VPN:
-              prefix_addr_is_zero =  (inst_route.prefix.u.prefix_macip.ip.in4.s_addr == 0);
+              prefix_addr_is_zero =  (inst_route.prefix.u.prefix_evpn.u.prefix_macip.ip.in4.s_addr == 0);
               break;
             default:
               /* bypass route entries with family not taken into account */
@@ -3796,7 +3796,7 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
                   prefix_addr_is_zero =  (inst_multipath_route.prefix.u.prefix6.s6_addr == 0);
                   break;
                 case AF_L2VPN:
-                  prefix_addr_is_zero =  (inst_multipath_route.prefix.u.prefix_macip.ip.in4.s_addr == 0);
+                  prefix_addr_is_zero =  (inst_multipath_route.prefix.u.prefix_evpn.u.prefix_macip.ip.in4.s_addr == 0);
                   break;
                 default:
                   continue;

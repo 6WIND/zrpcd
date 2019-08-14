@@ -325,7 +325,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         afi_out = AF_AFI_AFI_IPV6;
       else if (p->family == AF_L2VPN)
         {
-          struct zrpc_macipaddr *m = &(p->u.prefix_macip);
+          struct zrpc_macipaddr *m = &(p->u.prefix_evpn.u.prefix_macip);
           if (m->ip_len == 128)
             afi_out = AF_AFI_AFI_IPV6; /* only L2VPN -> IPv6 */
           else
@@ -372,12 +372,12 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
             {
               if (ZRPC_L2VPN_PREFIX_HAS_IPV4(p))
                 {
-                  inet_ntop (AF_INET, &p->u.prefix_macip.ip.in4, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+                  inet_ntop (AF_INET, &p->u.prefix_evpn.u.prefix_macip.ip.in4, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
                   ipprefixlen = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
                 }
               else if (ZRPC_L2VPN_PREFIX_HAS_IPV6(p))
                 {
-                  inet_ntop (AF_INET6, &p->u.prefix_macip.ip.in6, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+                  inet_ntop (AF_INET6, &p->u.prefix_evpn.u.prefix_macip.ip.in6, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
                   ipprefixlen = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
                 }
               else
@@ -385,7 +385,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                   pfx_str_p = NULL;
                   ipprefixlen = 0;
                 }
-              macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_macip.mac);
+              macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_evpn.u.prefix_macip.mac);
             }
 #if defined(HAVE_THRIFT_V1)
 
@@ -417,15 +417,15 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
             }
           else if (p->family == AF_L2VPN)
             {
-              macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_macip.mac);
+              macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_evpn.u.prefix_macip.mac);
               if (ZRPC_L2VPN_PREFIX_HAS_IPV4(p))
                 {
-                  inet_ntop (AF_INET, &p->u.prefix_macip.ip.in4, pfx_str_p, ZRPC_UTIL_IPV6_LEN_MAX);
+                  inet_ntop (AF_INET, &p->u.prefix_evpn.u.prefix_macip.ip.in4, pfx_str_p, ZRPC_UTIL_IPV6_LEN_MAX);
                   ipprefixlen = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
                 }
               else if (ZRPC_L2VPN_PREFIX_HAS_IPV6(p))
                 {
-                  inet_ntop (AF_INET6, &p->u.prefix_macip.ip.in6, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
+                  inet_ntop (AF_INET6, &p->u.prefix_evpn.u.prefix_macip.ip.in6, pfx_str, ZRPC_UTIL_IPV6_LEN_MAX);
                   ipprefixlen = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
                 }
               else

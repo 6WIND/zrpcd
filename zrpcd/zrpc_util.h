@@ -125,6 +125,25 @@ struct zrpc_macipaddr {
   } ip __attribute__ ((packed));
 }__attribute__ ((packed));
 
+struct zrpc_imet_tag {
+  u_int32_t eth_tag_id;
+  u_int8_t ip_len;
+  union
+  {
+    struct in_addr in4;             /* AF_INET */
+    struct in6_addr in6;            /* AF_INET6 */
+  } ip __attribute__ ((packed));
+} __attribute__ ((packed));
+
+struct zrpc_evpn_addr {
+  uint8_t route_type;
+  union {
+    struct zrpc_macipaddr prefix_macip;      /* AF_L2VPN */
+    struct zrpc_macipaddr prefix_ipvrf;      /* AF_L2VPN */
+    struct zrpc_imet_tag prefix_imethtag;    /* AF_L2VPN */
+  } u;
+};
+
 struct zrpc_prefix
 {
   u_char family;
@@ -134,19 +153,24 @@ struct zrpc_prefix
     u_char prefix;
     struct in_addr prefix4;
     struct in6_addr prefix6;
-    struct zrpc_macipaddr prefix_macip;      /* AF_L2VPN */
-    struct zrpc_macipaddr prefix_ipvrf;      /* AF_L2VPN */
+    struct zrpc_evpn_addr prefix_evpn; /* AF_L2VPN */
   } u __attribute__ ((aligned (8)));
 };
-#define ZRPC_L2VPN_PREFIX_HAS_IPV4(p)  ((p)->u.prefix_macip.ip_len == ZRPC_UTIL_IPV4_PREFIX_LEN_MAX)
-#define ZRPC_L2VPN_PREFIX_HAS_IPV6(p)  ((p)->u.prefix_macip.ip_len == ZRPC_UTIL_IPV6_PREFIX_LEN_MAX)
-#define ZRPC_L2VPN_PREFIX_HAS_NOIP(p)  ((p)->u.prefix_macip.ip_len == 0)
+#define ZRPC_L2VPN_PREFIX_HAS_IPV4(p)  ((p)->u.prefix_evpn.u.prefix_macip.ip_len == ZRPC_UTIL_IPV4_PREFIX_LEN_MAX)
+#define ZRPC_L2VPN_PREFIX_HAS_IPV6(p)  ((p)->u.prefix_evpn.u.prefix_macip.ip_len == ZRPC_UTIL_IPV6_PREFIX_LEN_MAX)
+#define ZRPC_L2VPN_PREFIX_HAS_NOIP(p)  ((p)->u.prefix_evpn.u.prefix_macip.ip_len == 0)
 
-#define ZRPC_L2VPN_NOIP_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 2 /*mac len + ip len*/) * 8)
-#define ZRPC_L2VPN_IPV4_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 4 /*IP address*/ + 2 /*mac len + ip len*/) * 8)
-#define ZRPC_L2VPN_IPV6_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 16 /*IP address*/ + 2 /*mac len + ip len*/) * 8)
+/* for EVPN route type 2 */
+#define ZRPC_L2VPN_NOIP_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 2 /*mac len + ip len*/ + 1 /* route type */) * 8)
+#define ZRPC_L2VPN_IPV4_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 4 /*IP address*/ + 2 /*mac len + ip len*/ + 1 /* route type */) * 8)
+#define ZRPC_L2VPN_IPV6_PREFIX_LEN ((ZRPC_MAC_LEN + 4 /*ethtag*/+ 16 /*IP address*/ + 2 /*mac len + ip len*/ + 1 /* route type */) * 8)
+
 #define ZRPC_L2VPN_PREFIX_ETHTAGLEN (8 * sizeof(u_int32_t))
 #define ZRPC_L2VPN_PREFIX_AD (8 * sizeof (struct zrpc_eth_segment_id) + ZRPC_L2VPN_PREFIX_ETHTAGLEN)
+
+/* for EVPN route type 3 */
+#define ZRPC_L2VPN_MCAST_PREFIX_LEN (( 4 /* ethtag */ + 1 /* IP length */ \
+                                       + 16 /* IP Address */ + 1 /* route type */) * 8)
 
 #ifndef IN6_IS_ADDR_V4MAPPED
 #define IN6_IS_ADDR_V4MAPPED(a) \
