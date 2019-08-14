@@ -377,4 +377,94 @@ zrpc_bgp_updater_peer_down (const gchar * ipAddress, const gint64 asNumber)
               response == FALSE?"NOK":"OK");
   return response;
 }
+
+/*
+ * update pushEvpnRT notification message
+ */
+gboolean
+zrpc_bgp_updater_on_update_push_evpn_rt(const gint32 routeType, const gchar * rd,
+                                        const gchar * esi, const gint64 evi,
+                                        const pmsi_tunnel_type tunnelType,
+                                        const gchar * tunnelId, const gint32 label,
+                                        const gboolean singleActiveMode)
+{
+  GError *error = NULL, **perror;
+  gboolean response;
+  struct zrpc_vpnservice *ctxt = NULL;
+  int thrift_tries;
+
+  perror = &error;
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt || !ctxt->bgp_updater_client)
+      return FALSE;
+
+  for (thrift_tries = 0; thrift_tries < 2; thrift_tries++) {
+    response = bgp_updater_client_send_on_update_push_evpn_r_t(ctxt->bgp_updater_client,
+                                                               routeType, rd,
+                                                               esi, evi, tunnelType,
+                                                               tunnelId, label,
+                                                               singleActiveMode, &error);
+    if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, perror, "onUpdatePushEvpnRT()") == FALSE)
+      break;
+    error = NULL;
+  }
+
+  if (IS_ZRPC_DEBUG_NOTIFICATION)
+    {
+      zrpc_info ("onUpdatePushEvpnRT(routeType %d, rd %s, esi %s, evi %ld, tunnelType %d, tunnelId %s, label %d, singleActiveMode %s) sent %s",
+                 routeType, rd,
+                 (esi == NULL) ? "none" : esi,
+                 evi, tunnelType,
+                 (tunnelId == NULL) ? "none" : tunnelId,
+                 label,
+                 (singleActiveMode == TRUE) ? "true" : "false",
+                 (response == TRUE) ? "OK" : "NOK");
+    }
+  return response;
+}
+
+/*
+ * update withdrawEvpnRT notification message
+ */
+gboolean
+zrpc_bgp_updater_on_update_withdraw_evpn_rt(const gint32 routeType, const gchar * rd,
+                                            const gchar * esi, const gint64 evi,
+                                            const pmsi_tunnel_type tunnelType,
+                                            const gchar * tunnelId, const gint32 label,
+                                            const gboolean singleActiveMode)
+{
+  GError *error = NULL, **perror;
+  gboolean response;
+  struct zrpc_vpnservice *ctxt = NULL;
+  int thrift_tries;
+
+  perror = &error;
+  zrpc_vpnservice_get_context (&ctxt);
+  if(!ctxt || !ctxt->bgp_updater_client)
+      return FALSE;
+
+  for (thrift_tries = 0; thrift_tries < 2; thrift_tries++) {
+    response = bgp_updater_client_send_on_update_withdraw_evpn_r_t(ctxt->bgp_updater_client,
+                                                                   routeType, rd,
+                                                                   esi, evi, tunnelType,
+                                                                   tunnelId, label,
+                                                                   singleActiveMode, &error);
+    if (zrpc_bgp_updater_handle_response(ctxt, (bool *)&response, perror, "onUpdateWithdrawEvpnRT()") == FALSE)
+      break;
+    error = NULL;
+  }
+
+  if (IS_ZRPC_DEBUG_NOTIFICATION)
+    {
+      zrpc_info ("onUpdateWithdrawEvpnRT(routeType %d, rd %s, esi %s, evi %ld, tunnelType %d, tunnelId %s, label %d, singleActiveMode %s) sent %s",
+                 routeType, rd,
+                 (esi == NULL) ? "none" : esi,
+                 evi, tunnelType,
+                 (tunnelId == NULL) ? "none" : tunnelId,
+                 label,
+                 (singleActiveMode == TRUE) ? "true" : "false",
+                 (response == TRUE) ? "OK" : "NOK");
+    }
+  return response;
+}
 #endif

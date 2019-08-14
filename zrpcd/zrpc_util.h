@@ -37,6 +37,10 @@
 #define ZRPC_UTIL_IPV6_LEN_MAX              51
 #define ZRPC_UTIL_IPV6_PREFIX_LEN_MAX      128
 
+/* Max bit/byte length of IPv6 address. */
+#define ZRPC_UTIL_IPV6_MAX_BYTELEN    16
+#define ZRPC_UTIL_IPV6_MAX_BITLEN    128
+
 /* for handling BGP pid */
 #define ZRPC_UTIL_PIDFILE_MASK 0644
 
@@ -137,6 +141,14 @@ struct zrpc_imet_tag {
 
 struct zrpc_evpn_addr {
   uint8_t route_type;
+/* EVPN route types as per RFC7432 and
+ * as per draft-ietf-bess-evpn-prefix-advertisement-02
+ */
+#define EVPN_ETHERNET_AUTO_DISCOVERY 1
+#define EVPN_MACIP_ADVERTISEMENT 2
+#define EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG 3
+#define EVPN_ETHERNET_SEGMENT 4
+#define EVPN_IP_PREFIX 5
   union {
     struct zrpc_macipaddr prefix_macip;      /* AF_L2VPN */
     struct zrpc_macipaddr prefix_ipvrf;      /* AF_L2VPN */

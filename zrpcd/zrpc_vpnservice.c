@@ -293,7 +293,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
   s = &ss;
   memset(s, 0, sizeof(struct bgp_event_vrf));
   qcapn_BGPEventVRFRoute_read(s, p);
-  if (s->announce != BGP_EVENT_SHUT && s->announce != BGP_EVENT_BFD_STATUS)
+  if (s->announce <= BGP_EVENT_MASK_ANNOUNCE)
     {
       gchar *esi;
       gchar *macaddress = NULL;
@@ -444,10 +444,45 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                                                      s->ethtag, esi, macaddress, s->label, s->l2label,
                                                      afi_out);
         }
-      if (s->esi)
-        free (s->esi);
-      if (s->mac_router)
-        free (s->mac_router);
+    }
+  else if (s->announce == BGP_EVENT_PUSH_EVPN_RT ||
+           s->announce == BGP_EVENT_WITHDRAW_EVPN_RT)
+    {
+      char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
+      struct zrpc_rd_prefix null_rd;
+      int zrpc_invalid_rd = 0;
+      struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
+
+      memset (&null_rd, 0, sizeof (struct zrpc_rd_prefix));
+      if (memcmp (&s->outbound_rd, &null_rd, sizeof(struct zrpc_rd_prefix)))
+        zrpc_util_rd_prefix2str(&s->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
+      else
+        zrpc_invalid_rd = 1;
+
+      if (p->family == AF_L2VPN &&
+          p->u.prefix_evpn.route_type == EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
+        {
+          if (s->announce == BGP_EVENT_PUSH_EVPN_RT)
+            zrpc_bgp_updater_on_update_push_evpn_rt(p->u.prefix_evpn.route_type,
+                                                    (zrpc_invalid_rd == 1) ? NULL : vrf_rd_str,
+                                                    NULL,            /* esi */
+                                                    s->ethtag,       /* evi */
+                                                    s->tunnel_type,  /* tunnelType */
+                                                    s->tunnel_id,    /* tunnelId */
+                                                    s->label,        /* label */
+                                                    false            /* singleActiveMode */
+                                                   );
+          else
+            zrpc_bgp_updater_on_update_withdraw_evpn_rt(p->u.prefix_evpn.route_type,
+                                                        (zrpc_invalid_rd == 1) ? NULL : vrf_rd_str,
+                                                        NULL,            /* esi */
+                                                        s->ethtag,       /* evi */
+                                                        s->tunnel_type,  /* tunnelType */
+                                                        s->tunnel_id,    /* tunnelId */
+                                                        s->label,        /* label */
+                                                        false            /* singleActiveMode */
+                                                       );
+        }
     }
   else if (s->announce == BGP_EVENT_SHUT)
     {
@@ -476,6 +511,15 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
         zrpc_bgp_updater_peer_down (nexthop, (const gint64)st.as);
     }
 #endif
+
+  if (s->esi)
+    free (s->esi);
+  if (s->mac_router)
+    free (s->mac_router);
+  if (s->gatewayIp)
+    free (s->gatewayIp);
+  if (s->tunnel_id)
+    free (s->tunnel_id);
   capn_free(&rc);
   return;
 }

@@ -19,6 +19,19 @@ gboolean
 zrpc_bgp_updater_peer_up (const gchar * ipAddress, const gint64 asNumber);
 gboolean
 zrpc_bgp_updater_peer_down (const gchar * ipAddress, const gint64 asNumber);
+
+gboolean
+zrpc_bgp_updater_on_update_push_evpn_rt(const gint32 routeType, const gchar * rd,
+                                        const gchar * esi, const gint64 evi,
+                                        const pmsi_tunnel_type tunnelType,
+                                        const gchar * tunnelId, const gint32 label,
+                                        const gboolean singleActiveMode);
+gboolean
+zrpc_bgp_updater_on_update_withdraw_evpn_rt(const gint32 routeType, const gchar * rd,
+                                            const gchar * esi, const gint64 evi,
+                                            const pmsi_tunnel_type tunnelType,
+                                            const gchar * tunnelId, const gint32 label,
+                                            const gboolean singleActiveMode);
 #endif
 
 int

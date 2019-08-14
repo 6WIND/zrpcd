@@ -131,6 +131,17 @@ enum protocol_type {
      7: optional bool bfdMultihop
  }
 
+ enum pmsi_tunnel_type {
+     NO_TUN_INFO = 0,
+     RSVP_TE_P2MP = 1,
+     MLDP_P2MP = 2,
+     PIM_SSM = 3,
+     PIM_SM = 4,
+     PIM_BIDIR = 5,
+     INGRESS_REPLICATION = 6,
+     MLDP_MP2MP = 7
+ }
+
  service BgpConfigurator {
      /*
       * startBgp() starts a bgp instance on the bgp VM. Graceful 
@@ -246,6 +257,12 @@ enum protocol_type {
                                      4:i32 prefixlen, 5:string nexthop,
                                      6:i64 ethtag, 7:string esi, 8:string macaddress,
                                      9:i32 l3label, 10:i32 l2label, 11:af_afi afi),
+   oneway void onUpdatePushEvpnRT (1:i32 routeType, 2:string rd, 3:string esi, 4:i64 evi,
+                                   5:pmsi_tunnel_type tunnelType, 6:string tunnelId,
+                                   7:i32 label, 8:bool singleActiveMode);
+   oneway void onUpdateWithdrawEvpnRT (1:i32 routeType, 2:string rd, 3:string esi,4:i64 evi,
+                                       5:pmsi_tunnel_type tunnelType, 6:string tunnelId,
+                                       7:i32 label, 8:bool singleActiveMode);
    // tell them we're open for business
    oneway void onStartConfigResyncNotification(),
    // relay to odl a bgp Notification we got from peer 

@@ -118,16 +118,21 @@ struct bgp_event_vrf
 #define BGP_EVENT_MASK_ANNOUNCE 0x1
 #define BGP_EVENT_SHUT 0x2
 #define BGP_EVENT_BFD_STATUS 0x3
+#define BGP_EVENT_PUSH_EVPN_RT     0x4
+#define BGP_EVENT_WITHDRAW_EVPN_RT 0x5
   uint8_t announce;
   struct zrpc_rd_prefix outbound_rd; /* dummy for event_shut */
   struct zrpc_prefix prefix; /* alias subtype */
   struct zrpc_prefix nexthop; /* alias peer */
   uint32_t label; /* alias type */
   uint32_t ethtag;
+  uint32_t l2label;
+  uint8_t  tunnel_type; /* PMSI tunnel type, only available for EVPN RT3 */
+  uint8_t  single_active_mode; /* for EVPN RT1 */
   char *esi;
   char *mac_router;
-  uint32_t l2label;
   char *gatewayIp;
+  char *tunnel_id; /* PMSI tunnel id, only available for EVPN RT3 */
 };
 
 struct bgp_event_shut
@@ -275,5 +280,6 @@ void qcapn_prefix_macip_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index
 void qcapn_prefix_macip_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t *index);
 void qcapn_prefix_ipv4ipv6_write (capn_ptr p, const struct zrpc_prefix *pfx, uint8_t index);
 void qcapn_prefix_ipv4ipv6_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t index);
-
+void qcapn_prefix_imethtag_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index);
+void qcapn_prefix_imethtag_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t *index);
 #endif /* _ZRPC_BGP_CAPNP_H */

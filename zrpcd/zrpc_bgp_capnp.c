@@ -487,6 +487,59 @@ void qcapn_prefix_macip_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t
       }
 }
 
+void qcapn_prefix_imethtag_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index)
+{
+    size_t i;
+
+    pfx->u.prefix_evpn.u.prefix_imethtag.eth_tag_id = htonl(capn_read32(p, *index));
+    *index = *index + 4;
+    pfx->u.prefix_evpn.u.prefix_imethtag.ip_len = capn_read8(p, *index);
+    *index = *index + 1;
+    if (pfx->u.prefix_evpn.u.prefix_imethtag.ip_len == ZRPC_UTIL_IPV6_MAX_BITLEN)
+      {
+        u_char *in6 = (u_char *)&(pfx->u.prefix_evpn.u.prefix_imethtag.ip.in6);
+
+        for(i=0; i < sizeof(struct in6_addr); i++)
+          {
+            *in6 = capn_read8(p, *index);
+            in6++;
+            *index = *index + 1;
+          }
+      }
+    else
+      {
+        pfx->u.prefix_evpn.u.prefix_imethtag.ip.in4.s_addr =
+          ntohl(capn_read32(p, *index));
+        *index = *index + 4;
+      }
+}
+
+void qcapn_prefix_imethtag_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t *index)
+{
+    size_t i;
+
+    capn_write32(p, *index, ntohl(pfx->u.prefix_evpn.u.prefix_imethtag.eth_tag_id));
+    *index = *index + 4;
+    capn_write8(p, *index, pfx->u.prefix_evpn.u.prefix_imethtag.ip_len);
+    *index = *index + 1;
+    if (pfx->u.prefix_evpn.u.prefix_imethtag.ip_len == ZRPC_UTIL_IPV6_MAX_BITLEN)
+      {
+        u_char *in6 = (u_char *)&(pfx->u.prefix_evpn.u.prefix_imethtag.ip.in6);
+
+        for(i=0; i < sizeof(struct in6_addr); i++)
+          {
+            capn_write8(p, *index, in6[i]);
+            *index = *index + 1;
+          }
+      }
+    else
+      {
+        capn_write32(p, *index,
+                     ntohl(pfx->u.prefix_evpn.u.prefix_imethtag.ip.in4.s_addr));
+        *index = *index + 4;
+      }
+}
+
 void qcapn_BGPVRFRoute_write(const struct bgp_api_route *s, capn_ptr p)
 {
     capn_resolve(&p);
@@ -716,9 +769,14 @@ void qcapn_BGPEventVRFRoute_read(struct bgp_event_vrf *s, capn_ptr p)
          }
        else if (s->prefix.family == AF_L2VPN)
           {
-            uint8_t index = 2;
+	    uint8_t index = 3;
+            uint8_t route_type = capn_read8(tmp_p, 2);
 
-            qcapn_prefix_macip_read (tmp_p, &s->prefix, &index);
+            s->prefix.u.prefix_evpn.route_type = route_type;
+            if (route_type == EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
+              qcapn_prefix_imethtag_read (tmp_p, &s->prefix, &index);
+            else
+              qcapn_prefix_macip_read (tmp_p, &s->prefix, &index);
           }
     }
 
@@ -729,7 +787,20 @@ void qcapn_BGPEventVRFRoute_read(struct bgp_event_vrf *s, capn_ptr p)
         capn_ptr tmp_p = capn_getp(p, 2, 1);
 	s->label = capn_read32(tmp_p, 0);
 	s->ethtag = capn_read32(tmp_p, 4);
-        s->l2label = capn_read32(tmp_p, 8);
+        if (s->prefix.family == AF_L2VPN &&
+            s->prefix.u.prefix_evpn.route_type ==
+                EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
+          {
+            s->tunnel_type = capn_read8(tmp_p, 8);
+            s->single_active_mode = capn_read8(tmp_p, 9);
+            s->l2label = 0;
+          }
+        else
+          {
+            s->l2label = capn_read32(tmp_p, 8);
+            s->tunnel_type = 0;
+            s->single_active_mode = 0;
+          }
     }
     {
       const char * esi = NULL;
@@ -769,11 +840,24 @@ void qcapn_BGPEventVRFRoute_read(struct bgp_event_vrf *s, capn_ptr p)
       len = tp.len;
       if (gateway_ip && len != 0)
         {
-          s->gatewayIp  = strdup(gateway_ip);
+          if (s->prefix.family == AF_L2VPN &&
+              s->prefix.u.prefix_evpn.route_type ==
+	           EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
+            {
+              /* For EVPN RT3, this text field stands for tunnel id */
+              s->tunnel_id  = strdup(gateway_ip);
+              s->gatewayIp = NULL;
+            }
+          else
+            {
+              s->gatewayIp  = strdup(gateway_ip);
+              s->tunnel_id = NULL;
+            }
         }
       else
         {
           s->gatewayIp = NULL;
+          s->tunnel_id = NULL;
         }
     }
 }
