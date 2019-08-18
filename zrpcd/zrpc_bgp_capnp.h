@@ -155,9 +155,14 @@ struct bgp_api_route
   uint32_t label;
   uint32_t ethtag;
   uint32_t l2label; /* alias information on labeled unicast */
+  uint8_t  tunnel_type; /* PMSI tunnel type, only available for EVPN RT3 */
+  uint8_t  single_active_mode; /* for EVPN RT1 */
   char *esi;
   char *mac_router;
+  char *tunnel_id; /* PMSI tunnel id, only available for EVPN RT3 */
   struct zrpc_prefix gatewayIp;
+  /* EVPN RT3 export lists */
+  struct zrpc_rdrt *rt_export;
 };
 
 /* BGP neighbor structure. */
@@ -234,7 +239,7 @@ struct peer
 #define BGP_DEFAULT_STALEPATH_TIME             360
 
 #define  CAPN_BGPVRF_ROUTE_DEF_SIZE  12
-
+#define  CAPN_BGPVRF_EVPN_RT_ROUTE_DEF_SIZE  10
 
 capn_ptr qcapn_new_BGP(struct capn_segment *s);
 
@@ -282,4 +287,6 @@ void qcapn_prefix_ipv4ipv6_write (capn_ptr p, const struct zrpc_prefix *pfx, uin
 void qcapn_prefix_ipv4ipv6_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t index);
 void qcapn_prefix_imethtag_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t *index);
 void qcapn_prefix_imethtag_write(capn_ptr p, const struct zrpc_prefix *pfx, uint8_t *index);
+capn_ptr qcapn_new_BGPVRFEvpnRTRoute(struct capn_segment *s, uint8_t extend_by);
+void qcapn_BGPVRFEvpnRTRoute_write(const struct bgp_api_route *s, capn_ptr p);
 #endif /* _ZRPC_BGP_CAPNP_H */
