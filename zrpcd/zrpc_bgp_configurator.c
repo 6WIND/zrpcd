@@ -82,6 +82,22 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
                                                  const gchar * rd,  const gint64 ethtag, const gchar * esi, const gchar * macaddress, const af_afi afi, GError **error);
 #endif /* HAVE_THRIFT_V2 */
 #endif /* HAVE_THRIFT_V1 */
+
+#if defined(HAVE_THRIFT_V5)
+gboolean
+instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32* _return,
+                                               const gint32 RouteType, const gchar * rd, const gchar * esi, const gint64 evi,
+                                               const GPtrArray * exportrt, const pmsi_tunnel_type TunnelType,
+                                               const gchar * TunnelId, const gint32 label, const gboolean SingleActiveMode,
+                                               GError **error);
+gboolean
+instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gint32* _return,
+                                                   const gint32 RouteType, const gchar * rd, const gchar * esi, const gint64 evi,
+                                                   const GPtrArray * exportrt, const pmsi_tunnel_type TunnelType,
+                                                   const gchar * TunnelId, const gint32 label, const gboolean SingleActiveMode,
+                                                   GError **error);
+#endif
+
 gboolean
 instance_bgp_configurator_handler_stop_bgp(BgpConfiguratorIf *iface, gint32* _return, const gint64 asNumber, GError **error);
 #if defined(HAVE_THRIFT_V4) || defined(HAVE_THRIFT_V3)
@@ -1911,6 +1927,355 @@ error:
   else
     return FALSE;
 }
+
+
+#if defined(HAVE_THRIFT_V5)
+gboolean
+instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32* _return,
+                                               const gint32 RouteType, const gchar * rd, const gchar * esi, const gint64 evi,
+                                               const GPtrArray * exportrt, const pmsi_tunnel_type TunnelType,
+                                               const gchar * TunnelId, const gint32 label, const gboolean SingleActiveMode,
+                                               GError **error)
+{
+  struct zrpc_vpnservice *ctxt = NULL;
+  struct bgp_api_route inst;
+  struct zrpc_rd_prefix rd_inst;
+  uint64_t bgpvrf_nid = 0;
+  struct zrpc_vpnservice_cache_bgpvrf *bgpvrf = NULL;
+  address_family_t afi_int = ADDRESS_FAMILY_L2VPN;
+  unsigned int i;
+  struct zrpc_rdrt *rdrt_export = NULL;
+  char exportrt_str[256];
+  struct capn_ptr bgpvrfroute;
+  struct capn_ptr afikey;
+  struct capn rc;
+  struct capn_segment *cs;
+  int ret;
+  char esi_static[]="00:00:00:00:00:00:00:00:00:00";
+  char error_cplment[100];
+
+  memset(error_cplment, 0, sizeof(error_cplment));
+  memset(exportrt_str, 0, sizeof(exportrt_str));
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if (!ctxt)
+    {
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+  if (zrpc_vpnservice_get_bgp_context(ctxt) == NULL ||
+      zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+    {
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+
+  if (RouteType != EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+  if (TunnelType != PMSI_TUNNEL_TYPE_INGRESS_REPLICATION)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+
+  /* get route distinguisher internal representation */
+  memset(&rd_inst, 0, sizeof(struct zrpc_rd_prefix));
+  if (rd && zrpc_util_str2rd_prefix((char *)rd, &rd_inst))
+    {
+      /* if vrf not found, return an error */
+      bgpvrf = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+      if(!bgpvrf)
+        {
+          *error = ERROR_BGP_RD_NOTFOUND;
+          *_return = BGP_ERR_PARAM;
+          return FALSE;
+        }
+      bgpvrf_nid = bgpvrf->bgpvrf_nid;
+    }
+  else
+    {
+      *error = ERROR_BGP_RD_NOTFOUND;
+      return FALSE;
+    }
+
+  if ( !esi)
+    {
+      esi = esi_static;
+    }
+  if (zrpc_util_str2esi (esi, NULL) == 0)
+    {
+      *error = ERROR_BGP_INVALID_ESI;
+      return FALSE;
+    }
+
+  /* prepare route entry */
+  memset(&inst, 0, sizeof(struct bgp_api_route));
+  inst.prefix.family = AF_L2VPN;
+  inst.prefix.prefixlen = ZRPC_L2VPN_MCAST_PREFIX_LEN;
+  inst.prefix.u.prefix_evpn.route_type = EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG;
+  inst.prefix.u.prefix_evpn.u.prefix_imethtag.eth_tag_id = (uint32_t )evi;
+  inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+
+  rdrt_export = ZRPC_CALLOC (sizeof(struct zrpc_rdrt));
+  for (i = 0; i < exportrt->len; i++)
+    {
+      u_char tmp[8];
+      int ret;
+      char *rts = (char *)g_ptr_array_index(exportrt, i);
+
+      ret = zrpc_util_str2rdrt (rts, tmp, ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET);
+      if (ret)
+        {
+          rdrt_export = zrpc_util_append_rdrt_to_list (tmp, rdrt_export);
+          if (i == 0)
+            snprintf (exportrt_str, sizeof(exportrt_str), "%s", rts);
+          else
+            snprintf (exportrt_str, sizeof(exportrt_str), "%s,%s", exportrt_str, rts);
+        }
+      else
+        {
+          *error = ERROR_BGP_INVALID_VRF_RTS;
+          zrpc_util_rdrt_free (rdrt_export);
+          return FALSE;
+        }
+    }
+
+ if (exportrt->len)
+   inst.rt_export = rdrt_export;
+ else
+   zrpc_util_rdrt_free (rdrt_export);
+
+  inst.esi = strdup(esi);
+  inst.tunnel_type = TunnelType;
+  inst.tunnel_id = (char *)TunnelId;
+  inst.label = label;
+  inst.single_active_mode = (uint8_t)SingleActiveMode;
+
+  /* check corresponding afi/safi is set */
+  if (!bgpvrf->afc[ADDRESS_FAMILY_IP][SUBSEQUENT_ADDRESS_FAMILY_EVPN])
+    {
+      *error = ERROR_BGP_RD_AFI_SAFI_NOT_CONFIGURED(AF_AFI_AFI_IP, PROTOCOL_TYPE_PROTOCOL_EVPN);
+      ret = FALSE;
+      sprintf(error_cplment, "(RD %s not configured with afi %d)", rd, ADDRESS_FAMILY_IP);
+      goto error;
+    }
+
+  capn_init_malloc(&rc);
+  cs = capn_root(&rc).seg;
+  bgpvrfroute = qcapn_new_BGPVRFEvpnRTRoute(cs, 0);
+  qcapn_BGPVRFEvpnRTRoute_write(&inst, bgpvrfroute);
+  /* prepare afi context */
+  afikey = qcapn_new_AfiKey(cs);
+  capn_write8(afikey, 0, afi_int);
+  /* set route within afi context using QZC set request */
+  ret = qzcclient_setelem (ctxt->p_qzc_sock, &bgpvrf_nid,             \
+                           4, &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
+                           &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+  if (ret == 0)
+    {
+      *error = ERROR_BGP_INTERNAL;
+    }
+
+  capn_free(&rc);
+
+error:
+  if (IS_ZRPC_DEBUG)
+    {
+      zrpc_info ("pushEvpnRT(route_type %d, rd %s, esi %s, evi %ld, exportrt %s,"
+                 " tunnel_type %d, tunnel_id %s, label %d, single_active_model %s %s %s",
+                 RouteType, rd, (esi == NULL) ? "<none>" : esi, evi, exportrt_str,
+                 TunnelType, (TunnelId == NULL) ? "<none>" : TunnelId, label,
+                 (SingleActiveMode == true) ? "true" : "false",
+                 (ret == FALSE) ? "NOK" : "OK",
+                 error_cplment);
+    }
+  if (inst.esi)
+    free (inst.esi);
+  if (inst.rt_export)
+     zrpc_util_rdrt_free (inst.rt_export);
+
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
+}
+
+gboolean
+instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gint32* _return,
+                                                   const gint32 RouteType, const gchar * rd, const gchar * esi, const gint64 evi,
+                                                   const GPtrArray * exportrt, const pmsi_tunnel_type TunnelType,
+                                                   const gchar * TunnelId, const gint32 label, const gboolean SingleActiveMode,
+                                                   GError **error)
+{
+  struct zrpc_vpnservice *ctxt = NULL;
+  struct bgp_api_route inst;
+  struct zrpc_rd_prefix rd_inst;
+  uint64_t bgpvrf_nid = 0;
+  struct zrpc_vpnservice_cache_bgpvrf *bgpvrf = NULL;
+  address_family_t afi_int = ADDRESS_FAMILY_L2VPN;
+  unsigned int i;
+  struct zrpc_rdrt *rdrt_export = NULL;
+  char exportrt_str[256];
+  struct capn_ptr bgpvrfroute;
+  struct capn_ptr afikey;
+  struct capn rc;
+  struct capn_segment *cs;
+  int ret;
+  char esi_static[]="00:00:00:00:00:00:00:00:00:00";
+  char error_cplment[100];
+
+  memset(error_cplment, 0, sizeof(error_cplment));
+  memset(exportrt_str, 0, sizeof(exportrt_str));
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if (!ctxt)
+    {
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+  if (zrpc_vpnservice_get_bgp_context(ctxt) == NULL ||
+      zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+    {
+      *error = ERROR_BGP_AS_NOT_STARTED;
+      return FALSE;
+    }
+
+  if (RouteType != EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+  if (TunnelType != PMSI_TUNNEL_TYPE_INGRESS_REPLICATION)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      return FALSE;
+    }
+
+  /* get route distinguisher internal representation */
+  memset(&rd_inst, 0, sizeof(struct zrpc_rd_prefix));
+  if (rd && zrpc_util_str2rd_prefix((char *)rd, &rd_inst))
+    {
+      /* if vrf not found, return an error */
+      bgpvrf = zrpc_bgp_configurator_find_vrf(ctxt, &rd_inst, _return);
+      if(!bgpvrf)
+        {
+          *error = ERROR_BGP_RD_NOTFOUND;
+          *_return = BGP_ERR_PARAM;
+          return FALSE;
+        }
+      bgpvrf_nid = bgpvrf->bgpvrf_nid;
+    }
+  else
+    {
+      *error = ERROR_BGP_RD_NOTFOUND;
+      return FALSE;
+    }
+
+  if ( !esi)
+    {
+      esi = esi_static;
+    }
+  if (zrpc_util_str2esi (esi, NULL) == 0)
+    {
+      *error = ERROR_BGP_INVALID_ESI;
+      return FALSE;
+    }
+
+  /* prepare route entry */
+  memset(&inst, 0, sizeof(struct bgp_api_route));
+  inst.prefix.family = AF_L2VPN;
+  inst.prefix.prefixlen = ZRPC_L2VPN_MCAST_PREFIX_LEN;
+  inst.prefix.u.prefix_evpn.route_type = EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG;
+  inst.prefix.u.prefix_evpn.u.prefix_imethtag.eth_tag_id = (uint32_t )evi;
+  inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+
+  rdrt_export = ZRPC_CALLOC (sizeof(struct zrpc_rdrt));
+  for (i = 0; i < exportrt->len; i++)
+    {
+      u_char tmp[8];
+      int ret;
+      char *rts = (char *)g_ptr_array_index(exportrt, i);
+
+      ret = zrpc_util_str2rdrt (rts, tmp, ZRPC_UTIL_RDRT_TYPE_ROUTE_TARGET);
+      if (ret)
+        {
+          rdrt_export = zrpc_util_append_rdrt_to_list (tmp, rdrt_export);
+          if (i == 0)
+            snprintf (exportrt_str, sizeof(exportrt_str), "%s", rts);
+          else
+            snprintf (exportrt_str, sizeof(exportrt_str), "%s,%s", exportrt_str, rts);
+        }
+      else
+        {
+          *error = ERROR_BGP_INVALID_VRF_RTS;
+          zrpc_util_rdrt_free (rdrt_export);
+          return FALSE;
+        }
+    }
+
+ if (exportrt->len)
+   inst.rt_export = rdrt_export;
+ else
+   zrpc_util_rdrt_free (rdrt_export);
+
+  inst.esi = strdup(esi);
+  inst.tunnel_type = TunnelType;
+  inst.tunnel_id = (char *)TunnelId;
+  inst.label = label;
+  inst.single_active_mode = (uint8_t)SingleActiveMode;
+
+  /* check corresponding afi/safi is set */
+  if (!bgpvrf->afc[ADDRESS_FAMILY_IP][SUBSEQUENT_ADDRESS_FAMILY_EVPN])
+    {
+      *error = ERROR_BGP_RD_AFI_SAFI_NOT_CONFIGURED(AF_AFI_AFI_IP, PROTOCOL_TYPE_PROTOCOL_EVPN);
+      ret = FALSE;
+      sprintf(error_cplment, "(RD %s not configured with afi %d)", rd, ADDRESS_FAMILY_IP);
+      goto error;
+    }
+
+  capn_init_malloc(&rc);
+  cs = capn_root(&rc).seg;
+  bgpvrfroute = qcapn_new_BGPVRFEvpnRTRoute(cs, 0);
+  qcapn_BGPVRFEvpnRTRoute_write(&inst, bgpvrfroute);
+  /* prepare afi context */
+  afikey = qcapn_new_AfiKey(cs);
+  capn_write8(afikey, 0, afi_int);
+  /* set route within afi context using QZC set request */
+  ret = qzcclient_unsetelem (ctxt->p_qzc_sock, &bgpvrf_nid, 4,      \
+                             &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
+                             &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
+  if (ret == 0)
+    {
+      *error = ERROR_BGP_INTERNAL;
+    }
+
+  capn_free(&rc);
+
+error:
+  if (IS_ZRPC_DEBUG)
+    {
+      zrpc_info ("withdrawEvpnRT(route_type %d, rd %s, esi %s, evi %ld, exportrt %s,"
+                 " tunnel_type %d, tunnel_id %s, label %d, single_active_model %s %s %s",
+                 RouteType, rd, (esi == NULL) ? "<none>" : esi, evi, exportrt_str,
+                 TunnelType, (TunnelId == NULL) ? "<none>" : TunnelId, label,
+                 (SingleActiveMode == true) ? "true" : "false",
+                 (ret == FALSE) ? "NOK" : "OK",
+                 error_cplment);
+    }
+  if (inst.esi)
+    free (inst.esi);
+  if (inst.rt_export)
+     zrpc_util_rdrt_free (inst.rt_export);
+
+  if (ret)
+    return TRUE;
+  else
+    return FALSE;
+}
+#endif
 
 /* 
  * Stop BGP Router for a given AS Number
@@ -4845,6 +5210,11 @@ instance_bgp_configurator_handler_class_init (InstanceBgpConfiguratorHandlerClas
 
  bgp_configurator_handler_class->get_peer_status =
    instance_bgp_configurator_handler_get_peer_status;
+
+ bgp_configurator_handler_class->push_evpn_r_t =
+    instance_bgp_configurator_handler_push_evpn_rt;
+ bgp_configurator_handler_class->withdraw_evpn_r_t =
+    instance_bgp_configurator_handler_withdraw_evpn_rt;
 #endif
 }
 
