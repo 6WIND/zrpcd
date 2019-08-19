@@ -245,11 +245,11 @@ enum protocol_type {
      i32 disableBFDFailover(),
      peer_status_type getPeerStatus(1:string ipAddress, 2:i64 asNumber),
      i32 pushEvpnRT(1:i32 RouteType, 2:string rd, 3:string esi, 4:i64 evi,
-                    5:list<string> exportrt, 6:pmsi_tunnel_type TunnelType,
-                    7:string TunnelId, 8:i32 label, 9:bool SingleActiveMode),
+                    5:pmsi_tunnel_type TunnelType, 6:string TunnelId,
+                    7:i32 label, 8:bool SingleActiveMode),
      i32 withdrawEvpnRT(1:i32 RouteType, 2:string rd, 3:string esi, 4:i64 evi,
-                        5:list<string> exportrt, 6:pmsi_tunnel_type TunnelType,
-                        7:string TunnelId, 8:i32 label, 9:bool SingleActiveMode),
+                        5:pmsi_tunnel_type TunnelType, 6:string TunnelId,
+                        7:i32 label, 8:bool SingleActiveMode),
  }
  
  service BgpUpdater {
