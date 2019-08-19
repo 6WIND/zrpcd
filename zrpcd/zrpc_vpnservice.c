@@ -452,6 +452,28 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       struct zrpc_rd_prefix null_rd;
       int zrpc_invalid_rd = 0;
       struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
+      struct zrpc_prefix nh_pfx;
+
+      /* assume prefix is evpn */
+      if (p->family == AF_L2VPN &&
+	  p->u.prefix_evpn.route_type == EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
+	{
+	  memset(&nh_pfx, 0, sizeof(struct zrpc_prefix));
+	  if (p->u.prefix_evpn.u.prefix_imethtag.ip_len == ZRPC_UTIL_IPV4_PREFIX_LEN_MAX)
+	    {
+	      nh_pfx.family = AF_INET;
+	      nh_pfx.u.prefix4.s_addr = p->u.prefix_evpn.u.prefix_imethtag.ip.in4.s_addr;
+	    }
+	  else
+	    {
+	      nh_pfx.family = AF_INET6;
+	      memcpy(&nh_pfx.u.prefix6, &p->u.prefix_evpn.u.prefix_imethtag.ip.in6,
+		     sizeof(struct in6_addr));
+	    }
+	  nh_pfx.prefixlen = p->u.prefix_evpn.u.prefix_imethtag.ip_len;
+	  zrpc_util_prefix_2str (&nh_pfx, nh_str, ZRPC_UTIL_IPV6_LEN_MAX);
+	  nexthop = nh_str;
+	}
 
       memset (&null_rd, 0, sizeof (struct zrpc_rd_prefix));
       if (memcmp (&s->outbound_rd, &null_rd, sizeof(struct zrpc_rd_prefix)))
@@ -468,7 +490,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                                                     NULL,            /* esi */
                                                     s->ethtag,       /* evi */
                                                     s->tunnel_type,  /* tunnelType */
-                                                    s->tunnel_id,    /* tunnelId */
+                                                    nexthop,         /* tunnelId */
                                                     s->label,        /* label */
                                                     false            /* singleActiveMode */
                                                    );
@@ -478,7 +500,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                                                         NULL,            /* esi */
                                                         s->ethtag,       /* evi */
                                                         s->tunnel_type,  /* tunnelType */
-                                                        s->tunnel_id,    /* tunnelId */
+                                                        nexthop,         /* tunnelId */
                                                         s->label,        /* label */
                                                         false            /* singleActiveMode */
                                                        );
@@ -512,6 +534,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
     }
 #endif
 
+error:
   if (s->esi)
     free (s->esi);
   if (s->mac_router)

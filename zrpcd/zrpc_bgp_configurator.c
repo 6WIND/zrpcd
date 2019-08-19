@@ -1940,6 +1940,7 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
   struct zrpc_vpnservice *ctxt = NULL;
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
+  struct zrpc_prefix nh_pfx;
   uint64_t bgpvrf_nid = 0;
   struct zrpc_vpnservice_cache_bgpvrf *bgpvrf = NULL;
   address_family_t afi_int = ADDRESS_FAMILY_L2VPN;
@@ -2015,8 +2016,32 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
   inst.prefix.prefixlen = ZRPC_L2VPN_MCAST_PREFIX_LEN;
   inst.prefix.u.prefix_evpn.route_type = EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG;
   inst.prefix.u.prefix_evpn.u.prefix_imethtag.eth_tag_id = (uint32_t )evi;
-  inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
-
+  /* TunnelID mapped to originating router ip */
+  if (TunnelId)
+    {
+      ret = zrpc_util_str2_prefix (TunnelId, &nh_pfx);
+      if (ret == 0 ||
+          ((nh_pfx.family != AF_INET) &&
+           (nh_pfx.family != AF_INET6)))
+        {
+          *error = ERROR_BGP_INVALID_NEXTHOP(TunnelId);
+          *_return = BGP_ERR_PARAM;
+          ret = FALSE;
+          return FALSE;
+        }
+      if (nh_pfx.family == AF_INET)
+        {
+          inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip.in4.s_addr = nh_pfx.u.prefix4.s_addr;
+          inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+        }
+      else
+        {
+          memcpy(&inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip.in6,
+                 &nh_pfx.u.prefix6,
+                 sizeof(struct in6_addr));
+          inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
+        }
+    }
   rdrt_export = bgpvrf->rdrt_export;
   if (rdrt_export)
     inst.rt_export = rdrt_export;
@@ -2084,6 +2109,7 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
   struct zrpc_vpnservice *ctxt = NULL;
   struct bgp_api_route inst;
   struct zrpc_rd_prefix rd_inst;
+  struct zrpc_prefix nh_pfx;
   uint64_t bgpvrf_nid = 0;
   struct zrpc_vpnservice_cache_bgpvrf *bgpvrf = NULL;
   address_family_t afi_int = ADDRESS_FAMILY_L2VPN;
@@ -2159,7 +2185,33 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
   inst.prefix.prefixlen = ZRPC_L2VPN_MCAST_PREFIX_LEN;
   inst.prefix.u.prefix_evpn.route_type = EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG;
   inst.prefix.u.prefix_evpn.u.prefix_imethtag.eth_tag_id = (uint32_t )evi;
-  inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+
+  /* TunnelID mapped to originating router ip */
+  if (TunnelId)
+    {
+      ret = zrpc_util_str2_prefix (TunnelId, &nh_pfx);
+      if (ret == 0 ||
+          ((nh_pfx.family != AF_INET) &&
+           (nh_pfx.family != AF_INET6)))
+        {
+          *error = ERROR_BGP_INVALID_NEXTHOP(TunnelId);
+          *_return = BGP_ERR_PARAM;
+          ret = FALSE;
+          return FALSE;
+        }
+      if (nh_pfx.family == AF_INET)
+        {
+          inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip.in4.s_addr = nh_pfx.u.prefix4.s_addr;
+          inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV4_PREFIX_LEN_MAX;
+        }
+      else
+        {
+          memcpy(&inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip.in6,
+                 &nh_pfx.u.prefix6,
+                 sizeof(struct in6_addr));
+          inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
+        }
+    }
 
   rdrt_export = bgpvrf->rdrt_export;
   if (rdrt_export)
