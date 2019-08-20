@@ -302,7 +302,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
       struct zrpc_rd_prefix null_rd;
       int zrpc_invalid_rd = 0;
       struct zrpc_prefix *p = (struct zrpc_prefix *)&(s->prefix);
-      afi_t afi_out;
+      af_afi afi_out;
 #if !defined(HAVE_THRIFT_V1)
       protocol_type p_type;
 #endif /* !HAVE_THRIFT_V1 */
@@ -534,7 +534,6 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
     }
 #endif
 
-error:
   if (s->esi)
     free (s->esi);
   if (s->mac_router)

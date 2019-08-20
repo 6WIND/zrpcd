@@ -1948,7 +1948,6 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
   uint64_t bgpvrf_nid = 0;
   struct zrpc_vpnservice_cache_bgpvrf *bgpvrf = NULL;
   address_family_t afi_int = ADDRESS_FAMILY_L2VPN;
-  unsigned int i;
   struct zrpc_rdrt *rdrt_export = NULL;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;
@@ -2117,7 +2116,6 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
   uint64_t bgpvrf_nid = 0;
   struct zrpc_vpnservice_cache_bgpvrf *bgpvrf = NULL;
   address_family_t afi_int = ADDRESS_FAMILY_L2VPN;
-  unsigned int i;
   struct zrpc_rdrt *rdrt_export = NULL;
   struct capn_ptr bgpvrfroute;
   struct capn_ptr afikey;

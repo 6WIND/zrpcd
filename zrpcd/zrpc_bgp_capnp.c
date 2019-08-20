@@ -566,7 +566,7 @@ void qcapn_BGPVRFRoute_write(const struct bgp_api_route *s, capn_ptr p)
         else if (s->prefix.family == AF_INET6)
           {
             size_t i;
-            u_char *in6 = &(s->prefix.u.prefix6);
+            u_char *in6 = (u_char *)&(s->prefix.u.prefix6);
 
             for(i=0; i < sizeof(struct in6_addr); i++)
               {
@@ -640,7 +640,7 @@ void qcapn_BGPVRFRoute_read(struct bgp_api_route *s, capn_ptr p)
         else if (s->prefix.family == AF_INET6)
           {
             size_t i;
-            u_char *in6 = &(s->prefix.u.prefix6);
+            u_char *in6 = (u_char *)&(s->prefix.u.prefix6);
 
             for(i=0; i < sizeof(struct in6_addr); i++)
               {
@@ -1034,7 +1034,7 @@ void qcapn_prefix_ipv4ipv6_write (capn_ptr p, const struct zrpc_prefix *pfx, uin
       size_t i;
       u_char *in6;
 
-      in6 = (uint32_t *)&(pfx->u.prefix6);
+      in6 = (u_char *)&(pfx->u.prefix6);
       for(i=0; i < sizeof(struct in6_addr); i++)
         {
           capn_write8(tempptr, 4 + i, in6[i]);
@@ -1056,7 +1056,7 @@ void qcapn_prefix_ipv4ipv6_read(capn_ptr p, struct zrpc_prefix *pfx, uint8_t ind
   else if (pfx->family == AF_INET6)
     {
       size_t i;
-      u_char *in6 = &(pfx->u.prefix6);
+      u_char *in6 = (u_char *)&(pfx->u.prefix6);
       
       for(i=0; i < sizeof(struct in6_addr); i++)
         {
