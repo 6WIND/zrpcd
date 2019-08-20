@@ -4100,10 +4100,16 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
             upd->rd = NULL;
 
           if (IS_ZRPC_DEBUG_SHOW)
-            zrpc_log("getRoutes(rd %s,pfx %s/%d, nh %s, l3label %u, l2label %u)",
-                      upd->rd ? upd->rd : "NULL", upd->prefix, upd->prefixlen,
-                      upd->nexthop, upd->l3label, upd->l2label);
-
+	    {
+	      zrpc_log("getRoutes(rd %s,pfx %s/%d, nh %s, l3label %u, l2label %u)",
+		       upd->rd ? upd->rd : "NULL", upd->prefix, upd->prefixlen,
+		       upd->nexthop, upd->l3label, upd->l2label);
+	      if (upd->macaddress)
+		  zrpc_log("\t(mac %s, ethtag %u, esi %s, router mac %s)",
+			   upd->macaddress, upd->ethtag,
+			   upd->esi == NULL ? "NULL" : upd->esi,
+			   upd->routermac ? "NULL" : upd->routermac);
+	    }
           g_ptr_array_add((*_return)->updates, upd);
           route_updates++;
           if(inst_route.mac_router)
@@ -4195,9 +4201,16 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
                 upd->rd = NULL;
 
               if (IS_ZRPC_DEBUG_SHOW)
+		{
                 zrpc_log("getRoutes(rd %s,pfx %s/%d, nh %s, l3label %u, l2label %u)",
                          upd->rd ? upd->rd : "NULL", upd->prefix, upd->prefixlen,
                          upd->nexthop, upd->l3label, upd->l2label);
+		if (upd->macaddress)
+		  zrpc_log("\t(mac %s, ethtag %u, esi %s, router mac %s)",
+			   upd->macaddress, upd->ethtag,
+			   upd->esi == NULL ? "NULL" : upd->esi,
+			   upd->routermac ? "NULL" : upd->routermac);
+		}
 
               g_ptr_array_add((*_return)->updates, upd);
               route_updates++;
