@@ -1399,6 +1399,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
             }
           inst.prefix.family = AF_L2VPN;
           inst.prefix.prefixlen = ZRPC_L2VPN_PREFIX_AD;
+          inst.prefix.u.prefix_evpn.route_type = EVPN_ETHERNET_AUTO_DISCOVERY;
           m->eth_tag_id = ethtag;
           goto inst_filled;
         }
@@ -1407,6 +1408,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           struct zrpc_macipaddr *m = &inst.prefix.u.prefix_evpn.u.prefix_macip;
           inst.prefix.family = AF_L2VPN;
           inst.prefix.prefixlen = ZRPC_L2VPN_IPV4_PREFIX_LEN;
+          inst.prefix.u.prefix_evpn.route_type = EVPN_MACIP_ADVERTISEMENT;
           m->eth_tag_id = ethtag;
           zrpc_util_str2mac(macaddress, (char*) &m->mac);
           if (strncmp(prefix, "0.0.0.0/0", 9) && strncmp (prefix, "0::0/0", 6))
@@ -1728,6 +1730,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
             }
           inst.prefix.family = AF_L2VPN;
           inst.prefix.prefixlen = ZRPC_L2VPN_PREFIX_AD;
+          inst.prefix.u.prefix_evpn.route_type = EVPN_ETHERNET_AUTO_DISCOVERY;
           m->eth_tag_id = ethtag;
           goto inst_filled;
         }
@@ -1737,6 +1740,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           struct zrpc_macipaddr *m = &inst.prefix.u.prefix_evpn.u.prefix_macip;
           inst.prefix.family = AF_L2VPN;
           inst.prefix.prefixlen = ZRPC_L2VPN_IPV4_PREFIX_LEN;
+          inst.prefix.u.prefix_evpn.route_type = EVPN_MACIP_ADVERTISEMENT;
           m->eth_tag_id = ethtag;
           zrpc_util_str2mac(macaddress, (char*) &m->mac);
           if (strncmp(prefix, "0.0.0.0/0", 9) && strncmp (prefix, "0::0/0", 6))

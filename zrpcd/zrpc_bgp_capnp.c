@@ -554,9 +554,9 @@ void qcapn_BGPVRFRoute_write(const struct bgp_api_route *s, capn_ptr p)
         else if (s->prefix.family == AF_L2VPN)
           {
             if (s->prefix.u.prefix_evpn.u.prefix_macip.ip_len == 128)
-              size = 30; /* ipv6 replaced by ipv4 */
+              size = 30 + 1; /* ipv6 replaced by ipv4 */
             else
-              size = 18;
+              size = 18 + 1;
           }
         tempptr = capn_new_struct(p.seg, size, 0);
         capn_write8(tempptr, 0, s->prefix.family);
@@ -575,8 +575,9 @@ void qcapn_BGPVRFRoute_write(const struct bgp_api_route *s, capn_ptr p)
           }
         else if (s->prefix.family == AF_L2VPN)
           {
-            uint8_t index = 2;
+            uint8_t index = 3;
 
+            capn_write8(tempptr, 2, s->prefix.u.prefix_evpn.route_type);
             qcapn_prefix_macip_write(tempptr, &s->prefix, &index);
           }
         capn_setp(p, 0, tempptr);
@@ -649,8 +650,9 @@ void qcapn_BGPVRFRoute_read(struct bgp_api_route *s, capn_ptr p)
           }
         else if (s->prefix.family == AF_L2VPN)
           {
-            uint8_t index = 2;
+            uint8_t index = 3;
 
+            s->prefix.u.prefix_evpn.route_type = capn_read8(tmp_p, 2);
             qcapn_prefix_macip_read (tmp_p, &s->prefix, &index);
           }
     }
@@ -709,8 +711,9 @@ void qcapn_VRFTableIter_read(struct zrpc_prefix *s, capn_ptr p)
           }
         else if (s->family == AF_L2VPN)
           {
-            uint8_t index = 2;
+            uint8_t index = 3;
 
+            s->u.prefix_evpn.route_type = capn_read8(tmp_p, 2);
             qcapn_prefix_macip_read (tmp_p, s, &index);
           }
     }
@@ -726,11 +729,12 @@ void qcapn_VRFTableIter_write(const struct zrpc_prefix *s, capn_ptr p)
     }
     else if (s->family == AF_L2VPN)
     {
-        capn_ptr tempptr = capn_new_struct(p.seg, 30, 0);
+        capn_ptr tempptr = capn_new_struct(p.seg, 31, 0);
         capn_write8(tempptr, 0, s->family);
         capn_write8(tempptr, 1, s->prefixlen);
+        capn_write8(tempptr, 2, s->u.prefix_evpn.route_type);
 
-        uint8_t index = 2;
+        uint8_t index = 3;
 
         qcapn_prefix_macip_write(tempptr, s, &index);
         capn_setp(p, 0, tempptr);
