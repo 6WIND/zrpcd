@@ -1953,9 +1953,10 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
   struct capn_ptr afikey;
   struct capn rc;
   struct capn_segment *cs;
-  int ret;
+  int ret, operation_capnp;
   char esi_static[]="00:00:00:00:00:00:00:00:00:00";
   char error_cplment[100];
+  uint32_t eth_tag = (uint32_t)evi;
 
   memset(error_cplment, 0, sizeof(error_cplment));
 
@@ -1972,14 +1973,25 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
       return FALSE;
     }
 
-  if (RouteType != EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
+  if ((RouteType != EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG) &&
+      (RouteType != EVPN_ETHERNET_AUTO_DISCOVERY))
     {
       *error = ERROR_BGP_INTERNAL;
+      *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  if (TunnelType != PMSI_TUNNEL_TYPE_INGRESS_REPLICATION)
+  if (RouteType == EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG &&
+      TunnelType != PMSI_TUNNEL_TYPE_INGRESS_REPLICATION)
     {
       *error = ERROR_BGP_INTERNAL;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+  if (RouteType == EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG &&
+      !TunnelId)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      *_return = BGP_ERR_PARAM;
       return FALSE;
     }
 
@@ -2003,25 +2015,48 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
       return FALSE;
     }
 
-  if ( !esi)
+  if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY
+      && !esi)
+    {
+      *error = ERROR_BGP_INVALID_AD;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+  if (!esi)
     {
       esi = esi_static;
     }
   if (zrpc_util_str2esi (esi, NULL) == 0)
     {
       *error = ERROR_BGP_INVALID_ESI;
+      *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-
+  /* ethtag must be 0 or MAX_ET */
+  if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY &&
+      eth_tag != 0 && eth_tag != BGP_ETHTAG_MAX_ET)
+    {
+      *_return = BGP_ERR_PARAM;
+      *error = ERROR_BGP_INVALID_AD;
+      return FALSE;
+    }
   /* prepare route entry */
   memset(&inst, 0, sizeof(struct bgp_api_route));
   inst.prefix.family = AF_L2VPN;
-  inst.prefix.prefixlen = ZRPC_L2VPN_MCAST_PREFIX_LEN;
-  inst.prefix.u.prefix_evpn.route_type = EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG;
-  inst.prefix.u.prefix_evpn.u.prefix_imethtag.eth_tag_id = (uint32_t )evi;
-  /* TunnelID mapped to originating router ip */
-  if (TunnelId)
+  inst.prefix.u.prefix_evpn.route_type = RouteType;
+  if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY)
     {
+      struct zrpc_macipaddr *m = &inst.prefix.u.prefix_evpn.u.prefix_macip;
+
+      inst.prefix.prefixlen = ZRPC_L2VPN_PREFIX_AD;
+      m->eth_tag_id = eth_tag;
+      inst.l2label = label;
+    }
+  else
+    {
+      inst.prefix.prefixlen = ZRPC_L2VPN_MCAST_PREFIX_LEN;
+      inst.prefix.u.prefix_evpn.u.prefix_imethtag.eth_tag_id = (uint32_t )eth_tag;
+      /* TunnelID mapped to originating router ip */
       ret = zrpc_util_str2_prefix (TunnelId, &nh_pfx);
       if (ret == 0 ||
           ((nh_pfx.family != AF_INET) &&
@@ -2044,15 +2079,16 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
                  sizeof(struct in6_addr));
           inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
         }
+      inst.tunnel_type = TunnelType;
+      inst.tunnel_id = (char *)TunnelId;
+      inst.label = label;
     }
+
   rdrt_export = bgpvrf->rdrt_export;
   if (rdrt_export)
     inst.rt_export = rdrt_export;
 
   inst.esi = strdup(esi);
-  inst.tunnel_type = TunnelType;
-  inst.tunnel_id = (char *)TunnelId;
-  inst.label = label;
   inst.single_active_mode = (uint8_t)SingleActiveMode;
 
   /* check corresponding afi/safi is set */
@@ -2066,18 +2102,36 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
 
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
-  bgpvrfroute = qcapn_new_BGPVRFEvpnRTRoute(cs, 0);
-  qcapn_BGPVRFEvpnRTRoute_write(&inst, bgpvrfroute);
+  if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY)
+    {
+      bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
+      qcapn_BGPVRFRoute_write(&inst, bgpvrfroute);
+      operation_capnp = 3;
+    }
+  else
+    {
+      bgpvrfroute = qcapn_new_BGPVRFEvpnRTRoute(cs, 0);
+      qcapn_BGPVRFEvpnRTRoute_write(&inst, bgpvrfroute);
+      operation_capnp = 4;
+    }
   /* prepare afi context */
   afikey = qcapn_new_AfiKey(cs);
   capn_write8(afikey, 0, afi_int);
   /* set route within afi context using QZC set request */
   ret = qzcclient_setelem (ctxt->p_qzc_sock, &bgpvrf_nid,             \
-                           4, &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
+                           operation_capnp, &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
                            &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
   if (ret == 0)
     {
-      *error = ERROR_BGP_INTERNAL;
+      *_return = BGP_ERR_FAILED;
+      if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY)
+	{
+	  *error = ERROR_BGP_INVALID_AD_PROCESSING;
+	}
+      else
+	{
+	  *error = ERROR_BGP_INTERNAL;
+	}
     }
 
   capn_free(&rc);
@@ -2121,9 +2175,10 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
   struct capn_ptr afikey;
   struct capn rc;
   struct capn_segment *cs;
-  int ret;
+  int ret, operation_capnp;
   char esi_static[]="00:00:00:00:00:00:00:00:00:00";
   char error_cplment[100];
+  uint32_t eth_tag = (uint32_t)evi;
 
   memset(error_cplment, 0, sizeof(error_cplment));
 
@@ -2140,14 +2195,26 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
       return FALSE;
     }
 
-  if (RouteType != EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
+  if ((RouteType != EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG) &&
+      (RouteType != EVPN_ETHERNET_AUTO_DISCOVERY))
     {
       *error = ERROR_BGP_INTERNAL;
+      *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  if (TunnelType != PMSI_TUNNEL_TYPE_INGRESS_REPLICATION)
+
+  if (RouteType == EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG
+      && TunnelType != PMSI_TUNNEL_TYPE_INGRESS_REPLICATION)
     {
       *error = ERROR_BGP_INTERNAL;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
+  if (RouteType == EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG &&
+      !TunnelId)
+    {
+      *error = ERROR_BGP_INTERNAL;
+      *_return = BGP_ERR_PARAM;
       return FALSE;
     }
 
@@ -2171,6 +2238,13 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
       return FALSE;
     }
 
+  if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY
+      && !esi)
+    {
+      *error = ERROR_BGP_INVALID_AD;
+      *_return = BGP_ERR_PARAM;
+      return FALSE;
+    }
   if ( !esi)
     {
       esi = esi_static;
@@ -2178,19 +2252,34 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
   if (zrpc_util_str2esi (esi, NULL) == 0)
     {
       *error = ERROR_BGP_INVALID_ESI;
+      *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-
+  /* ethtag must be 0 or MAX_ET */
+  if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY &&
+      eth_tag != 0 && eth_tag != BGP_ETHTAG_MAX_ET)
+    {
+      *_return = BGP_ERR_PARAM;
+      *error = ERROR_BGP_INVALID_AD;
+      return FALSE;
+    }
   /* prepare route entry */
   memset(&inst, 0, sizeof(struct bgp_api_route));
   inst.prefix.family = AF_L2VPN;
-  inst.prefix.prefixlen = ZRPC_L2VPN_MCAST_PREFIX_LEN;
-  inst.prefix.u.prefix_evpn.route_type = EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG;
-  inst.prefix.u.prefix_evpn.u.prefix_imethtag.eth_tag_id = (uint32_t )evi;
-
-  /* TunnelID mapped to originating router ip */
-  if (TunnelId)
+  inst.prefix.u.prefix_evpn.route_type = RouteType;
+  if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY)
     {
+      struct zrpc_macipaddr *m = &inst.prefix.u.prefix_evpn.u.prefix_macip;
+
+      inst.prefix.prefixlen = ZRPC_L2VPN_PREFIX_AD;
+      m->eth_tag_id = eth_tag;
+      inst.l2label = label;
+    }
+  else
+    {
+      inst.prefix.prefixlen = ZRPC_L2VPN_MCAST_PREFIX_LEN;
+      inst.prefix.u.prefix_evpn.u.prefix_imethtag.eth_tag_id = (uint32_t )eth_tag;
+      /* TunnelID mapped to originating router ip */
       ret = zrpc_util_str2_prefix (TunnelId, &nh_pfx);
       if (ret == 0 ||
           ((nh_pfx.family != AF_INET) &&
@@ -2213,6 +2302,9 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
                  sizeof(struct in6_addr));
           inst.prefix.u.prefix_evpn.u.prefix_imethtag.ip_len = ZRPC_UTIL_IPV6_PREFIX_LEN_MAX;
         }
+      inst.tunnel_type = TunnelType;
+      inst.tunnel_id = (char *)TunnelId;
+      inst.label = label;
     }
 
   rdrt_export = bgpvrf->rdrt_export;
@@ -2220,9 +2312,6 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
     inst.rt_export = rdrt_export;
 
   inst.esi = strdup(esi);
-  inst.tunnel_type = TunnelType;
-  inst.tunnel_id = (char *)TunnelId;
-  inst.label = label;
   inst.single_active_mode = (uint8_t)SingleActiveMode;
 
   /* check corresponding afi/safi is set */
@@ -2236,18 +2325,36 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
 
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
-  bgpvrfroute = qcapn_new_BGPVRFEvpnRTRoute(cs, 0);
-  qcapn_BGPVRFEvpnRTRoute_write(&inst, bgpvrfroute);
+  if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY)
+    {
+      bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
+      qcapn_BGPVRFRoute_write(&inst, bgpvrfroute);
+      operation_capnp = 3;
+    }
+  else
+    {
+      bgpvrfroute = qcapn_new_BGPVRFEvpnRTRoute(cs, 0);
+      qcapn_BGPVRFEvpnRTRoute_write(&inst, bgpvrfroute);
+      operation_capnp = 4;
+    }
   /* prepare afi context */
   afikey = qcapn_new_AfiKey(cs);
   capn_write8(afikey, 0, afi_int);
   /* set route within afi context using QZC set request */
-  ret = qzcclient_unsetelem (ctxt->p_qzc_sock, &bgpvrf_nid, 4,      \
+  ret = qzcclient_unsetelem (ctxt->p_qzc_sock, &bgpvrf_nid, operation_capnp,      \
                              &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
                              &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
   if (ret == 0)
     {
-      *error = ERROR_BGP_INTERNAL;
+      *_return = BGP_ERR_FAILED;
+      if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY)
+	{
+	  *error = ERROR_BGP_INVALID_AD_PROCESSING;
+	}
+      else
+	{
+	  *error = ERROR_BGP_INTERNAL;
+	}
     }
 
   capn_free(&rc);
