@@ -2022,7 +2022,7 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
     }
 
   if (RouteType == EVPN_ETHERNET_AUTO_DISCOVERY
-      && !esi)
+      && (!esi || !TunnelId))
     {
       *error = ERROR_BGP_INVALID_AD;
       *_return = BGP_ERR_PARAM;
@@ -2057,6 +2057,15 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
       inst.prefix.prefixlen = ZRPC_L2VPN_PREFIX_AD;
       m->eth_tag_id = eth_tag;
       inst.l2label = label;
+
+      ret = zrpc_util_str2_prefix (TunnelId, &inst.nexthop);
+      if (ret == 0)
+        {
+          *_return = BGP_ERR_PARAM;
+          *error = ERROR_BGP_INVALID_NEXTHOP(TunnelId);
+          ret = FALSE;
+          goto error;
+        }
     }
   else
     {
