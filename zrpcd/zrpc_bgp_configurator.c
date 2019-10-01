@@ -1440,7 +1440,8 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
             m->ip_len = 0;
           m->mac_len = ZRPC_MAC_LEN * 8;
           /* moving the prefix from ipv4 to ipv6 mapped */
-          if ((inst.nexthop.family == AF_INET) &&
+          if ((p_type != PROTOCOL_TYPE_PROTOCOL_EVPN) &&
+              (inst.nexthop.family == AF_INET) &&
               (inst.prefix.prefixlen == ZRPC_L2VPN_IPV6_PREFIX_LEN))
             zrpc_util_convert_ipv4toipv6mapped (&inst.nexthop);
         }
@@ -1465,7 +1466,8 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
               goto error;
             }
           /* moving the prefix from ipv4 to ipv6 mapped */
-          if ((inst.nexthop.family == AF_INET) &&
+          if ((p_type != PROTOCOL_TYPE_PROTOCOL_EVPN) &&
+              (inst.nexthop.family == AF_INET) &&
               (inst.prefix.family == AF_INET6))
             zrpc_util_convert_ipv4toipv6mapped (&inst.nexthop);
 #endif /* HAVE_THRIFT_V3 */
@@ -1493,7 +1495,8 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           goto error;
         }
       /* moving the prefix from ipv4 to ipv6 mapped */
-      if ((inst.nexthop.family == AF_INET) &&
+      if ((p_type != PROTOCOL_TYPE_PROTOCOL_EVPN) &&
+          (inst.nexthop.family == AF_INET) &&
           (inst.prefix.family == AF_INET6))
         zrpc_util_convert_ipv4toipv6mapped (&inst.nexthop);
 #endif /* HAVE_THRIFT_V3 */
@@ -1772,7 +1775,8 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
             m->ip_len = 0;
           m->mac_len = ZRPC_MAC_LEN * 8;
           /* moving the prefix from ipv4 to ipv6 mapped */
-          if ((inst.nexthop.family == AF_INET) &&
+          if ((p_type != PROTOCOL_TYPE_PROTOCOL_EVPN) &&
+              (inst.nexthop.family == AF_INET) &&
               (inst.prefix.prefixlen == ZRPC_L2VPN_IPV6_PREFIX_LEN))
             zrpc_util_convert_ipv4toipv6mapped (&inst.nexthop);
         }
@@ -1796,7 +1800,8 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
               goto error;
             }
           /* moving the prefix from ipv4 to ipv6 mapped */
-          if ((inst.nexthop.family == AF_INET) &&
+          if ((p_type != PROTOCOL_TYPE_PROTOCOL_EVPN) &&
+              (inst.nexthop.family == AF_INET) &&
               (inst.prefix.family == AF_INET6))
             zrpc_util_convert_ipv4toipv6mapped (&inst.nexthop);
 #endif /* HAVE_THRIFT_V3 */
@@ -1823,9 +1828,10 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
           goto error;
         }
       /* moving the prefix from ipv4 to ipv6 mapped */
-      if ((inst.nexthop.family == AF_INET) &&
+      if ((p_type != PROTOCOL_TYPE_PROTOCOL_EVPN) &&
+          (inst.nexthop.family == AF_INET) &&
           (inst.prefix.family == AF_INET6))
-        zrpc_util_convert_ipv4toipv6mapped (&inst.nexthop);
+          zrpc_util_convert_ipv4toipv6mapped (&inst.nexthop);
 #endif /* HAVE_THRIFT_V3 */
       if (inst.prefix.family == AF_INET)
         afi_int = ADDRESS_FAMILY_IP;
