@@ -3709,6 +3709,17 @@ instance_bgp_configurator_handler_get_routes (BgpConfiguratorIf *iface, Routes *
                   break;
                 }
             }
+          /* EVPN RT2 have AF_L2VPN prefixes
+           * EVPN RT5 have mac_router provisioned
+           */
+          if (p_type == PROTOCOL_TYPE_PROTOCOL_L3VPN &&
+              ((inst_route.prefix.family == AF_L2VPN) ||
+               inst_route.mac_router))
+            continue;
+          if (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN &&
+              ( (inst_route.prefix.family != AF_L2VPN) &&
+                !inst_route.mac_router))
+            continue;
           /* add entry in update */
           upd = g_object_new (TYPE_UPDATE, NULL);
           get_update_entry_from_context(&inst_route, NULL, upd);
