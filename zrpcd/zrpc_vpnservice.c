@@ -48,6 +48,8 @@ static void zrpc_update_notification_socket_errno(int err) {
 
 void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean response)
 {
+  int ret;
+
   if ((zrpc_transport_current_status == ZRPC_TO_SDN_UNKNOWN) ||
       ((response == TRUE) && (zrpc_transport_current_status == ZRPC_TO_SDN_FALSE)) ||
       ((response == FALSE) && (zrpc_transport_current_status == ZRPC_TO_SDN_TRUE)))
@@ -60,9 +62,19 @@ void zrpc_transport_change_status(struct zrpc_vpnservice *setup, gboolean respon
                 response == TRUE?"OK":"NOK");
       if (response == TRUE) {
         zrpc_transport_current_status = ZRPC_TO_SDN_TRUE;
-        zrpc_bgp_updater_on_start_config_resync_notification_quick (setup, FALSE);
-        if (cb && cb->process_zmq_msg_queue)
-          work_queue_unplug (cb->process_zmq_msg_queue);
+        ret = zrpc_bgp_updater_on_start_config_resync_notification_quick (setup, FALSE);
+        start_retry_times++;
+        start_retry_msg_not_sent = (ret == FALSE ) ? 1 : 0;
+        if (ret == FALSE) {
+          if (cb && cb->process_zmq_msg_queue)
+            work_queue_plug (cb->process_zmq_msg_queue);
+	  if (setup->bgp_updater_transport)
+	    zrpc_client_transport_close(setup->bgp_updater_transport->transport);
+	  zrpc_transport_current_status = ZRPC_TO_SDN_FALSE;
+        } else {
+          if (cb && cb->process_zmq_msg_queue)
+            work_queue_unplug (cb->process_zmq_msg_queue);
+        }
       } else {
         if (cb && cb->process_zmq_msg_queue)
           work_queue_plug (cb->process_zmq_msg_queue);
