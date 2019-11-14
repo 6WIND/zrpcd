@@ -740,6 +740,8 @@ fi
 # version 1 = L3VPN - default
 # version 2 = EVPN + L3VPN 
 # version 3 = IPv6 + EVPN + L3VPN
+# version 5 = BFD + Dualstack + IPv6 + EVPN + L3VPN
+# version 6 = BFD + Dualstack + IPv6 + EVPN + L3VPN (return codes for thrift APIs)
 AC_ARG_WITH(thrift-version,
 [  --with-thrift-version           Set thrift version for use in zrpcd.])
 if test "x$with_thrift_version" != "x" ; then
@@ -785,6 +787,15 @@ if test "x${THRIFTVERSION}" = "x5" ; then
   AC_DEFINE(HAVE_THRIFT_V5, [1], [Version for Thrift])
 else
   AM_CONDITIONAL([HAVE_THRIFT_V5], [test x = xtrue])
+fi
+if test "x${THRIFTVERSION}" = "x6" ; then
+  AM_CONDITIONAL([HAVE_THRIFT_V6], [test xtrue = xtrue])
+  AC_DEFINE(HAVE_THRIFT_V3, [1], [Version for Thrift])
+  AC_DEFINE(HAVE_THRIFT_V4, [1], [Version for Thrift])
+  AC_DEFINE(HAVE_THRIFT_V5, [1], [Version for Thrift])
+  AC_DEFINE(HAVE_THRIFT_V6, [1], [Version for Thrift])
+else
+  AM_CONDITIONAL([HAVE_THRIFT_V6], [test x = xtrue])
 fi
 
 dnl -----------
