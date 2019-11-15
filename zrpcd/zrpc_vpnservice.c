@@ -403,10 +403,17 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
                 }
               macaddress = (gchar *) zrpc_util_mac2str((char*) &p->u.prefix_evpn.u.prefix_macip.mac);
             }
+
+#if defined(HAVE_THRIFT_V6)
+          if (IS_ZRPC_DEBUG_NOTIFICATION)
+            {
+              if (node->retry_times >= 1)
+                zrpc_info ("retry (%d) to send onUpdatePushRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d)",
+                           node->retry_times, (zrpc_invalid_rd == 1)? NULL : vrf_rd_str,
+                           pfx_str_p, nexthop, s->label, s->l2label);
+            }
+#endif
 #if defined(HAVE_THRIFT_V1)
-
-
-
           ret = zrpc_bgp_updater_on_update_push_route(
 #else
           ret = zrpc_bgp_updater_on_update_push_route(p_type,
@@ -450,6 +457,16 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
                   ipprefixlen = 0;
                 }
             }
+
+#if defined(HAVE_THRIFT_V6)
+          if (IS_ZRPC_DEBUG_NOTIFICATION)
+            {
+              if (node->retry_times >= 1)
+                zrpc_info ("retry (%d) to send onUpdateWithdrawRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d)",
+                           node->retry_times, (zrpc_invalid_rd == 1)? NULL : vrf_rd_str,
+                           pfx_str_p, nexthop, s->label, s->l2label);
+            }
+#endif
 #if defined(HAVE_THRIFT_V1)
           ret = zrpc_bgp_updater_on_update_withdraw_route (
 #else
