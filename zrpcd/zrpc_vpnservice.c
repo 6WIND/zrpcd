@@ -445,6 +445,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                                                      afi_out);
         }
     }
+#ifdef HAVE_THRIFT_V5
   else if (s->announce == BGP_EVENT_PUSH_EVPN_RT ||
            s->announce == BGP_EVENT_WITHDRAW_EVPN_RT)
     {
@@ -506,6 +507,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_t
                                                        );
         }
     }
+#endif /* HAVE_THRIFT_V5 */
   else if (s->announce == BGP_EVENT_SHUT)
     {
       t = &tt;
