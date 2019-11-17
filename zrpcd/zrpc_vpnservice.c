@@ -437,6 +437,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
                                                 (const gint32)ipprefixlen, nexthop,
                                                 s->ethtag, esi, macaddress, s->label, s->l2label,
                                                 mac_router, s->gatewayIp, afi_out);
+          if (mac_router)
+            g_free (mac_router);
         }
       else
         {
@@ -492,6 +494,10 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
                                                      s->ethtag, esi, macaddress, s->label, s->l2label,
                                                      afi_out);
         }
+      if (esi)
+        g_free (esi);
+      if (macaddress)
+        free (macaddress);
     }
 #ifdef HAVE_THRIFT_V5
   else if (s->announce == BGP_EVENT_PUSH_EVPN_RT ||
