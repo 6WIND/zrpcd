@@ -554,7 +554,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
           p->u.prefix_evpn.route_type == EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG)
         {
           if (s->announce == BGP_EVENT_PUSH_EVPN_RT)
-            zrpc_bgp_updater_on_update_push_evpn_rt(p->u.prefix_evpn.route_type,
+            ret = zrpc_bgp_updater_on_update_push_evpn_rt(p->u.prefix_evpn.route_type,
                                                     (zrpc_invalid_rd == 1) ? NULL : vrf_rd_str,
                                                     NULL,            /* esi */
                                                     s->ethtag,       /* evi */
@@ -564,7 +564,7 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
                                                     false            /* singleActiveMode */
                                                    );
           else
-            zrpc_bgp_updater_on_update_withdraw_evpn_rt(p->u.prefix_evpn.route_type,
+            ret = zrpc_bgp_updater_on_update_withdraw_evpn_rt(p->u.prefix_evpn.route_type,
                                                         (zrpc_invalid_rd == 1) ? NULL : vrf_rd_str,
                                                         NULL,            /* esi */
                                                         s->ethtag,       /* evi */
