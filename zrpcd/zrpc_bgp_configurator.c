@@ -1552,7 +1552,12 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
           {
             UNSET_FLAG(bs->flags, BGP_CONFIG_FLAG_STALE);
             if (IS_ZRPC_DEBUG)
-              zrpc_log ("Route(prefix %s, rd %s) unset STALE state", prefix, rd);
+              {
+                char pfx_str[ZRPC_PREFIX_STRLEN];
+
+                zrpc_util_prefix_2str (&inst.prefix, pfx_str, sizeof(pfx_str));
+                zrpc_log ("Route(prefix %s, rd %s) unset STALE state", pfx_str, rd);
+              }
           }
         route_unlock_node (rn);
       }
@@ -1910,7 +1915,12 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
         if (bs)
           {
             if (IS_ZRPC_DEBUG_CACHE)
-                zrpc_log ("CACHE_ROUTES: del route(prefix %s, rd %s)", prefix, rd);
+              {
+                char pfx_str[ZRPC_PREFIX_STRLEN];
+
+                zrpc_util_prefix_2str (&inst.prefix, pfx_str, sizeof(pfx_str));
+                zrpc_log ("CACHE_ROUTES: del route(prefix %s, rd %s)", pfx_str, rd);
+              }
             ZRPC_FREE(bs);
             rn->info = NULL;
           }
@@ -5707,11 +5717,11 @@ zrpc_clear_vrf_route_table(struct zrpc_vpnservice_cache_bgpvrf *entry)
             {
               if (IS_ZRPC_DEBUG_CACHE)
                 {
-                  char pfx_str[INET6_BUFSIZ];
+                  char pfx_str[ZRPC_PREFIX_STRLEN];
                   char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
 
                   zrpc_util_rd_prefix2str(&entry->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
-                  prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+                  zrpc_util_prefix_2str (&rn->p, pfx_str, sizeof(pfx_str));
                   zrpc_log ("CACHE_ROUTES: del route(prefix %s, rd %s)", pfx_str, vrf_rd_str);
                 }
               ZRPC_FREE(bs);
@@ -5779,11 +5789,11 @@ void zrpc_delete_stale_route(struct zrpc_vpnservice *setup,
     {
       if (IS_ZRPC_DEBUG)
         {
-          char pfx_str[INET6_BUFSIZ];
+          char pfx_str[ZRPC_PREFIX_STRLEN];
           char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
 
           zrpc_util_rd_prefix2str(&vrf->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
-          prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+          zrpc_util_prefix_2str (&rn->p, pfx_str, sizeof(pfx_str));
           zrpc_info ("Stale route(prefix %s, rd %s) withdrawn", pfx_str, vrf_rd_str);
         }
     }
@@ -5791,11 +5801,11 @@ void zrpc_delete_stale_route(struct zrpc_vpnservice *setup,
     {
       if (IS_ZRPC_DEBUG)
         {
-          char pfx_str[INET6_BUFSIZ];
+          char pfx_str[ZRPC_PREFIX_STRLEN];
           char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
 
           zrpc_util_rd_prefix2str(&vrf->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
-          prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+          zrpc_util_prefix_2str (&rn->p, pfx_str, sizeof(pfx_str));
           zrpc_info ("Failed to withdraw stale route(prefix %s, rd %s)", pfx_str, vrf_rd_str);
         }
     }

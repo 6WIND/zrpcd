@@ -1034,11 +1034,11 @@ void zrpc_config_stale_timer_flush(struct zrpc_vpnservice *setup, bool donotflus
                         {
                           if (IS_ZRPC_DEBUG)
                             {
-                              char pfx_str[INET6_BUFSIZ];
+                              char pfx_str[ZRPC_PREFIX_STRLEN];
                               char vrf_rd_str[ZRPC_UTIL_RDRT_LEN];
 
                               zrpc_util_rd_prefix2str(&vrf->outbound_rd, vrf_rd_str, sizeof(vrf_rd_str));
-                              prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+                              zrpc_util_prefix_2str (&rn->p, pfx_str, sizeof(pfx_str));
                               zrpc_err ("Stale route(prefix %s, rd %s) should be withdrawn", pfx_str, vrf_rd_str);
                             }
                         }
@@ -1175,10 +1175,10 @@ void zrpc_config_stale_set(struct zrpc_vpnservice *setup)
                 if (IS_ZRPC_DEBUG)
                   {
                     char rdstr[ZRPC_UTIL_RDRT_LEN];
-                    char pfx_str[INET6_BUFSIZ];
+                    char pfx_str[ZRPC_PREFIX_STRLEN];
 
                     zrpc_util_rd_prefix2str(&(vrf->outbound_rd), rdstr, ZRPC_UTIL_RDRT_LEN);
-                    prefix2str(&rn->p, pfx_str, sizeof(pfx_str));
+                    zrpc_util_prefix_2str (&rn->p, pfx_str, sizeof(pfx_str));
                     zrpc_info ("Route(prefix %s, rd %s) set to STALE state", pfx_str, rdstr);
                   }
                 SET_FLAG(bs->flags, BGP_CONFIG_FLAG_STALE);
