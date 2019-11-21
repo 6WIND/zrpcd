@@ -348,6 +348,44 @@ int zrpc_util_prefix_2str (struct zrpc_prefix *pfx, char *buf, socklen_t len)
       if (ptr && pfx->prefixlen != ZRPC_UTIL_IPV6_PREFIX_LEN_MAX)
         sprintf (ptr, "/%u", pfx->prefixlen);
     }
+
+  if (pfx->family == AF_L2VPN && len >= ZRPC_UTIL_L2VPN_LEN_MAX)
+    {
+      char str[BUFSIZ];
+
+      if (pfx->u.prefix_evpn.route_type == 3)
+        {
+          if (pfx->u.prefix_evpn.u.prefix_imethtag.ip_len == ZRPC_UTIL_IPV4_PREFIX_LEN_MAX)
+            inet_ntop (AF_INET, &pfx->u.prefix_evpn.u.prefix_imethtag.ip.in4, str, BUFSIZ);
+          else
+            inet_ntop (AF_INET6, &pfx->u.prefix_evpn.u.prefix_imethtag.ip.in4, str, BUFSIZ);
+          snprintf (buf, len, "[%u][%d][%s]",
+                    pfx->u.prefix_evpn.u.prefix_imethtag.eth_tag_id,
+                    pfx->u.prefix_evpn.u.prefix_imethtag.ip_len,
+                    str);
+        }
+      else
+        {
+          if (ZRPC_L2VPN_PREFIX_HAS_IPV4(pfx))
+            inet_ntop (AF_INET, &pfx->u.prefix_evpn.u.prefix_macip.ip.in4, str, BUFSIZ);
+          else if (ZRPC_L2VPN_PREFIX_HAS_IPV6(pfx))
+            inet_ntop (AF_INET6, &pfx->u.prefix_evpn.u.prefix_macip.ip.in6, str, BUFSIZ);
+          else if (ZRPC_L2VPN_PREFIX_HAS_NOIP(pfx))
+            strcpy(str, "none");
+          snprintf (buf, len, "[%u][%02x:%02x:%02x:%02x:%02x:%02x/%d][%s/%d]",
+                    pfx->u.prefix_evpn.u.prefix_macip.eth_tag_id,
+                    pfx->u.prefix_evpn.u.prefix_macip.mac.octet[0],
+                    pfx->u.prefix_evpn.u.prefix_macip.mac.octet[1],
+                    pfx->u.prefix_evpn.u.prefix_macip.mac.octet[2],
+                    pfx->u.prefix_evpn.u.prefix_macip.mac.octet[3],
+                    pfx->u.prefix_evpn.u.prefix_macip.mac.octet[4],
+                    pfx->u.prefix_evpn.u.prefix_macip.mac.octet[5],
+                    pfx->u.prefix_evpn.u.prefix_macip.mac_len,
+                    str,
+                    pfx->u.prefix_evpn.u.prefix_macip.ip_len);
+        }
+    }
+
   return ret;
 }
 

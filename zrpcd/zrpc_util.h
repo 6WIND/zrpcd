@@ -36,6 +36,8 @@
 #define ZRPC_UTIL_IPV4_LEN_MAX              20
 #define ZRPC_UTIL_IPV6_LEN_MAX              51
 #define ZRPC_UTIL_IPV6_PREFIX_LEN_MAX      128
+#define ZRPC_UTIL_L2VPN_LEN_MAX	(51+32)
+#define ZRPC_PREFIX_STRLEN ZRPC_UTIL_L2VPN_LEN_MAX
 
 /* Max bit/byte length of IPv6 address. */
 #define ZRPC_UTIL_IPV6_MAX_BYTELEN    16
