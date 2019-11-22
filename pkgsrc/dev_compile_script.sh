@@ -157,6 +157,10 @@ install_deps() {
 #Install thrift
     git clone https://github.com/apache/thrift.git
     cd $THRIFT_FOLDER_NAME
+
+    if [ -n "WITH_THRIFT_012" ]; then
+        THRIFT_TAG=0.12.0
+    fi
     git checkout $THRIFT_TAG
     wget https://issues.apache.org/jira/secure/attachment/12840512/0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
     patch -p1 < 0001-THRIFT-3987-externalise-declaration-of-thrift-server.patch
@@ -535,9 +539,10 @@ OPTIONS:
   -a/--archive [path to archive.tar.gz], give explicitly the source archive to be used instead \
       of producing one with make dist.
   -d/--install-deps, compile and install zrpcd's dependencies.
-  -v/--version, define the thrift API to use with: 1 = l3vpn, 2 = evpn, 4 = ipv6, 5 = dualstack
+  -v/--version, define the thrift API to use with: 1 = l3vpn, 2 = evpn, 4 = ipv6, 5 = dualstack, 6 = added return code
   -p/ Do packaging
   -P/ Provide packaging version: 20190702 for instance
+  --with-thrift-012/ Provide thrift 0.12 packaging
   -h help, prints this help text
 EOF
 }
@@ -548,6 +553,7 @@ DIST_ARCHIVE=""
 DO_PACKAGING=""
 THRIFT_VERSION="1"
 PACKAGING_VERSION=""
+WITH_THRIFT_012=""
 parse_cmdline() {
     while [ $# -gt 0 ]
     do
@@ -582,6 +588,10 @@ parse_cmdline() {
                 ;;
             -P|--PackagingVersion)
                 PACKAGING_VERSION=${2}
+                shift 2
+                ;;
+            --with-thrift-012)
+                WITH_THRIFT_012="true"
                 shift 2
                 ;;
             *)
