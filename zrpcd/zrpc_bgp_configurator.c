@@ -1543,7 +1543,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
     }
 
     /* save static route */
-    rn = route_node_get (bgpvrf->route[af], (const struct prefix *)&inst.prefix);
+    rn = route_node_get (bgpvrf->route[afi_int], (const struct prefix *)&inst.prefix);
     if (rn->info)
       {
         struct zrpc_bgp_static *bs = rn->info;
@@ -1907,7 +1907,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
     }
 
     /* delete static route */
-    rn = route_node_lookup(bgpvrf->route[af], (const struct prefix *)&inst.prefix);
+    rn = route_node_lookup(bgpvrf->route[afi_int], (const struct prefix *)&inst.prefix);
     if (rn)
       {
         struct zrpc_bgp_static *bs = rn->info;
