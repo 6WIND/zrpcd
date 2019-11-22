@@ -2023,6 +2023,8 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
   char esi_static[]="00:00:00:00:00:00:00:00:00:00";
   char error_cplment[100];
   uint32_t eth_tag = (uint32_t)evi;
+  struct route_node *rn;
+  struct zrpc_bgp_static *bgp_static;
 
   memset(error_cplment, 0, sizeof(error_cplment));
 
@@ -2226,7 +2228,44 @@ error:
     free (inst.esi);
 
   if (ret)
-    return TRUE;
+    {
+      /* save static route */
+      rn = route_node_get (bgpvrf->route[afi_int], (const struct prefix *)&inst.prefix);
+      if (rn->info)
+        {
+          struct zrpc_bgp_static *bs = rn->info;
+
+          if (CHECK_FLAG(bs->flags, BGP_CONFIG_FLAG_STALE))
+            {
+              UNSET_FLAG(bs->flags, BGP_CONFIG_FLAG_STALE);
+              if (IS_ZRPC_DEBUG)
+                {
+                  char pfx_str[ZRPC_PREFIX_STRLEN];
+
+                  zrpc_util_prefix_2str (&inst.prefix, pfx_str, sizeof(pfx_str));
+                  zrpc_log ("Route(prefix %s, rd %s) unset STALE state", pfx_str, rd);
+                }
+            }
+          route_unlock_node (rn);
+        }
+      else
+        {
+          bgp_static = ZRPC_CALLOC (sizeof (struct zrpc_bgp_static));
+          bgp_static->prd = rd_inst;
+#if !defined(HAVE_THRIFT_V1)
+          bgp_static->p_type = PROTOCOL_TYPE_PROTOCOL_EVPN;
+#endif
+          rn->info = bgp_static;
+          if (IS_ZRPC_DEBUG_CACHE)
+            {
+              char pfx_str[ZRPC_PREFIX_STRLEN];
+
+              zrpc_util_prefix_2str (&inst.prefix, pfx_str, sizeof(pfx_str));
+              zrpc_log ("CACHE_ROUTES: add route(prefix %s, rd %s)", pfx_str, rd);
+            }
+        }
+      return TRUE;
+    }
   else
     return FALSE;
 }
@@ -2254,6 +2293,7 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
   char esi_static[]="00:00:00:00:00:00:00:00:00:00";
   char error_cplment[100];
   uint32_t eth_tag = (uint32_t)evi;
+  struct route_node *rn;
 
   memset(error_cplment, 0, sizeof(error_cplment));
 
@@ -2449,7 +2489,30 @@ error:
     free (inst.esi);
 
   if (ret)
-    return TRUE;
+    {
+      /* delete static route */
+      rn = route_node_lookup(bgpvrf->route[afi_int], (const struct prefix *)&inst.prefix);
+      if (rn)
+        {
+          struct zrpc_bgp_static *bs = rn->info;
+
+          if (bs)
+            {
+              if (IS_ZRPC_DEBUG_CACHE)
+                {
+                  char pfx_str[ZRPC_PREFIX_STRLEN];
+
+                  zrpc_util_prefix_2str (&inst.prefix, pfx_str, sizeof(pfx_str));
+                  zrpc_log ("CACHE_ROUTES: del route(prefix %s, rd %s)", pfx_str, rd);
+                }
+              ZRPC_FREE(bs);
+              rn->info = NULL;
+            }
+          route_unlock_node (rn); /* to free the lookup lock */
+          route_unlock_node (rn); /* to free the original lock */
+        }
+      return TRUE;
+    }
   else
     return FALSE;
 }
@@ -5744,7 +5807,7 @@ void zrpc_delete_stale_route(struct zrpc_vpnservice *setup,
   struct capn_ptr afikey;
   struct capn rc;
   struct capn_segment *cs;
-  int ret;
+  int ret, operation_capnp;
   struct zrpc_bgp_static *bs = rn->info;
   struct zrpc_vpnservice_cache_bgpvrf *vrf;
 
@@ -5776,13 +5839,31 @@ void zrpc_delete_stale_route(struct zrpc_vpnservice *setup,
 
   capn_init_malloc(&rc);
   cs = capn_root(&rc).seg;
-  bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
-  qcapn_BGPVRFRoute_write(&inst, bgpvrfroute);
+
+#if defined(HAVE_THRIFT_V5)
+  if (inst.prefix.family == AF_L2VPN &&
+      (inst.prefix.u.prefix_evpn.route_type ==
+             EVPN_INCLUSIVE_MULTICAST_ETHERNET_TAG))
+    {
+      bgpvrfroute = qcapn_new_BGPVRFEvpnRTRoute(cs, 0);
+      qcapn_BGPVRFEvpnRTRoute_write(&inst, bgpvrfroute);
+      operation_capnp = 4;
+    }
+  else
+    {
+#endif
+      bgpvrfroute = qcapn_new_BGPVRFRoute(cs, 0);
+      qcapn_BGPVRFRoute_write(&inst, bgpvrfroute);
+      operation_capnp = 3;
+#if defined(HAVE_THRIFT_V5)
+    }
+#endif
+
   /* prepare afi context */
   afikey = qcapn_new_AfiKey(cs);
   capn_write8(afikey, 0, afi_int);
   /* set route within afi context using QZC set request */
-  ret = qzcclient_unsetelem (setup->p_qzc_sock, &bgpvrf_nid, 3, \
+  ret = qzcclient_unsetelem (setup->p_qzc_sock, &bgpvrf_nid, operation_capnp, \
                              &bgpvrfroute, &bgp_datatype_bgpvrfroute, \
                              &afikey, &bgp_ctxttype_afisafi_set_bgp_vrf_3);
   if (ret)
