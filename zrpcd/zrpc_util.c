@@ -333,7 +333,7 @@ int zrpc_util_prefix_2str (struct zrpc_prefix *pfx, char *buf, socklen_t len)
       ptr = ( char *)inet_ntop (AF_INET, src, buf, (socklen_t)len);
       if (ptr == NULL)
         return 0;
-      ptr += strlen(buf) + 1;
+      ptr += strlen(buf);
       if (pfx->prefixlen != ZRPC_UTIL_IPV4_PREFIX_LEN_MAX)
         sprintf (ptr, "/%u", pfx->prefixlen);
       return ret;
@@ -344,8 +344,8 @@ int zrpc_util_prefix_2str (struct zrpc_prefix *pfx, char *buf, socklen_t len)
       ptr = (char *)inet_ntop (AF_INET6, src, buf, (socklen_t)len);
       if (ptr == NULL)
         return 0;
-      ptr += strlen(buf) + 1;
-      if (ptr && pfx->prefixlen != ZRPC_UTIL_IPV6_PREFIX_LEN_MAX)
+      ptr += strlen(buf);
+      if (pfx->prefixlen != ZRPC_UTIL_IPV6_PREFIX_LEN_MAX)
         sprintf (ptr, "/%u", pfx->prefixlen);
     }
 
