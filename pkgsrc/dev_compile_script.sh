@@ -592,7 +592,7 @@ parse_cmdline() {
                 ;;
             --with-thrift-012)
                 WITH_THRIFT_012="true"
-                shift 2
+                shift
                 ;;
             *)
                 display_usage
