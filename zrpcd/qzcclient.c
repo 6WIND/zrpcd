@@ -610,13 +610,13 @@ qzcclient_unsetelem (struct qzcclient_sock **sock, uint64_t *nid, int elem, \
     {
       ret = 0;
     }
-  read_QZCSetRep (srep, rep->set);
-  if (rep)
-    ZRPC_FREE(rep);
-  if (ret)
+  else
     {
+      read_QZCSetRep (srep, rep->set);
       read_QZCSetRepReturnCode (&ret, srep->data);
     }
+  if (rep)
+    ZRPC_FREE(rep);
   ZRPC_FREE (srep);
   capn_free(&rc);
   return ret;
