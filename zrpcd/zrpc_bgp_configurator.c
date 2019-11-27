@@ -1302,7 +1302,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
 #if !defined(HAVE_THRIFT_V1)
   /* detect Auto Discovery and then check parameters coherency */
   is_auto_discovery = (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
-                      && (prefix == NULL)
+                      && (prefix == NULL || !strlen(prefix))
                       && (enc_type == ENCAP_TYPE_VXLAN);
 #endif /* !HAVE_THRIFT_V1 */
   if (!is_auto_discovery && !prefix)
@@ -1729,7 +1729,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
 
 #if !defined(HAVE_THRIFT_V1)
   /* detect Auto Discovery and then check parameters coherency */
-  is_auto_discovery = (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN) && (prefix == NULL);
+  is_auto_discovery = (p_type == PROTOCOL_TYPE_PROTOCOL_EVPN) && (prefix == NULL || !strlen(prefix));
 #endif /* !HAVE_THRIFT_V1 */
   if (!is_auto_discovery && !prefix)
   {
