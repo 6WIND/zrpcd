@@ -1367,7 +1367,7 @@ instance_bgp_configurator_handler_push_route(BgpConfiguratorIf *iface, gint32* _
         }
 #endif /* !HAVE_THRIFT_V2 */ /* HAVE_THRIFT_V4 */
       inst.ethtag = (uint32_t ) ethtag;
-      if( !esi)
+      if (!esi || !strlen(esi))
         {
           esi = esi_static;
         }
@@ -1743,7 +1743,7 @@ instance_bgp_configurator_handler_withdraw_route(BgpConfiguratorIf *iface, gint3
   if(p_type == PROTOCOL_TYPE_PROTOCOL_EVPN)
     {
       afi_int = ADDRESS_FAMILY_L2VPN;
-      if( !esi)
+      if (!esi || !strlen(esi))
         {
           esi = esi_static;
         }
@@ -2090,7 +2090,7 @@ instance_bgp_configurator_handler_push_evpn_rt(BgpConfiguratorIf *iface, gint32*
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  if (!esi)
+  if (!esi || !strlen(esi))
     {
       esi = esi_static;
     }
@@ -2360,7 +2360,7 @@ instance_bgp_configurator_handler_withdraw_evpn_rt(BgpConfiguratorIf *iface, gin
       *_return = BGP_ERR_PARAM;
       return FALSE;
     }
-  if ( !esi)
+  if (!esi || !strlen(esi))
     {
       esi = esi_static;
     }
