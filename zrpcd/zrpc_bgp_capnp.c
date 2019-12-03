@@ -237,6 +237,21 @@ void qcapn_BGPPeer_read(struct peer *s, capn_ptr p)
           s->update_source = NULL;
         }
     }
+    {
+      const char * password = NULL;
+      int len;
+      capn_text tp = capn_get_text(p, 3, capn_val0);
+      password = tp.str;
+      len = tp.len;
+      if (password && len != 0)
+        {
+          s->password = strdup(password);
+        }
+      else
+        {
+          s->password = NULL;
+        }
+    }
 }
 
 void qcapn_BGPPeer_write(const struct peer *s, capn_ptr p)
@@ -274,11 +289,25 @@ void qcapn_BGPPeer_write(const struct peer *s, capn_ptr p)
         }
       capn_set_text(p, 2, tp);
     }
+    {
+      capn_text tp;
+      if(s->password)
+        {
+          tp.str = strdup (s->password);
+          tp.len = strlen (s->password);
+        }
+      else
+        {
+          tp.str = NULL;
+          tp.len = 0;
+        }
+      capn_set_text(p, 3, tp);
+    }
 }
 
 capn_ptr qcapn_new_BGPPeer(struct capn_segment *s)
 {
-    return capn_new_struct(s, 24, 3);
+    return capn_new_struct(s, 24, 4);
 }
 
 void qcapn_BGPPeerStatus_read (struct peer *s, capn_ptr p)

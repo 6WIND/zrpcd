@@ -285,6 +285,7 @@ G_DEFINE_TYPE (InstanceBgpConfiguratorHandler,
 #define ERROR_BGP_INVALID_NEXTHOP(_a) g_error_new(1, BGP_ERR_PARAM, "BGP: invalid nexthop \"%s\"", (_a));
 #define ERROR_BGP_INCONSISTENCY_PREFIXAFI(_a,_b) g_error_new(1, BGP_ERR_PARAM, "BGP: prefix family (%d) != afi (%d)", (_a), (_b));
 #define ERROR_BGP_RD_AFI_SAFI_NOT_CONFIGURED(_a,_b) g_error_new(1, BGP_ERR_PARAM, "BGP RD %s not configured with afi %d p_type %d", rd, (_a), (_b));
+#define ERROR_BGP_INVALID_PASSWORD g_error_new(1, BGP_ERR_PARAM, "BGP md5 password: length should be less than %d", PEER_PASSWORD_MAXLEN);
 
 #ifdef HAVE_THRIFT_V5
 
@@ -909,6 +910,8 @@ zrpc_bgp_set_multihops(struct zrpc_vpnservice *ctxt,  gint32* _return, const gch
     ZRPC_FREE (peer.host);
   if (peer.desc)
     ZRPC_FREE (peer.desc);
+  if (peer.password)
+    ZRPC_FREE (peer.password);
   capn_free(&rc);
   return TRUE;
 }
@@ -2627,6 +2630,8 @@ zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
      ZRPC_FREE (peer.host);
    if (peer.desc)
      ZRPC_FREE (peer.desc);
+   if (peer.password)
+     ZRPC_FREE (peer.password);
    capn_free(&rc);
  }
 #endif
@@ -2912,9 +2917,111 @@ gboolean
 instance_bgp_configurator_handler_set_peer_secret(BgpConfiguratorIf *iface, gint32* _return, const gchar * ipAddress,
                                                   const gchar *rfc2385_sharedSecret, GError **error)
 {
-  *_return = BGP_ERR_NOT_SUPPORTED;
-  return FALSE;
+   struct zrpc_vpnservice *ctxt = NULL;
+   uint64_t peer_nid;
+   capn_ptr peer_ctxt;
+   struct QZCGetRep *grep_peer;
+   struct peer peer;
+   struct capn rc;
+   struct capn_segment *cs;
+   struct zrpc_vpnservice_cache_peer *c_peer;
 
+   zrpc_vpnservice_get_context (&ctxt);
+   if (!ctxt)
+     {
+       *_return = BGP_ERR_INACTIVE;
+       *error = ERROR_BGP_AS_NOT_STARTED;
+       return FALSE;
+     }
+   if (zrpc_vpnservice_get_bgp_context(ctxt) == NULL || zrpc_vpnservice_get_bgp_context(ctxt)->asNumber == 0)
+     {
+       *_return = BGP_ERR_FAILED;
+       *error = ERROR_BGP_AS_NOT_STARTED;
+       return FALSE;
+     }
+   if (ipAddress == NULL)
+     {
+       *_return = BGP_ERR_PARAM;
+       return FALSE;
+     }
+   /* if peer not found, return an error */
+   c_peer  = zrpc_bgp_configurator_find_peer(ctxt, ipAddress, _return, 0);
+   if (c_peer == NULL || c_peer->peer_nid == 0)
+     {
+       *error = g_error_new(1, BGP_ERR_PARAM, "BGP Peer %s not configured", ipAddress);
+       return FALSE;
+     }
+   peer_nid = c_peer->peer_nid;
+   /* retrieve peer context */
+   grep_peer = qzcclient_getelem (ctxt->p_qzc_sock, &peer_nid, 2, \
+                                  NULL, NULL, NULL, NULL);
+   if(grep_peer == NULL)
+     {
+       *_return = BGP_ERR_FAILED;
+       return FALSE;
+     }
+
+   if (rfc2385_sharedSecret)
+     {
+       if (strlen(rfc2385_sharedSecret) > PEER_PASSWORD_MAXLEN)
+         {
+           *error = ERROR_BGP_INVALID_PASSWORD;
+           return FALSE;
+         }
+     }
+
+   memset(&peer, 0, sizeof(struct peer));
+   qcapn_BGPPeer_read(&peer, grep_peer->data);
+
+   if (peer.password)
+     {
+       ZRPC_FREE(peer.password);
+       peer.password = NULL;
+     }
+   if (rfc2385_sharedSecret && strlen(rfc2385_sharedSecret))
+     peer.password = (char *)rfc2385_sharedSecret;
+
+   qzcclient_qzcgetrep_free(grep_peer);
+
+   /* prepare QZCSetRequest context */
+   capn_init_malloc(&rc);
+   cs = capn_root(&rc).seg;
+   peer_ctxt = qcapn_new_BGPPeer(cs);
+   qcapn_BGPPeer_write(&peer, peer_ctxt);
+   if (qzcclient_setelem (ctxt->p_qzc_sock, &peer_nid, 2, \
+                          &peer_ctxt, &bgp_datatype_create_bgp_2, \
+                          NULL, NULL))
+     {
+       if (IS_ZRPC_DEBUG)
+         {
+           if (!rfc2385_sharedSecret || !strlen(rfc2385_sharedSecret))
+             zrpc_info ("unsetPeerSecret(%s) OK", ipAddress);
+           else
+             zrpc_info ("setPeerSecret(%s, %s) OK", ipAddress, rfc2385_sharedSecret);
+         }
+     }
+   else
+     {
+       *_return = BGP_ERR_FAILED;
+       *error = ERROR_BGP_INTERNAL;
+       if (IS_ZRPC_DEBUG)
+         {
+           if (!rfc2385_sharedSecret || !strlen(rfc2385_sharedSecret))
+             zrpc_info ("unsetPeerSecret(%s) NOK (capnproto error)", ipAddress);
+           else
+             zrpc_info ("setPeerSecret(%s) NOK (capnproto error)", ipAddress);
+         }
+     }
+
+   if (peer.host)
+     ZRPC_FREE (peer.host);
+   if (peer.desc)
+     ZRPC_FREE (peer.desc);
+   if (peer.update_source)
+     ZRPC_FREE (peer.update_source);
+   capn_free(&rc);
+
+   return TRUE;
 }
 #endif /* HAVE_THRIFT_V4 HAVE_THRIFT_V3 */
 
@@ -3826,6 +3933,8 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
      ZRPC_FREE (peer.host);
    if (peer.desc)
      ZRPC_FREE (peer.desc);
+   if (peer.password)
+     ZRPC_FREE (peer.password);
    capn_free(&rc);
    return TRUE;
  }
