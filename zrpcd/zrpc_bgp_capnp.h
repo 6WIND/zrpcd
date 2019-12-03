@@ -191,6 +191,8 @@ struct peer
   int ttl;			/* TTL of TCP connection to the peer. */
 
   char *update_source;
+  char *password;
+#define PEER_PASSWORD_MAXLEN (80)
 
   u_char afc[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
 
