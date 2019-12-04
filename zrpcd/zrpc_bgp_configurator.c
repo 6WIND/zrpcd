@@ -910,6 +910,8 @@ zrpc_bgp_set_multihops(struct zrpc_vpnservice *ctxt,  gint32* _return, const gch
     ZRPC_FREE (peer.host);
   if (peer.desc)
     ZRPC_FREE (peer.desc);
+  if (peer.update_source)
+    ZRPC_FREE (peer.update_source);
   if (peer.password)
     ZRPC_FREE (peer.password);
   capn_free(&rc);
@@ -2630,6 +2632,8 @@ zrpc_sync_bfd_conf_to_bgp_peer (struct zrpc_vpnservice *ctxt,
      ZRPC_FREE (peer.host);
    if (peer.desc)
      ZRPC_FREE (peer.desc);
+   if (peer.update_source)
+     ZRPC_FREE (peer.update_source);
    if (peer.password)
      ZRPC_FREE (peer.password);
    capn_free(&rc);
@@ -3924,9 +3928,9 @@ zrpc_bgp_disable_vrf(struct zrpc_vpnservice *ctxt,
        if(IS_ZRPC_DEBUG)
          {
            if (srcIp == 0)
-             zrpc_info ("unsetUpdateSourcedelVrf(%s) NOK (capnproto error)", peerIp);
+             zrpc_info ("unsetUpdateSource(%s) NOK (capnproto error)", peerIp);
            else
-             zrpc_info ("setUpdateSourcedelVrf(%s) NOK (capnproto error)", peerIp);
+             zrpc_info ("setUpdateSource(%s) NOK (capnproto error)", peerIp);
          }
      }
    if (peer.host)
