@@ -270,7 +270,7 @@ install_deps() {
     fi
     git clone https://github.com/6WIND/quagga.git
     cd quagga
-    git checkout quagga_mpbgp_capnp
+    git checkout evpn_rt3
     autoreconf -i
     LIBS='-L'$ZRPCD_BUILD_FOLDER'/zeromq4-1/.libs/ -L'$ZRPCD_BUILD_FOLDER'/c-capnproto/.libs/' \
     ./configure --with-zeromq --with-ccapnproto --prefix=/opt/quagga --enable-user=quagga \
@@ -356,7 +356,7 @@ install_deps() {
         rm -rf $ZRPCD_BUILD_FOLDER/packager/quagga/src
         mkdir -p $ZRPCD_BUILD_FOLDER/packager/quagga/src
         pushd $ZRPCD_BUILD_FOLDER/quagga
-        git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/quagga/src/quagga-src.tar quagga_mpbgp_capnp
+        git archive --format tar --output $ZRPCD_BUILD_FOLDER/packager/quagga/src/quagga-src.tar evpn_rt3
         popd
         cd $DIR_PATH
         ./$DIR_NAME/packaging.sh "quagga-src" $ZRPCD_BUILD_FOLDER/packager/quagga/src $QUAGGA_DIR $HOST_NAME $COMMITID dev $PACKAGING_VERSION
@@ -381,6 +381,7 @@ build_zrpcd (){
         pushd $ZRPCD_BUILD_FOLDER
         git clone https://github.com/6WIND/zrpcd.git
         cd zrpcd
+        git checkout evpn_rt3
     elif [ -n "${DIST_ARCHIVE}" ]; then
         tar zxvf $DIST_ARCHIVE
         cd "${DIST_ARCHIVE%.tar.gz}"
