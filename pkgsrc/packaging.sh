@@ -430,6 +430,9 @@ quagga_deb_bin_control () {
         printf 'if [ "$1" = "configure" ]; then\n' >> $DEB_BIN_DIR/DEBIAN/postinst
         printf '  :\n' >> $DEB_BIN_DIR/DEBIAN/postinst
         printf 'fi\n' >> $DEB_BIN_DIR/DEBIAN/postinst
+        printf "setcap \'cap_setgid,cap_setuid,cap_net_bind_service,cap_net_admin,cap_net_raw+ep\' /opt/quagga/sbin/bgpd"
+        printf "setcap \'cap_setgid,cap_setuid,cap_net_bind_service,cap_net_admin,cap_net_raw+ep\' /opt/quagga/sbin/bfdd"
+        printf "setcap \'cap_setgid,cap_setuid,cap_net_bind_service,cap_net_admin,cap_sys_admin,cap_net_raw+ep\' /opt/quagga/sbin/zebra"
         chmod a+x $DEB_BIN_DIR/DEBIAN/postinst
 
         printf '#!/bin/sh\n' > $DEB_BIN_DIR/DEBIAN/prerm
