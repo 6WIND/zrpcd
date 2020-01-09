@@ -247,14 +247,16 @@ quagga_copy_bin_files () {
 
     if [ $DEV_PACKAGE = "n" ]; then
         if [ -f $INST_BIN_DIR/opt/quagga/etc/bgpd.conf ]; then
-            sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            sed -i -- 's/zebra/8 $5$mE$GYmnGvxYcXC7RsgqQNGUa2jvVDDl6/rjCtduUQL3ei4/g' $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "service password-encryption" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
         else
             echo "hostname bgpd" > $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-            echo "password sdncbgpc" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "password 8 $5$mE$GYmnGvxYcXC7RsgqQNGUa2jvVDDl6/rjCtduUQL3ei4" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
             echo "service advanced-vty" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
-            echo "log stdout" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
             echo "line vty" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
             echo " exec-timeout 0 0 " >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "log record-priority" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "service password-encryption" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
             echo "debug bgp " >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
             echo "debug bgp updates" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
             echo "debug bgp events" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
@@ -262,8 +264,10 @@ quagga_copy_bin_files () {
         fi
 
         if [ -f $INST_BIN_DIR/opt/quagga/etc/bfdd.conf ]; then
-            sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+            sed -i -- 's/zebra/8 $5$mE$GYmnGvxYcXC7RsgqQNGUa2jvVDDl6/rjCtduUQL3ei4/g' $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
             echo "service advanced-vty" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+            echo "log record-priority" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+            echo "service password-encryption" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
             echo "debug bfd zebra" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
             echo "debug bfd fsm" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
         else
@@ -271,7 +275,9 @@ quagga_copy_bin_files () {
         fi
 
         if [ -f $INST_BIN_DIR/opt/quagga/etc/zebra.conf ]; then
-            sed -i -- 's/zebra/sdncbgpc/g' $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+            sed -i -- 's/zebra/8 $5$mE$GYmnGvxYcXC7RsgqQNGUa2jvVDDl6/rjCtduUQL3ei4/g' $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+            echo "log record-priority" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+            echo "service password-encryption" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
             echo "debug zebra events" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
             echo "debug zebra fpm" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
             echo "debug zebra packet" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf

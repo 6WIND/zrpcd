@@ -521,11 +521,12 @@ build_zrpcd (){
         $DIR_NAME/packaging.sh "zrpc-src" $ZRPCD_BUILD_FOLDER/packager/zrpc/src/ $ZRPC_DIR $HOST_NAME $COMMITID dev $PACKAGING_VERSION
     else
         echo "hostname bgpd" > /opt/quagga/etc/bgpd.conf
-        echo "password sdncbgpc" >> /opt/quagga/etc/bgpd.conf
+        echo "password 8 $5$mE$GYmnGvxYcXC7RsgqQNGUa2jvVDDl6/rjCtduUQL3ei4" >> /opt/quagga/etc/bgpd.conf
         echo "service advanced-vty" >> /opt/quagga/etc/bgpd.conf
-        echo "log stdout" >> /opt/quagga/etc/bgpd.conf
         echo "line vty" >> /opt/quagga/etc/bgpd.conf
         echo " exec-timeout 0 0 " >> /opt/quagga/etc/bgpd.conf
+        echo "log record-priority" >> /opt/quagga/etc/bgpd.conf
+        echo "service password-encryption" >> /opt/quagga/etc/bgpd.conf
         echo "debug bgp " >> /opt/quagga/etc/bgpd.conf
         echo "debug bgp updates" >> /opt/quagga/etc/bgpd.conf
         echo "debug bgp events" >> /opt/quagga/etc/bgpd.conf
