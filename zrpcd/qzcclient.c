@@ -179,6 +179,7 @@ struct qzcclient_sock *qzcclient_connect (const char *url, uint32_t limit)
 struct qzcclient_sock *qzcclient_subscribe (struct thread_master *master, const char *url,
                                             void (*func)(void *arg, void *zmqsock,
                                                          struct zmq_msg_queue_node *node),
+                                            void *bgp_updater,
                                             uint32_t limit)
 {
   void *qzc_sock;
@@ -217,7 +218,7 @@ struct qzcclient_sock *qzcclient_subscribe (struct thread_master *master, const 
   ret = ZRPC_CALLOC(sizeof(*ret));
   ret->zmq = qzc_sock;
   ret->limit = limit;
-  ret->cb = qzmqclient_thread_read_msg (master, func, NULL, ret);
+  ret->cb = qzmqclient_thread_read_msg (master, func, bgp_updater, ret);
   return ret;
 }
 

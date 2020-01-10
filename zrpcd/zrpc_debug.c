@@ -79,22 +79,46 @@ DEFUN (show_debugging_zrpc_stats,
        "Zrpc Statistics")
 {
   struct zrpc_vpnservice *ctxt = NULL;
+  struct zrpc_bgp_updater_client *updater;
 
   zrpc_vpnservice_get_context (&ctxt);
   if(!ctxt)
     {
       return CMD_SUCCESS;
     }
-  vty_out (vty, "BGP ZMQ notifications total %u lost %u%s",
-           ctxt->bgp_update_total,
-           ctxt->bgp_update_lost_msgs,
+
+  updater = ctxt->master_updater;
+  vty_out (vty, "BGP updater server %s%s:",
+           updater->zrpc_notification_address,
            VTY_NEWLINE);
-  vty_out (vty, "BGP Thrift retries %u, successfull %u, lost %u%s",
-           ctxt->bgp_update_thrift_retries,
-           ctxt->bgp_update_thrift_retries_successfull,
-           ctxt->bgp_update_thrift_lost_msgs,
+  vty_out (vty, "  BGP ZMQ notifications total %u lost %u%s",
+           updater->bgp_update_total,
+           updater->bgp_update_lost_msgs,
            VTY_NEWLINE);
-  vty_out (vty, "BGP ZMQ REQ reconnections %u%s",
+  vty_out (vty, "  BGP Thrift retries %u, successfull %u, lost %u%s",
+           updater->bgp_update_thrift_retries,
+           updater->bgp_update_thrift_retries_successfull,
+           updater->bgp_update_thrift_lost_msgs,
+           VTY_NEWLINE);
+
+  if (ctxt->slave_updater)
+    {
+      updater = ctxt->slave_updater;
+      vty_out (vty, "BGP updater server %s%s:",
+               updater->zrpc_notification_address,
+               VTY_NEWLINE);
+      vty_out (vty, "  BGP ZMQ notifications total %u lost %u%s",
+               updater->bgp_update_total,
+               updater->bgp_update_lost_msgs,
+               VTY_NEWLINE);
+      vty_out (vty, "  BGP Thrift retries %u, successfull %u, lost %u%s",
+               updater->bgp_update_thrift_retries,
+               updater->bgp_update_thrift_retries_successfull,
+               updater->bgp_update_thrift_lost_msgs,
+               VTY_NEWLINE);
+    }
+
+  vty_out (vty, "  BGP ZMQ REQ reconnections %u%s",
            qzcclient_get_nb_reconnect(),
            VTY_NEWLINE);
   return CMD_SUCCESS;

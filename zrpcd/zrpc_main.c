@@ -404,10 +404,11 @@ main (int argc, char **argv)
   /* connect updater server and send notification */
   struct zrpc_vpnservice *ctxt = NULL;
   zrpc_vpnservice_get_context (&ctxt);
-  ctxt->bgp_updater_client_thread = NULL;
-  THREAD_TIMER_MSEC_ON(tm->global, ctxt->bgp_updater_client_thread,    \
-                       zrpc_bgp_updater_on_start_config_resync_notification, \
-                       ctxt, 10);
+  ctxt->master_updater->bgp_updater_client_thread = NULL;
+  THREAD_TIMER_MSEC_ON(tm->global,
+                       ctxt->master_updater->bgp_updater_client_thread,
+                       zrpc_bgp_updater_on_start_config_resync_notification,
+                       ctxt->master_updater, 10);
   /* Start finite state machine, here we go! */
   while (thread_fetch (tm->global, &thread))
     thread_call (&thread);

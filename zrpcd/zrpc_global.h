@@ -40,6 +40,8 @@ struct zrpc_global
 #endif
 
   char *zrpc_notification_address;
+  /* for slave bgp updater server */
+  char *zrpc_notification_address2;
   char *zrpc_listen_address;
 };
 

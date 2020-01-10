@@ -103,6 +103,39 @@ struct zrpc_vpnservice_cache_peer
   uint8_t enableAddressFamily[ADDRESS_FAMILY_MAX][SUBSEQUENT_ADDRESS_FAMILY_MAX];
 };
 
+enum _zrpc_status
+  {
+    ZRPC_TO_SDN_UNKNOWN,
+    ZRPC_TO_SDN_TRUE,
+    ZRPC_TO_SDN_FALSE
+  };
+typedef enum _zrpc_status zrpc_status;
+
+struct zrpc_bgp_updater_client
+{
+  char *zrpc_notification_address;
+  zrpc_status zrpc_transport_current_status;
+  int zrpc_monitor_retry_job_in_progress;
+
+  /* zrpc Update Contexts */
+  BgpUpdaterIf *bgp_updater_client;
+  struct thread *bgp_updater_client_thread;
+  gboolean bgp_updater_client_need_select;
+  gboolean bgp_updater_select_in_progress;
+  ThriftSocket *bgp_updater_socket;
+  ThriftFramedTransport *bgp_updater_transport;
+  ThriftProtocol *bgp_updater_protocol;
+
+  /* bgp updater statistics */
+  u_int32_t bgp_update_lost_msgs;
+  u_int32_t bgp_update_monitor;
+  u_int32_t bgp_update_retries;
+  u_int32_t bgp_update_total;
+  u_int32_t bgp_update_thrift_lost_msgs;
+  u_int32_t bgp_update_thrift_retries;
+  u_int32_t bgp_update_thrift_retries_successfull;
+};
+
 struct zrpc_vpnservice
 {
   /* configuration part */
@@ -117,14 +150,8 @@ struct zrpc_vpnservice
   BgpConfiguratorProcessor *bgp_configurator_processor;
   InstanceBgpConfiguratorHandler *bgp_configurator_handler;
 
-  /* zrpc Update Contexts */
-  BgpUpdaterIf *bgp_updater_client;
-  struct thread *bgp_updater_client_thread;
-  gboolean bgp_updater_client_need_select;
-  gboolean bgp_updater_select_in_progress;
-  ThriftSocket *bgp_updater_socket;
-  ThriftFramedTransport *bgp_updater_transport;
-  ThriftProtocol *bgp_updater_protocol;
+  struct zrpc_bgp_updater_client *master_updater;
+  struct zrpc_bgp_updater_client *slave_updater;
 
   /* bgp context */
   struct zrpc_vpnservice_bgp_context *bgp_context;
@@ -160,32 +187,15 @@ struct zrpc_vpnservice
    * be removed for this config. When this timer expires, all configs
    * marked as STALE will be deleted. */
   struct thread *config_stale_thread;
-
-  /* bgp updater statistics */
-  u_int32_t bgp_update_lost_msgs;
-  u_int32_t bgp_update_monitor;
-  u_int32_t bgp_update_retries;
-  u_int32_t bgp_update_total;
-  u_int32_t bgp_update_thrift_lost_msgs;
-  u_int32_t bgp_update_thrift_retries;
-  u_int32_t bgp_update_thrift_retries_successfull;
 };
-
-enum _zrpc_status
-  {
-    ZRPC_TO_SDN_UNKNOWN,
-    ZRPC_TO_SDN_TRUE,
-    ZRPC_TO_SDN_FALSE
-  };
-typedef enum _zrpc_status zrpc_status;
 
 #define ZRPC_MAX_ERRNO 132
 extern unsigned int notification_socket_errno[];
 
 void zrpc_vpnservice_terminate(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_terminate_thrift_bgp_configurator_server(struct zrpc_vpnservice *setup);
-void zrpc_vpnservice_terminate_thrift_bgp_updater_client(struct zrpc_vpnservice *setup);
-gboolean zrpc_vpnservice_setup_thrift_bgp_updater_client (struct zrpc_vpnservice *setup);
+void zrpc_vpnservice_terminate_thrift_bgp_updater_client(struct zrpc_bgp_updater_client *updater);
+gboolean zrpc_vpnservice_setup_thrift_bgp_updater_client (struct zrpc_bgp_updater_client *updater);
 void zrpc_vpnservice_setup_thrift_bgp_configurator_server(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_setup(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_setup_bgp_cache(struct zrpc_vpnservice *ctxt);
@@ -201,6 +211,10 @@ void zrpc_vpnservice_setup_client(struct zrpc_vpnservice_client *peer,\
                                      struct zrpc_vpnservice *setup,  \
                                      ThriftTransport *transport);
 
+void zrpc_vpnservice_set_bgp_updater_client(struct zrpc_vpnservice *setup,
+                                            char *notif_addr,
+                                            char *notif_addr2);
+
 void zrpc_vpnservice_terminate_client(struct zrpc_vpnservice_client *peer);
 void zrpc_vpnservice_terminate_qzc(struct zrpc_vpnservice *setup);
 void zrpc_vpnservice_terminate_qzc_bfdd(struct zrpc_vpnservice *setup);
@@ -213,7 +227,7 @@ void zrpc_vpnservice_terminate_bgpvrf_cache (struct zrpc_vpnservice *setup);
 gboolean zrpc_vpnservice_set_bgp_context_multipath (struct zrpc_vpnservice_bgp_context *bgp,
                                                     address_family_t afi, subsequent_address_family_t safi,
                                                     uint8_t on, gint32* _return, GError **error);
-extern int zrpc_vpnservice_get_bgp_updater_socket (struct zrpc_vpnservice *setup);
+extern int zrpc_vpnservice_get_bgp_updater_socket (struct zrpc_bgp_updater_client *updater);
 
 extern void zrpc_config_stale_set(struct zrpc_vpnservice *setup);
 extern void zrpc_delete_stale_vrf(struct zrpc_vpnservice *setup,

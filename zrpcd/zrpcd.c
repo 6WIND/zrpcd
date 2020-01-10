@@ -75,7 +75,8 @@ zrpc_delete (struct zrpc *zrpc)
   zrpc_vpnservice_terminate_bfd(zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate_bgp_context (zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate_qzc(zrpc->zrpc_vpnservice);
-  zrpc_vpnservice_terminate_thrift_bgp_updater_client (zrpc->zrpc_vpnservice);
+  zrpc_vpnservice_terminate_thrift_bgp_updater_client (zrpc->zrpc_vpnservice->master_updater);
+  zrpc_vpnservice_terminate_thrift_bgp_updater_client (zrpc->zrpc_vpnservice->slave_updater);
   zrpc_vpnservice_terminate_thrift_bgp_configurator_server (zrpc->zrpc_vpnservice);
   zrpc_vpnservice_terminate(zrpc->zrpc_vpnservice);
 
@@ -117,6 +118,9 @@ void  zrpc_create_context (struct zrpc **zrpc_val)
   zrpc_vpnservice_setup(zrpc->zrpc_vpnservice);
   zrpc_vpnservice_set_thrift_bgp_configurator_server_port (zrpc->zrpc_vpnservice, tm->zrpc_listen_port);
   zrpc_vpnservice_set_thrift_bgp_updater_client_port (zrpc->zrpc_vpnservice, tm->zrpc_notification_port);
+  zrpc_vpnservice_set_bgp_updater_client(zrpc->zrpc_vpnservice,
+                                         tm->zrpc_notification_address,
+                                         tm->zrpc_notification_address2);
 
   /* creation of thrift contexts - configurator and updater */
   zrpc_server_socket(zrpc);
