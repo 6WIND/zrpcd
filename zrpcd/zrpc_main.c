@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-//#include <getopt.h>
+#include <getopt.h>
 
 #include "thread.h"
 #include "vector.h"
@@ -57,7 +57,8 @@ zrpc configuration across thrift defined model : vpnservice.\n\n\
 -D                          Disable default logging to stdout \n\
 -S                          Disable default logging to syslog \n\
 -P, --thrift_port           Set thrift's config port number\n\
--N, --thrift_notif_address  Set thrift's notif update specified address\n\
+-N, -N1 or --N1             Set master bgp updater server address\n\
+-N2 --N2                    Set slave bgp updater server address\n\
 -n, --thrift_notif_port     Set thrift's notif update \n\
 -s, --select_timeout_max    Set thrift's select timeout max calue in seconds\n\
 -I, --thrift_listen_port    Set thrift's listen config port number\n\
@@ -73,6 +74,21 @@ zrpc configuration across thrift defined model : vpnservice.\n\n\
   printf ("-h, --help                  Display this help and exit\n\n");
   exit (status);
 }
+
+enum {
+  /* first long option value must be >= 256, so that it doesn't
+   * conflict with short options.
+   */
+  ZRPC_OPT_MIN_VAL = 256,
+  ZRPC_OPT_SLAVE_ODL_VAL,
+  ZRPC_OPT_MAX_VAL,
+};
+
+static const struct option long_options[] = {
+    {"N1", required_argument, NULL, 'N'},
+    {"N2", required_argument, NULL, ZRPC_OPT_SLAVE_ODL_VAL},
+    {NULL, 0, NULL, 0}
+};
 
 static void  zrpc_sigpipe (void)
 {
@@ -226,6 +242,7 @@ main (int argc, char **argv)
   char *endptr;
 #endif
   char *p, *progname;
+  struct zrpc_vpnservice *ctxt = NULL;
 
   /* Set umask before anything for security */
   umask (0027);
@@ -253,9 +270,11 @@ main (int argc, char **argv)
 
   /* Command line argument treatment. */
 #ifndef HAVE_THRIFT_V6
-  while ((option = getopt (argc, argv, "A:P:p:M:s:N:L:I:n:DSh")) != -1)
+  while ((option = getopt_long_only (argc, argv, "A:P:p:M:s:N:L:I:n:DSh",
+                                long_options, NULL)) != -1)
 #else
-  while ((option = getopt (argc, argv, "A:P:p:M:s:N:L:I:n:R:G:Q:DSh")) != -1)
+  while ((option = getopt_long_only (argc, argv, "A:P:p:M:s:N:L:I:n:R:G:Q:DSh",
+                                long_options, NULL)) != -1)
 #endif
     {
       switch (option)
@@ -284,6 +303,11 @@ main (int argc, char **argv)
           if(tm->zrpc_notification_address)
             free(tm->zrpc_notification_address);
           tm->zrpc_notification_address = strdup(optarg);
+          break;
+	case ZRPC_OPT_SLAVE_ODL_VAL:
+          if (tm->zrpc_notification_address2)
+            free(tm->zrpc_notification_address2);
+          tm->zrpc_notification_address2 = strdup(optarg);
           break;
 	  /* listenon implies -n */
 	case 'L':
@@ -402,13 +426,22 @@ main (int argc, char **argv)
             getpid ());
 
   /* connect updater server and send notification */
-  struct zrpc_vpnservice *ctxt = NULL;
   zrpc_vpnservice_get_context (&ctxt);
   ctxt->master_updater->bgp_updater_client_thread = NULL;
   THREAD_TIMER_MSEC_ON(tm->global,
                        ctxt->master_updater->bgp_updater_client_thread,
                        zrpc_bgp_updater_on_start_config_resync_notification,
                        ctxt->master_updater, 10);
+
+  if (ctxt->slave_updater)
+    {
+      ctxt->slave_updater->bgp_updater_client_thread = NULL;
+      THREAD_TIMER_MSEC_ON(tm->global,
+                           ctxt->slave_updater->bgp_updater_client_thread,
+                           zrpc_bgp_updater_on_start_config_resync_notification,
+                           ctxt->slave_updater, 10);
+    }
+
   /* Start finite state machine, here we go! */
   while (thread_fetch (tm->global, &thread))
     thread_call (&thread);
