@@ -126,6 +126,9 @@ struct zrpc_bgp_updater_client
   ThriftFramedTransport *bgp_updater_transport;
   ThriftProtocol *bgp_updater_protocol;
 
+  /* qzc subscribe sock pointer */
+  struct qzcclient_sock *qzc_subscribe_sock;
+
   /* bgp updater statistics */
   u_int32_t bgp_update_lost_msgs;
   u_int32_t bgp_update_monitor;
@@ -174,6 +177,9 @@ struct zrpc_vpnservice
   struct qzcclient_sock *qzc_sock;
   struct qzcclient_sock **p_qzc_sock;
   struct qzcclient_sock *qzc_subscribe_sock;
+  /* Another subscribe sock, the subscribed bgp zmq messages are sent
+   * to slave updater server. */
+  struct qzcclient_sock *qzc_subscribe_sock2;
   struct qzcclient_sock *qzc_bfdd_sock;
   struct qzcclient_sock **p_qzc_bfdd_sock;
   

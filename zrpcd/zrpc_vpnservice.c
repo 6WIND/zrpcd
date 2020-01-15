@@ -53,6 +53,7 @@ void zrpc_transport_change_status(struct zrpc_bgp_updater_client *updater, gbool
   struct zrpc_vpnservice *setup = NULL;
 #ifdef HAVE_THRIFT_V6
   int ret;
+  struct qzmqclient_cb *cb;
 #endif
 
   zrpc_vpnservice_get_context (&setup);
@@ -61,7 +62,7 @@ void zrpc_transport_change_status(struct zrpc_bgp_updater_client *updater, gbool
       ((response == FALSE) && (updater->zrpc_transport_current_status == ZRPC_TO_SDN_TRUE)))
     {
 #ifdef HAVE_THRIFT_V6
-      struct qzmqclient_cb *cb = (setup->qzc_subscribe_sock ? setup->qzc_subscribe_sock->cb : NULL);
+      cb = (updater->qzc_subscribe_sock ? updater->qzc_subscribe_sock->cb : NULL);
 #endif
 
       zrpc_info("bgpUpdater check connection with %s:%u %s",
@@ -226,7 +227,6 @@ static int zrpc_vpnservice_bgp_updater_check_connection (struct zrpc_bgp_updater
 
 static int zrpc_vpnservice_setup_bgp_updater_client_retry (struct thread *thread)
 {
-  struct zrpc_vpnservice *setup = NULL;
   struct zrpc_bgp_updater_client *updater;
   GError *error = NULL;
   gboolean response;
@@ -236,12 +236,10 @@ static int zrpc_vpnservice_setup_bgp_updater_client_retry (struct thread *thread
 
   updater = THREAD_ARG (thread);
   assert (updater);
-  zrpc_vpnservice_get_context (&setup);
-  assert (setup);
 
 #ifdef HAVE_THRIFT_V6
   /* cleanup all the nodes in the workqueue */
-  cb = (setup->qzc_subscribe_sock ? setup->qzc_subscribe_sock->cb : NULL);
+  cb = (updater->qzc_subscribe_sock ? updater->qzc_subscribe_sock->cb : NULL);
   if (cb && cb->process_zmq_msg_queue)
     work_queue_cleanup (cb->process_zmq_msg_queue);
 #endif
@@ -729,6 +727,18 @@ void zrpc_vpnservice_terminate_qzc(struct zrpc_vpnservice *setup)
                            &val, sizeof(val));
       qzcclient_close (setup->qzc_subscribe_sock);
       setup->qzc_subscribe_sock = NULL;
+      setup->master_updater->qzc_subscribe_sock = NULL;
+    }
+
+  if (setup->qzc_subscribe_sock2)
+    {
+      int val = 0;
+      qzcclient_setsockopt(setup->qzc_subscribe_sock2, ZMQ_LINGER,
+                           &val, sizeof(val));
+      qzcclient_close (setup->qzc_subscribe_sock2);
+      setup->qzc_subscribe_sock2 = NULL;
+      if (setup->slave_updater)
+        setup->slave_updater->qzc_subscribe_sock = NULL;
     }
 
   if(setup->qzc_sock)
@@ -742,12 +752,27 @@ void zrpc_vpnservice_terminate_qzc(struct zrpc_vpnservice *setup)
 
 void zrpc_vpnservice_setup_qzc(struct zrpc_vpnservice *setup)
 {
-  if(setup->zmq_subscribe_sock && setup->qzc_subscribe_sock == NULL )
-    setup->qzc_subscribe_sock = qzcclient_subscribe(tm->global, \
-                                                    setup->zmq_subscribe_sock, \
-                                                    zrpc_vpnservice_callback,
-                                                    (void *)setup->master_updater,
-                                                    QZC_CLIENT_ZMQ_LIMIT_RX);
+  if (setup->zmq_subscribe_sock)
+    {
+      if (!setup->qzc_subscribe_sock)
+        {
+          setup->qzc_subscribe_sock = qzcclient_subscribe(tm->global,
+                                                          setup->zmq_subscribe_sock,
+                                                          zrpc_vpnservice_callback,
+                                                          (void *)setup->master_updater,
+                                                          QZC_CLIENT_ZMQ_LIMIT_RX);
+          setup->master_updater->qzc_subscribe_sock = setup->qzc_subscribe_sock;
+        }
+      if (!setup->qzc_subscribe_sock2 && setup->slave_updater)
+        {
+          setup->qzc_subscribe_sock2 = qzcclient_subscribe(tm->global,
+                                                          setup->zmq_subscribe_sock,
+                                                          zrpc_vpnservice_callback,
+                                                          (void *)setup->slave_updater,
+                                                          QZC_CLIENT_ZMQ_LIMIT_RX);
+          setup->slave_updater->qzc_subscribe_sock = setup->qzc_subscribe_sock2;
+        }
+    }
 }
 
 void zrpc_vpnservice_terminate_qzc_bfdd(struct zrpc_vpnservice *setup)

@@ -813,25 +813,35 @@ zrpc_bgp_updater_on_update_withdraw_evpn_rt(struct zrpc_bgp_updater_client *upda
 #endif
 
 #ifdef HAVE_THRIFT_V6
-void zrpc_bgp_updater_set_msg_queue(void)
+static void
+zrpc_bgp_updater_set_one_queue(struct qzcclient_sock *qzc_sock)
 {
-  struct zrpc_vpnservice *ctxt = NULL;
   struct qzmqclient_cb *cb = NULL;
 
-  zrpc_vpnservice_get_context (&ctxt);
-  if (!ctxt)
+  if (!qzc_sock)
     return;
-  if (!ctxt->qzc_subscribe_sock)
-    return;
-  if (!(cb = ctxt->qzc_subscribe_sock->cb))
+
+  if (!(cb = qzc_sock->cb))
     return;
   cb->queue_size = tm->zrpc_bgp_updater_queue_maximum_size;
 
   if (!cb->process_zmq_msg_queue)
     return;
+
   cb->process_zmq_msg_queue->spec.max_retries = tm->zrpc_bgp_updater_max_retries;
   cb->process_zmq_msg_queue->spec.hold = tm->zrpc_bgp_updater_retry_time_gap;
+}
 
-  return;
+void zrpc_bgp_updater_set_msg_queue(void)
+{
+  struct zrpc_vpnservice *ctxt = NULL;
+
+  zrpc_vpnservice_get_context (&ctxt);
+  if (!ctxt)
+    return;
+
+  zrpc_bgp_updater_set_one_queue(ctxt->qzc_subscribe_sock);
+  if (ctxt->qzc_subscribe_sock2)
+    zrpc_bgp_updater_set_one_queue(ctxt->qzc_subscribe_sock2);
 }
 #endif
