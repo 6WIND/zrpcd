@@ -120,7 +120,8 @@ static bool zrpc_bgp_updater_wait_reply (struct zrpc_bgp_updater_client *updater
     int optval, optlen, selret = 0, ret;
     bool need_reset = FALSE, should_read = TRUE;
 
-    zrpc_info ("%s: using select (%d sec) to wait for server reply",
+    zrpc_info ("%s: %s: using select (%d sec) to wait for server reply",
+               updater->zrpc_notification_address,
                name, tm->zrpc_select_time);
     FD_ZERO(&rdfds);
     FD_SET(fd, &rdfds);
@@ -255,13 +256,14 @@ zrpc_bgp_updater_on_update_push_route (struct zrpc_bgp_updater_client *updater, 
     char ethtag_str[20];
     sprintf(ethtag_str,"ethtag %ld", ethtag);
 
-    zrpc_info ("onUpdatePushRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d, %s%s, %s%s, %s %s%s) sent %s",
-              rd, prefix? prefix:"none", nexthop, l3label, l2label,
-              esi==NULL?"":"esi ",esi==NULL?"":esi,
-              macaddress==NULL?"":"macaddress ",macaddress==NULL?"":macaddress,
-              ethtag==0?"":ethtag_str,
-              routermac==NULL?"":"routermac ", routermac==NULL?"":routermac,
-              response == TRUE?"OK":"NOK");
+    zrpc_info ("%s: onUpdatePushRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d, %s%s, %s%s, %s %s%s) sent %s",
+               updater->zrpc_notification_address,
+               rd, prefix? prefix:"none", nexthop, l3label, l2label,
+               esi==NULL?"":"esi ",esi==NULL?"":esi,
+               macaddress==NULL?"":"macaddress ",macaddress==NULL?"":macaddress,
+               ethtag==0?"":ethtag_str,
+               routermac==NULL?"":"routermac ", routermac==NULL?"":routermac,
+               response == TRUE?"OK":"NOK");
   }
   return response;
 }
@@ -349,12 +351,13 @@ zrpc_bgp_updater_on_update_withdraw_route (struct zrpc_bgp_updater_client *updat
       char ethtag_str[20];
       sprintf(ethtag_str,"ethtag %ld", ethtag);
 
-      zrpc_info ("onUpdateWithdrawRoute(rd %s, pfx %s/%d, nh %s, label %d, l2label %d, %s%s %s%s %s) sent %s", \
-                rd, prefix? prefix:"none", prefixlen, nexthop, l3label, l2label,
-                esi==NULL?"":"esi ",esi==NULL?"":esi,                   \
-                macaddress==NULL?"":"macaddress ",macaddress==NULL?"":macaddress,
-                ethtag==0?"":ethtag_str,
-                response == TRUE?"OK":"NOK");
+      zrpc_info ("%s: onUpdateWithdrawRoute(rd %s, pfx %s/%d, nh %s, label %d, l2label %d, %s%s %s%s %s) sent %s",
+                 updater->zrpc_notification_address,
+                 rd, prefix? prefix:"none", prefixlen, nexthop, l3label, l2label,
+                 esi==NULL?"":"esi ",esi==NULL?"":esi,
+                 macaddress==NULL?"":"macaddress ",macaddress==NULL?"":macaddress,
+                 ethtag==0?"":ethtag_str,
+                 response == TRUE?"OK":"NOK");
     }
   return response;
 }
@@ -410,7 +413,8 @@ zrpc_bgp_updater_on_start_config_resync_notification_quick (struct zrpc_bgp_upda
 #endif /* HAVE_THRIFT_V6 */
 
   if(IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_info ("onStartConfigResyncNotification() %s", response == FALSE?"NOK":"OK");
+    zrpc_info ("%s: onStartConfigResyncNotification() %s",
+               updater->zrpc_notification_address, response == FALSE?"NOK":"OK");
   return response;
 }
 
@@ -441,7 +445,8 @@ zrpc_bgp_updater_on_start_config_resync_notification (struct thread *thread)
       if(client_ready == FALSE)
         {
           if(IS_ZRPC_DEBUG_NOTIFICATION)
-            zrpc_info ("bgp->sdnc message failed to be sent");
+            zrpc_info ("%s: bgp->sdnc message failed to be sent",
+                       updater->zrpc_notification_address);
         }
     }
   updater->bgp_update_total++;
@@ -507,8 +512,9 @@ zrpc_bgp_updater_on_notification_send_event (struct zrpc_bgp_updater_client *upd
 #endif /* HAVE_THRIFT_V6 */
 
  if(IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_log ("onNotificationSendEvent(%s, errCode %d, errSubCode %d) %s", \
-               prefix, errCode, errSubcode, response == FALSE?"NOK":"OK");
+    zrpc_log ("%s: onNotificationSendEvent(%s, errCode %d, errSubCode %d) %s",
+              updater->zrpc_notification_address,
+              prefix, errCode, errSubcode, response == FALSE?"NOK":"OK");
   return response;
 }
 
@@ -573,7 +579,8 @@ zrpc_bgp_updater_peer_up (struct zrpc_bgp_updater_client *updater,
 #endif /* HAVE_THRIFT_V6 */
 
  if(IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_log ("peerUp(%s, asNumber %u) %s",
+    zrpc_log ("%s: peerUp(%s, asNumber %u) %s",
+              updater->zrpc_notification_address,
               ipAddress, asNumber,
               response == FALSE?"NOK":"OK");
   return response;
@@ -639,7 +646,8 @@ zrpc_bgp_updater_peer_down (struct zrpc_bgp_updater_client *updater,
 #endif /* HAVE_THRIFT_V6 */
 
  if(IS_ZRPC_DEBUG_NOTIFICATION)
-    zrpc_log ("peerDown(%s, asNumber %u) %s",
+    zrpc_log ("%s: peerDown(%s, asNumber %u) %s",
+              updater->zrpc_notification_address,
               ipAddress, asNumber,
               response == FALSE?"NOK":"OK");
   return response;
@@ -716,7 +724,8 @@ zrpc_bgp_updater_on_update_push_evpn_rt(struct zrpc_bgp_updater_client *updater,
 
   if (IS_ZRPC_DEBUG_NOTIFICATION)
     {
-      zrpc_info ("onUpdatePushEvpnRT(routeType %d, rd %s, esi %s, evi %ld, tunnelType %d, tunnelId %s, label %d, singleActiveMode %s) sent %s",
+      zrpc_info ("%s: onUpdatePushEvpnRT(routeType %d, rd %s, esi %s, evi %ld, tunnelType %d, tunnelId %s, label %d, singleActiveMode %s) sent %s",
+                 updater->zrpc_notification_address,
                  routeType, rd,
                  (esi == NULL) ? "none" : esi,
                  evi, tunnelType,
@@ -799,7 +808,8 @@ zrpc_bgp_updater_on_update_withdraw_evpn_rt(struct zrpc_bgp_updater_client *upda
 
   if (IS_ZRPC_DEBUG_NOTIFICATION)
     {
-      zrpc_info ("onUpdateWithdrawEvpnRT(routeType %d, rd %s, esi %s, evi %ld, tunnelType %d, tunnelId %s, label %d, singleActiveMode %s) sent %s",
+      zrpc_info ("%s: onUpdateWithdrawEvpnRT(routeType %d, rd %s, esi %s, evi %ld, tunnelType %d, tunnelId %s, label %d, singleActiveMode %s) sent %s",
+                 updater->zrpc_notification_address,
                  routeType, rd,
                  (esi == NULL) ? "none" : esi,
                  evi, tunnelType,

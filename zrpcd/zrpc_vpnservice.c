@@ -256,7 +256,8 @@ static int zrpc_vpnservice_setup_bgp_updater_client_retry (struct thread *thread
                                          &error, &updater->bgp_updater_client_need_select);
   if (error)
     {
-      zrpc_log ("%s: zrpc_client_transport_open: %s\n", __func__, error->message);
+      zrpc_log ("%s: %s: zrpc_client_transport_open: %s\n",
+                updater->zrpc_notification_address, __func__, error->message);
       g_error_free (error);
     }
   updater->zrpc_monitor_retry_job_in_progress = 0;
@@ -286,7 +287,9 @@ static int zrpc_vpnservice_setup_bgp_updater_client_monitor (struct thread *thre
                                              &error, &updater->bgp_updater_client_need_select);
       if (error)
         {
-          zrpc_log ("%s: zrpc_client_transport_open: %s\n", __func__, error->message);
+          zrpc_log ("%s: %s: zrpc_client_transport_open: %s\n",
+                    updater->zrpc_notification_address,
+                    __func__, error->message);
           g_error_free (error);
         }
       updater->zrpc_monitor_retry_job_in_progress = 0;
@@ -342,7 +345,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
       zrpc_transport_check_response(updater, client_ready);
       if(client_ready == FALSE)
         {
-          zrpc_info ("bgp->sdnc message failed to be sent");
+          zrpc_info ("%s: bgp->sdnc message failed to be sent",
+                     updater->zrpc_notification_address);
           updater->bgp_update_lost_msgs++;
           return;
         }
@@ -451,7 +455,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
           if (IS_ZRPC_DEBUG_NOTIFICATION)
             {
               if (node->retry_times >= 1)
-                zrpc_info ("retry (%d) to send onUpdatePushRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d)",
+                zrpc_info ("%s: retry (%d) to send onUpdatePushRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d)",
+                           updater->zrpc_notification_address,
                            node->retry_times, (zrpc_invalid_rd == 1)? NULL : vrf_rd_str,
                            pfx_str_p, nexthop, s->label, s->l2label);
             }
@@ -507,7 +512,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
           if (IS_ZRPC_DEBUG_NOTIFICATION)
             {
               if (node->retry_times >= 1)
-                zrpc_info ("retry (%d) to send onUpdateWithdrawRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d)",
+                zrpc_info ("%s: retry (%d) to send onUpdateWithdrawRoute(rd %s, pfx %s, nh %s, l3label %d, l2label %d)",
+                           updater->zrpc_notification_address,
                            node->retry_times, (zrpc_invalid_rd == 1)? NULL : vrf_rd_str,
                            pfx_str_p, nexthop, s->label, s->l2label);
             }
@@ -629,7 +635,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
 
   if (ret == FALSE)
     {
-      zrpc_info ("bgp->sdnc message failed to be sent");
+      zrpc_info ("%s: bgp->sdnc message failed to be sent",
+                 updater->zrpc_notification_address);
       updater->bgp_update_lost_msgs++;
     }
 
@@ -638,7 +645,8 @@ static void zrpc_vpnservice_callback (void *arg, void *zmqsock, struct zmq_msg_q
   node->msg_not_sent = (ret == FALSE) ? 1 : 0;
   if (node->retry_times > tm->zrpc_bgp_updater_max_retries)
     {
-      zrpc_info ("Maximum retry times (%d) reached, resetting connection to ODL",
+      zrpc_info ("%s: Maximum retry times (%d) reached, resetting connection to ODL",
+                 updater->zrpc_notification_address,
                  tm->zrpc_bgp_updater_max_retries);
       zrpc_transport_cancel_monitor(updater);
       zrpc_transport_check_response(updater, FALSE);
@@ -934,7 +942,8 @@ gboolean zrpc_vpnservice_setup_thrift_bgp_updater_client (struct zrpc_bgp_update
                                          &error, &updater->bgp_updater_client_need_select);
   if (error)
     {
-      zrpc_log ("%s: zrpc_client_transport_open: %s\n", __func__, error->message);
+      zrpc_log ("%s: %s: zrpc_client_transport_open: %s\n",
+                updater->zrpc_notification_address, __func__, error->message);
       g_error_free (error);
     }
   zrpc_transport_check_response(updater, response);
