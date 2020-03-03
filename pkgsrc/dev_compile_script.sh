@@ -439,6 +439,7 @@ build_zrpcd (){
         fi
         if [ -f pkgsrc/zrpcd.rotate ]; then
             cp pkgsrc/zrpcd.rotate $INSTALL_DIR/opt/quagga/etc/init.d/
+            chmod 644 $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd.rotate
         fi
     fi
     touch NEWS README
@@ -498,6 +499,7 @@ build_zrpcd (){
         fi
         if [ -f pkgsrc/zrpcd.rotate ]; then
             cp pkgsrc/zrpcd.rotate $INSTALL_DIR/opt/quagga/etc/init.d/
+            chmod 644 $INSTALL_DIR/opt/quagga/etc/init.d/zrpcd.rotate
         fi
     fi
     if [ -z "${BUILD_FROM_DIST}" ]; then
