@@ -8,7 +8,7 @@
     postrotate
       touch /opt/quagga/var/log/quagga/zrpcd.init.log
       chown -R quagga:quagga /opt/quagga/var/log/quagga/zrpcd.init.log
-      chmod u=rwx,go=rwx /opt/quagga/var/log/quagga/zrpcd.init.log
+      chmod u=rw,go=r /opt/quagga/var/log/quagga/zrpcd.init.log
       /bin/kill -USR1 `cat /opt/quagga/var/run/quagga/bgpd.pid 2>/dev/null || true`
       /bin/kill -USR1 `cat /opt/quagga/var/run/quagga/bfdd.pid 2>/dev/null || true`
     endscript
