@@ -261,6 +261,7 @@ quagga_copy_bin_files () {
             echo "debug bgp updates" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
             echo "debug bgp events" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
             echo "debug bgp fsm" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
+            echo "no bgp default ipv6" >> $INST_BIN_DIR/opt/quagga/etc/bgpd.conf
         fi
 
         if [ -f $INST_BIN_DIR/opt/quagga/etc/bfdd.conf ]; then
@@ -270,6 +271,7 @@ quagga_copy_bin_files () {
             echo "service password-encryption" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
             echo "debug bfd zebra" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
             echo "debug bfd fsm" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
+            echo "no bfd vty bind" >> $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
         else
 	    touch $INST_BIN_DIR/opt/quagga/etc/bfdd.conf
         fi
@@ -281,6 +283,7 @@ quagga_copy_bin_files () {
             echo "debug zebra events" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
             echo "debug zebra fpm" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
             echo "debug zebra packet" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
+            echo "no zebra vty bind" >> $INST_BIN_DIR/opt/quagga/etc/zebra.conf
         else
     	    touch $INST_BIN_DIR/opt/quagga/etc/zebra.conf
         fi
